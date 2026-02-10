@@ -1,0 +1,2192 @@
+[
+  {
+    "line": 1358,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 1363,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 1380,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ lineHeight: '1.6', fontSize: '0.95rem' }}>"
+  },
+  {
+    "line": 1384,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>"
+  },
+  {
+    "line": 1385,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ backgroundColor: '#111827', padding: '15px', borderRadius: '8px', border: '1px solid #374151' }}>"
+  },
+  {
+    "line": 1390,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 1391,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ backgroundColor: '#111827', padding: '15px', borderRadius: '8px', border: '1px solid #374151' }}>"
+  },
+  {
+    "line": 1396,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 1397,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 1401,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ backgroundColor: '#111827', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #8b5cf6' }}>"
+  },
+  {
+    "line": 1407,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 1428,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 1429,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 1430,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 1827,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.container}>"
+  },
+  {
+    "line": 1856,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.header}>"
+  },
+  {
+    "line": 1857,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.headerLeft}>"
+  },
+  {
+    "line": 1882,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 1883,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', gap: '10px' }}>"
+  },
+  {
+    "line": 1884,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', gap: '8px', marginRight: '16px', borderRight: '1px solid #4b5563', paddingRight: '16px' }}>"
+  },
+  {
+    "line": 1901,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 1912,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 1913,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 1919,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.workspace}>"
+  },
+  {
+    "line": 1921,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.leftPanel}>"
+  },
+  {
+    "line": 1923,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 1941,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 1944,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 1954,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ width: '100%', height: '100%', position: 'relative' }}>"
+  },
+  {
+    "line": 1980,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2021,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ position: 'absolute', top: 10, left: 10, zIndex: 20 }}>"
+  },
+  {
+    "line": 2022,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2029,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2045,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2056,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2061,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2081,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2086,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2096,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2108,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2116,
+    "openings": 0,
+    "closings": 1,
+    "content": "}}>RULER</div>"
+  },
+  {
+    "line": 2163,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2167,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2178,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>"
+  },
+  {
+    "line": 2181,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2184,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ marginBottom: '8px' }}>"
+  },
+  {
+    "line": 2185,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '0.65rem', color: '#9ca3af', fontWeight: '600', marginBottom: '2px' }}>DISTANCE</div>"
+  },
+  {
+    "line": 2186,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', gap: '8px', alignItems: 'baseline' }}>"
+  },
+  {
+    "line": 2187,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '1.2rem', fontWeight: '800' }}>{measurementResult.distance.toFixed(1)}<span style={{ fontSize: '0.7rem', color: '#60a5fa', marginLeft: '2px' }}>%</span></div>"
+  },
+  {
+    "line": 2188,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '0.9rem', color: '#9ca3af' }}>{measurementResult.pixelDistance?.toFixed(0)}<span style={{ fontSize: '0.6rem', color: '#9ca3af', marginLeft: '2px' }}>px</span></div>"
+  },
+  {
+    "line": 2189,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2190,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2194,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div>"
+  },
+  {
+    "line": 2195,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '0.65rem', color: '#9ca3af', fontWeight: '600', marginBottom: '2px' }}>ANGLE</div>"
+  },
+  {
+    "line": 2196,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#3b82f6' }}>"
+  },
+  {
+    "line": 2198,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2199,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2223,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2227,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2237,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2239,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2243,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', backgroundColor: '#000' }}>"
+  },
+  {
+    "line": 2244,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 100, width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '10px' }}>"
+  },
+  {
+    "line": 2252,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>"
+  },
+  {
+    "line": 2300,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2301,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2318,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2320,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.emptyState}>"
+  },
+  {
+    "line": 2321,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.emptyIcon}>"
+  },
+  {
+    "line": 2323,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2329,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.emptyCard}>"
+  },
+  {
+    "line": 2330,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.emptyAction} onClick={() => fileInputRef.current.click()}>"
+  },
+  {
+    "line": 2331,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ ...styles.emptyIcon, width: '40px', height: '40px', marginBottom: '8px' }}>"
+  },
+  {
+    "line": 2333,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2334,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontWeight: '600', color: 'white' }}>Local File</div>"
+  },
+  {
+    "line": 2335,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Upload MP4/WebM</div>"
+  },
+  {
+    "line": 2336,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2338,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.emptyAction} onClick={handleOpenProjectPicker}>"
+  },
+  {
+    "line": 2339,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ ...styles.emptyIcon, width: '40px', height: '40px', marginBottom: '8px', color: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>"
+  },
+  {
+    "line": 2341,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2342,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontWeight: '600', color: 'white' }}>Project Vault</div>"
+  },
+  {
+    "line": 2343,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Select from Project</div>"
+  },
+  {
+    "line": 2344,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2346,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div onClick={() => setShowIPCameraModal(true)} style={{ ...styles.emptyAction, gridColumn: 'span 2' }}>"
+  },
+  {
+    "line": 2347,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>"
+  },
+  {
+    "line": 2348,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ ...styles.emptyIcon, width: '40px', height: '40px', marginBottom: 0, color: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)' }}>"
+  },
+  {
+    "line": 2350,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2351,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ textAlign: 'left' }}>"
+  },
+  {
+    "line": 2352,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontWeight: '600', color: 'white' }}>Industrial IP Camera</div>"
+  },
+  {
+    "line": 2353,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Connect RTSP/HTTP stream for live training</div>"
+  },
+  {
+    "line": 2354,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2355,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2356,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2357,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2358,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2360,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2364,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2369,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2373,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>"
+  },
+  {
+    "line": 2376,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2377,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>"
+  },
+  {
+    "line": 2382,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div"
+  },
+  {
+    "line": 2392,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div>"
+  },
+  {
+    "line": 2393,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ color: 'white', fontWeight: 'bold' }}>{p.projectName}</div>"
+  },
+  {
+    "line": 2394,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{new Date(p.createdAt).toLocaleDateString()}</div>"
+  },
+  {
+    "line": 2395,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2396,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ color: '#60a5fa' }}>Select</div>"
+  },
+  {
+    "line": 2397,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2400,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2401,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2402,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2407,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2412,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2417,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>"
+  },
+  {
+    "line": 2429,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2432,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ marginBottom: '16px' }}>"
+  },
+  {
+    "line": 2448,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2451,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2457,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ width: '100%', height: '100%' }}>"
+  },
+  {
+    "line": 2459,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2470,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2476,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2481,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2485,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ color: '#6b7280', textAlign: 'center' }}>"
+  },
+  {
+    "line": 2488,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2490,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2493,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', gap: '10px' }}>"
+  },
+  {
+    "line": 2520,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2525,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2526,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2528,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2532,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div"
+  },
+  {
+    "line": 2539,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.resizerHandle}>"
+  },
+  {
+    "line": 2540,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.resizerBar} />"
+  },
+  {
+    "line": 2541,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.resizerBar} />"
+  },
+  {
+    "line": 2542,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.resizerBar} />"
+  },
+  {
+    "line": 2543,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2544,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2548,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.rightPanel}>"
+  },
+  {
+    "line": 2558,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2567,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.7rem', color: '#9ca3af', fontWeight: 'bold' }}>"
+  },
+  {
+    "line": 2568,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>"
+  },
+  {
+    "line": 2571,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2573,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2574,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2603,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div"
+  },
+  {
+    "line": 2624,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2627,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2633,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2634,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2646,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.tabs}>"
+  },
+  {
+    "line": 2654,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div"
+  },
+  {
+    "line": 2661,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2663,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2665,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={styles.content} className=\"custom-scrollbar\">"
+  },
+  {
+    "line": 2667,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>"
+  },
+  {
+    "line": 2668,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center', gap: '8px', padding: '0 10px' }}>"
+  },
+  {
+    "line": 2752,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2753,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2763,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'white', marginTop: '8px' }}>"
+  },
+  {
+    "line": 2765,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2766,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ fontSize: '0.8rem', color: '#d1d5db', marginTop: '4px' }}>"
+  },
+  {
+    "line": 2768,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2769,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2771,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', gap: '20px', flex: 1, minHeight: 0 }}>"
+  },
+  {
+    "line": 2773,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>"
+  },
+  {
+    "line": 2774,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>"
+  },
+  {
+    "line": 2782,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2783,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 2795,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div key={i} style={{"
+  },
+  {
+    "line": 2804,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2806,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2807,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2810,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '12px' }}>"
+  },
+  {
+    "line": 2811,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>"
+  },
+  {
+    "line": 2821,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2823,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div id=\"cycle-chart-container\">"
+  },
+  {
+    "line": 2828,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2833,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ backgroundColor: '#1f2937', padding: '12px', borderRadius: '8px', border: '1px solid #374151', minHeight: '60px' }}>"
+  },
+  {
+    "line": 2837,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>"
+  },
+  {
+    "line": 2839,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div key={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#374151', padding: '6px 10px', borderRadius: '4px' }}>"
+  },
+  {
+    "line": 2849,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2851,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2853,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2858,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #374151', borderRadius: '8px', color: '#6b7280', fontSize: '0.85rem', textAlign: 'center', padding: '20px' }}>"
+  },
+  {
+    "line": 2860,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2863,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>"
+  },
+  {
+    "line": 2864,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ backgroundColor: '#1f2937', padding: '12px', borderRadius: '8px', border: '1px solid #374151' }}>"
+  },
+  {
+    "line": 2865,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: '4px' }}>TOTAL CYCLES</div>"
+  },
+  {
+    "line": 2866,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{cycleStats.totalCycles}</div>"
+  },
+  {
+    "line": 2867,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2868,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ backgroundColor: '#1f2937', padding: '12px', borderRadius: '8px', border: '1px solid #374151' }}>"
+  },
+  {
+    "line": 2869,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: '4px' }}>VA RATIO</div>"
+  },
+  {
+    "line": 2870,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>{cycleStats.vaRatio}%</div>"
+  },
+  {
+    "line": 2871,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2872,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2874,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ backgroundColor: '#1f2937', padding: '16px', borderRadius: '8px', border: '1px solid #374151' }}>"
+  },
+  {
+    "line": 2875,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: '8px' }}>AVERAGE STATISTICS</div>"
+  },
+  {
+    "line": 2876,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>"
+  },
+  {
+    "line": 2879,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2880,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', justifyContent: 'space-between' }}>"
+  },
+  {
+    "line": 2883,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2884,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2886,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>"
+  },
+  {
+    "line": 2887,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: '8px' }}>CYCLE HISTORY</div>"
+  },
+  {
+    "line": 2888,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }} className=\"custom-scrollbar\">"
+  },
+  {
+    "line": 2890,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div key={idx} style={{ padding: '8px', backgroundColor: '#111827', borderRadius: '4px', fontSize: '0.8rem', border: '1px solid #2d3748', display: 'flex', justifyContent: 'space-between' }}>"
+  },
+  {
+    "line": 2893,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2895,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2896,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2899,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2900,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2901,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2923,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div>"
+  },
+  {
+    "line": 2926,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', gap: '8px', fontSize: '0.8rem' }}>"
+  },
+  {
+    "line": 2970,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2973,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ marginBottom: '20px' }}>"
+  },
+  {
+    "line": 2983,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 2986,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>"
+  },
+  {
+    "line": 2992,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div>"
+  },
+  {
+    "line": 2999,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3002,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div>"
+  },
+  {
+    "line": 3011,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3015,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ backgroundColor: 'rgba(59, 130, 246, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>"
+  },
+  {
+    "line": 3023,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div>"
+  },
+  {
+    "line": 3024,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontWeight: '600', color: 'white', fontSize: '0.9rem' }}>Value Added (VA)</div>"
+  },
+  {
+    "line": 3025,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Mark this state as essential to the process (Green in reports)</div>"
+  },
+  {
+    "line": 3026,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3028,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3031,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ backgroundColor: '#111827', padding: '12px', borderRadius: '8px', border: '1px solid #374151' }}>"
+  },
+  {
+    "line": 3038,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div key={triggerType} style={{ marginBottom: '16px' }}>"
+  },
+  {
+    "line": 3039,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '8px', textTransform: 'capitalize' }}>"
+  },
+  {
+    "line": 3041,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3044,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px', background: '#1f2937', padding: '8px', borderRadius: '4px' }}>"
+  },
+  {
+    "line": 3045,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '0.75rem', fontWeight: 'bold', minWidth: '60px' }}>{action.type}</div>"
+  },
+  {
+    "line": 3046,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ flex: 1, fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"
+  },
+  {
+    "line": 3048,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3059,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3062,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', gap: '8px' }}>"
+  },
+  {
+    "line": 3118,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3119,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3121,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3124,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ border: '1px solid #374151', padding: '12px', borderRadius: '8px' }}>"
+  },
+  {
+    "line": 3125,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>"
+  },
+  {
+    "line": 3136,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3140,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3143,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ border: '1px solid #374151', padding: '12px', borderRadius: '8px' }}>"
+  },
+  {
+    "line": 3144,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>"
+  },
+  {
+    "line": 3155,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3159,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3161,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3164,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>"
+  },
+  {
+    "line": 3166,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div key={state.id}"
+  },
+  {
+    "line": 3183,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>"
+  },
+  {
+    "line": 3185,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 3201,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3202,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div>"
+  },
+  {
+    "line": 3203,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ fontWeight: '600', color: 'white', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>"
+  },
+  {
+    "line": 3206,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3207,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Step {idx + 1}</div>"
+  },
+  {
+    "line": 3208,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3209,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3210,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', gap: '8px' }}>"
+  },
+  {
+    "line": 3226,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3227,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3249,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3251,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3255,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div>"
+  },
+  {
+    "line": 3259,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ marginBottom: '24px', padding: '16px', background: '#111827', borderRadius: '8px', border: '1px solid #374151' }}>"
+  },
+  {
+    "line": 3261,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>"
+  },
+  {
+    "line": 3263,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3285,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ padding: '20px', textAlign: 'center', color: '#6b7280', fontSize: '0.9rem', border: '1px dashed #374151', borderRadius: '6px' }}>"
+  },
+  {
+    "line": 3287,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3289,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>"
+  },
+  {
+    "line": 3291,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div key={ver.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: '#1f2937', borderRadius: '6px', border: '1px solid #374151' }}>"
+  },
+  {
+    "line": 3292,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div>"
+  },
+  {
+    "line": 3293,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ color: 'white', fontWeight: '500', fontSize: '0.9rem' }}>{ver.name}</div>"
+  },
+  {
+    "line": 3294,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ color: '#9ca3af', fontSize: '0.75rem' }}>{ver.timestamp} • {ver.data.states.length} states</div>"
+  },
+  {
+    "line": 3295,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3296,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', gap: '8px' }}>"
+  },
+  {
+    "line": 3318,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3319,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3321,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3323,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3325,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ marginBottom: '24px', padding: '16px', background: '#111827', borderRadius: '8px', border: '1px solid #374151' }}>"
+  },
+  {
+    "line": 3327,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', gap: '16px' }}>"
+  },
+  {
+    "line": 3348,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3353,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3356,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ marginBottom: '24px', padding: '16px', background: '#111827', borderRadius: '8px', border: '1px solid #374151' }}>"
+  },
+  {
+    "line": 3358,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>"
+  },
+  {
+    "line": 3360,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3370,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div key={m.id} style={{ marginBottom: idx === currentModel.tmModels.length - 1 ? 0 : '16px', padding: '12px', background: '#1f2937', borderRadius: '8px', border: '1px solid #374151' }}>"
+  },
+  {
+    "line": 3371,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>"
+  },
+  {
+    "line": 3384,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3386,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ marginBottom: '12px' }}>"
+  },
+  {
+    "line": 3399,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3401,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>"
+  },
+  {
+    "line": 3422,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3425,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ fontSize: '0.75rem', color: '#60a5fa', marginBottom: '8px' }}>"
+  },
+  {
+    "line": 3427,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3430,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ padding: '10px', background: '#111827', borderRadius: '6px', border: '1px dashed #374151' }}>"
+  },
+  {
+    "line": 3432,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>"
+  },
+  {
+    "line": 3436,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3443,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3446,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ marginTop: '8px', padding: '8px', backgroundColor: 'rgba(16, 185, 129, 0.05)', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>"
+  },
+  {
+    "line": 3447,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>"
+  },
+  {
+    "line": 3450,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3451,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3453,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3456,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3459,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ marginBottom: '24px', padding: '16px', background: '#111827', borderRadius: '8px', border: '1px solid #374151' }}>"
+  },
+  {
+    "line": 3461,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>"
+  },
+  {
+    "line": 3463,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3464,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', gap: '8px' }}>"
+  },
+  {
+    "line": 3489,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3493,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div key={m.id} style={{ marginBottom: idx === currentModel.rfModels.length - 1 ? 0 : '16px', padding: '12px', background: '#1f2937', borderRadius: '8px', border: '1px solid #374151' }}>"
+  },
+  {
+    "line": 3494,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>"
+  },
+  {
+    "line": 3513,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3515,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 0.5fr', gap: '10px' }}>"
+  },
+  {
+    "line": 3516,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div>"
+  },
+  {
+    "line": 3527,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3528,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div>"
+  },
+  {
+    "line": 3540,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3541,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div>"
+  },
+  {
+    "line": 3552,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3553,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3554,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3558,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ textAlign: 'center', padding: '20px', color: '#6b7280', fontSize: '0.85rem' }}>"
+  },
+  {
+    "line": 3560,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3562,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3565,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ marginBottom: '24px', padding: '16px', background: '#111827', borderRadius: '8px', border: '1px solid #374151' }}>"
+  },
+  {
+    "line": 3570,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>"
+  },
+  {
+    "line": 3611,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3612,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3613,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3617,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div>"
+  },
+  {
+    "line": 3620,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>"
+  },
+  {
+    "line": 3622,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>"
+  },
+  {
+    "line": 3629,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3630,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3632,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 3647,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3649,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxHeight: '500px', overflowY: 'auto' }}>"
+  },
+  {
+    "line": 3664,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div key={name} style={{"
+  },
+  {
+    "line": 3693,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3696,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3697,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3699,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3703,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 3708,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{"
+  },
+  {
+    "line": 3713,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>"
+  },
+  {
+    "line": 3716,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3718,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ overflowY: 'auto', display: 'grid', gap: '12px' }}>"
+  },
+  {
+    "line": 3720,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div"
+  },
+  {
+    "line": 3734,
+    "openings": 1,
+    "closings": 0,
+    "content": "<div style={{ fontWeight: 'bold', color: 'white', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>"
+  },
+  {
+    "line": 3739,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3740,
+    "openings": 1,
+    "closings": 1,
+    "content": "<div style={{ fontSize: '0.85rem', color: '#d1d5db' }}>{tpl.description}</div>"
+  },
+  {
+    "line": 3741,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3743,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3744,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3745,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3747,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3748,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3749,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  },
+  {
+    "line": 3750,
+    "openings": 0,
+    "closings": 1,
+    "content": "</div>"
+  }
+]

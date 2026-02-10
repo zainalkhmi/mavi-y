@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAVi - Pitch Deck</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .slide-container {
+            scroll-snap-type: y mandatory;
+            overflow-y: scroll;
+            height: 100vh;
+        }
+
+        .slide {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+            scroll-snap-align: start;
+            position: relative;
+        }
+
+        /* Slide Backgrounds */
+        .slide-1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .slide-2 {
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 100%);
+        }
+
+        .slide-3 {
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+        }
+
+        .slide-4 {
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 100%);
+        }
+
+        .slide-5 {
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+        }
+
+        .slide-6 {
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 100%);
+        }
+
+        .slide-7 {
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+        }
+
+        .slide-8 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        h2 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h3 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        p {
+            font-size: 1.3rem;
+            line-height: 1.8;
+            max-width: 900px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .subtitle {
+            font-size: 1.5rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-size: 6rem;
+            margin-bottom: 30px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            width: 100%;
+            margin-top: 40px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+        }
+
+        .card-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .card-desc {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+            text-align: left;
+        }
+
+        .stat {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .stat-number {
+            font-size: 4rem;
+            font-weight: 800;
+            color: #667eea;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 10px;
+        }
+
+        .cta-button {
+            margin-top: 40px;
+            padding: 20px 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .cta-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .slide-number {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .feature-list {
+            list-style: none;
+            max-width: 800px;
+            text-align: left;
+            margin-top: 30px;
+        }
+
+        .feature-list li {
+            font-size: 1.2rem;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 4px solid #667eea;
+            border-radius: 8px;
+        }
+
+        .comparison-table {
+            width: 100%;
+            max-width: 1000px;
+            margin-top: 40px;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .comparison-table th {
+            background: rgba(102, 126, 234, 0.2);
+            font-size: 1.3rem;
+        }
+
+        .comparison-table td {
+            font-size: 1.1rem;
+        }
+
+        .check {
+            color: #4ade80;
+            font-size: 1.5rem;
+        }
+
+        .cross {
+            color: #ff4444;
+            font-size: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+
+            p {
+                font-size: 1.1rem;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="slide-container">
+        <!-- Slide 1: Cover -->
+        <div class="slide slide-1">
+            <div class="logo">🎯</div>
+            <h1>MAVi</h1>
+            <p class="subtitle">Motion Analysis & Visualization Intelligence</p>
+            <p style="font-size: 1.2rem; margin-top: 20px;">Revolutionizing Industrial Engineering with AI-Powered
+                Motion Analysis</p>
+            <div class="slide-number">1 / 8</div>
+        </div>
+
+        <!-- Slide 2: The Problem -->
+        <div class="slide slide-2">
+            <h2>⚠️ The Problem</h2>
+            <div class="grid">
+                <div class="card">
+                    <div class="card-icon">⏱️</div>
+                    <div class="card-title">Time-Consuming Analysis</div>
+                    <div class="card-desc">Traditional time studies take hours of manual observation and calculation
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">📊</div>
+                    <div class="card-title">Subjective Results</div>
+                    <div class="card-desc">Human observation leads to inconsistent data and biased measurements</div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">💰</div>
+                    <div class="card-title">Expensive Tools</div>
+                    <div class="card-desc">Industrial motion capture systems cost $50K+ and require specialized training
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">📉</div>
+                    <div class="card-title">Hidden Waste</div>
+                    <div class="card-desc">Difficult to identify and quantify non-value-added activities in workflows
+                    </div>
+                </div>
+            </div>
+            <div class="slide-number">2 / 8</div>
+        </div>
+
+        <!-- Slide 3: The Solution -->
+        <div class="slide slide-3">
+            <h2>✨ Our Solution</h2>
+            <p style="max-width: 1000px; margin-bottom: 40px;">MAVi uses advanced computer vision and AI to analyze
+                workflows from simple video, automatically calculating standard times and identifying waste with 95%+
+                accuracy.</p>
+            <div class="grid" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="stat">
+                    <span class="stat-number">10x</span>
+                    <span class="stat-label">Faster Analysis</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">95%</span>
+                    <span class="stat-label">Accuracy Rate</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">40%</span>
+                    <span class="stat-label">Productivity Gain</span>
+                </div>
+            </div>
+            <div class="slide-number">3 / 8</div>
+        </div>
+
+        <!-- Slide 4: Key Features -->
+        <div class="slide slide-4">
+            <h2>🚀 Key Features</h2>
+            <ul class="feature-list">
+                <li><strong>🎥 AI-Powered Motion Capture</strong> - Analyze any video using MediaPipe pose detection
+                </li>
+                <li><strong>⏱️ Automated Time Study</strong> - Calculate standard times with TMU precision</li>
+                <li><strong>📊 TPS Tools Suite</strong> - Yamazumi charts, VSM, Spaghetti diagrams, and more</li>
+                <li><strong>🤖 Teachable Machine Integration</strong> - Custom AI models for specific workflows</li>
+                <li><strong>📈 Real-time Analytics</strong> - Live ergonomic scoring and waste detection</li>
+                <li><strong>🎓 MAVi Class</strong> - Built-in learning platform with AI tutor</li>
+                <li><strong>☁️ Cloud Sync</strong> - Supabase integration for team collaboration</li>
+                <li><strong>🔐 Enterprise Security</strong> - Cloud-based license management system</li>
+            </ul>
+            <div class="slide-number">4 / 8</div>
+        </div>
+
+        <!-- Slide 5: How It Works -->
+        <div class="slide slide-5">
+            <h2>⚙️ How It Works</h2>
+            <div class="grid">
+                <div class="card">
+                    <div class="card-icon">1️⃣</div>
+                    <div class="card-title">Upload Video</div>
+                    <div class="card-desc">Record workflow with any camera or smartphone</div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">2️⃣</div>
+                    <div class="card-title">AI Analysis</div>
+                    <div class="card-desc">MAVi detects movements, calculates times, and identifies waste</div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">3️⃣</div>
+                    <div class="card-title">Generate Reports</div>
+                    <div class="card-desc">Export professional TPS charts and recommendations</div>
+                </div>
+            </div>
+            <div class="slide-number">5 / 8</div>
+        </div>
+
+        <!-- Slide 6: Market Opportunity -->
+        <div class="slide slide-6">
+            <h2>📈 Market Opportunity</h2>
+            <div class="grid" style="grid-template-columns: repeat(2, 1fr);">
+                <div class="card">
+                    <h3>Target Market</h3>
+                    <div class="card-desc">
+                        • Manufacturing companies (SME to Enterprise)<br>
+                        • Industrial Engineering consultants<br>
+                        • Lean Six Sigma practitioners<br>
+                        • Operations managers
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Market Size</h3>
+                    <div class="card-desc">
+                        <strong>$12B</strong> Global Industrial Engineering Software Market<br>
+                        <strong>15% CAGR</strong> projected through 2030<br>
+                        <strong>500K+</strong> potential users worldwide
+                    </div>
+                </div>
+            </div>
+            <div class="slide-number">6 / 8</div>
+        </div>
+
+        <!-- Slide 7: Competitive Advantage -->
+        <div class="slide slide-7">
+            <h2>🏆 Competitive Advantage</h2>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>Traditional Tools</th>
+                        <th>MAVi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Setup Time</td>
+                        <td>Hours</td>
+                        <td>Minutes</td>
+                    </tr>
+                    <tr>
+                        <td>Cost</td>
+                        <td>$50K+</td>
+                        <td>Subscription-based</td>
+                    </tr>
+                    <tr>
+                        <td>AI-Powered</td>
+                        <td class="cross">✗</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td>Cloud Collaboration</td>
+                        <td class="cross">✗</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td>Built-in Training</td>
+                        <td class="cross">✗</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td>Custom AI Models</td>
+                        <td class="cross">✗</td>
+                        <td class="check">✓</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="slide-number">7 / 8</div>
+        </div>
+
+        <!-- Slide 8: Call to Action -->
+        <div class="slide slide-8">
+            <h1>Ready to Transform Your Operations?</h1>
+            <p style="font-size: 1.5rem; margin: 30px 0;">Join thousands of engineers who are saving time and improving
+                efficiency with MAVi</p>
+            <a href="https://github.com/mikadata2020/mavi-pro" class="cta-button">View on GitHub</a>
+            <p style="margin-top: 40px; font-size: 1.2rem; color: rgba(255,255,255,0.8);">
+                📧 Contact: support@maviai.com<br>
+                🌐 Website: maviai.com
+            </p>
+            <div class="slide-number">8 / 8</div>
+        </div>
+    </div>
+
+    <script>
+        // Smooth scroll navigation with arrow keys
+        document.addEventListener('keydown', (e) => {
+            const container = document.querySelector('.slide-container');
+            const slideHeight = window.innerHeight;
+
+            if (e.key === 'ArrowDown' || e.key === ' ') {
+                e.preventDefault();
+                container.scrollBy({ top: slideHeight, behavior: 'smooth' });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                container.scrollBy({ top: -slideHeight, behavior: 'smooth' });
+            }
+        });
+    </script>
+</body>
+
+</html>

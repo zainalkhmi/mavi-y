@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAVI License Generator | Admin Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=JetBrains+Mono&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0c;
+            --card-glass: rgba(20, 20, 25, 0.7);
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+            --grad: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .ambient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.1) 0%, transparent 40%);
+            z-index: -1;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .card {
+            background: var(--card-glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--grad);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            letter-spacing: -1px;
+            margin-bottom: 8px;
+            background: var(--grad);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all 0.3s;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+
+        .generate-btn {
+            width: 100%;
+            background: var(--grad);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+            margin-top: 10px;
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+        }
+
+        .generate-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        .result-panel {
+            margin-top: 32px;
+            padding: 24px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px dashed var(--border);
+            border-radius: 16px;
+            text-align: center;
+            display: none;
+            animation: slideUp 0.4s ease-out;
+        }
+
+        .result-panel.active {
+            display: block;
+        }
+
+        .license-key {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 12px 0;
+            word-break: break-all;
+            user-select: all;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .copy-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .footer-note {
+            margin-top: 24px;
+            font-size: 0.8rem;
+            color: #555;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+            display: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ambient"></div>
+
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>MAVI License Gen</h1>
+                <p>Universal Lifetime Keys Portal</p>
+            </div>
+
+            <div class="form-group">
+                <label>Licensee Name</label>
+                <input type="text" id="cust-name" placeholder="e.g. ACER PC">
+            </div>
+
+            <div class="form-group">
+                <label>Sequence ID</label>
+                <input type="text" id="cust-id" placeholder="e.g. 0001" maxlength="4">
+            </div>
+
+            <button class="generate-btn" onclick="handleGenerate()">GENERATE LIFETIME KEY</button>
+
+            <div id="result-panel" class="result-panel">
+                <p style="font-size: 0.8rem; color: #888; text-transform: uppercase;">Generated Key</p>
+                <div class="license-key" id="key-output" onclick="copyKey()">MAVI-XXXX-XXXX-XXXX</div>
+                <button class="copy-btn" onclick="copyKey()">Copy to Clipboard</button>
+            </div>
+
+            <div class="footer-note">
+                Universal keys work on any computer.<br>
+                Encoding: Lifetime (0xFFFF).
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Key copied to clipboard!</div>
+
+    <script>
+        const SECRET_SALT = 'MAVI_ROCKS_2024';
+
+        function generateUniversalKey(part1, part2) {
+            const p1 = (part1 || 'MAVI').toUpperCase().slice(0, 4).padEnd(4, 'X');
+            const p2 = (part2 || 'FFFF').toUpperCase().slice(0, 4).padEnd(4, 'F');
+
+            const input = p1 + p2 + SECRET_SALT;
+
+            let hash = 0;
+            for (let i = 0; i < input.length; i++) {
+                const char = input.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+
+            const checksum = Math.abs(hash).toString(16).substring(0, 4).toUpperCase().padStart(4, '0');
+
+            return `MAVI-${p1}-${p2}-${checksum}`;
+        }
+
+        function handleGenerate() {
+            const name = document.getElementById('cust-name').value;
+            const seq = document.getElementById('cust-id').value;
+
+            const key = generateUniversalKey(name || 'MAVI', seq || 'FFFF');
+
+            const panel = document.getElementById('result-panel');
+            const output = document.getElementById('key-output');
+
+            output.innerText = key;
+            panel.classList.add('active');
+            panel.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function copyKey() {
+            const keyText = document.getElementById('key-output').innerText;
+            if (keyText.includes('XXXX')) return;
+            navigator.clipboard.writeText(keyText).then(() => {
+                showToast();
+            });
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        }
+    </script>
+</body>
+
+</html>

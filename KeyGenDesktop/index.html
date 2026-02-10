@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAVi License Generator | Admin Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=JetBrains+Mono&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0c;
+            --card-glass: rgba(20, 20, 25, 0.95);
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+            --grad: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            --error: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .ambient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.1) 0%, transparent 40%);
+            z-index: -1;
+        }
+
+        /* Login Overlay */
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 12, 1);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            transition: opacity 0.5s ease;
+        }
+
+        #login-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .login-box {
+            text-align: center;
+            width: 300px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 460px;
+            padding: 20px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            padding-top: 40px;
+        }
+
+        .card {
+            background: var(--card-glass);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--grad);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            background: var(--grad);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 4px;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .generate-btn {
+            width: 100%;
+            background: var(--grad);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            margin-top: 8px;
+        }
+
+        .generate-btn:hover {
+            opacity: 0.9;
+        }
+
+        .result-panel {
+            margin-top: 24px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+        }
+
+        .result-panel.active {
+            display: block;
+        }
+
+        .license-key {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            word-break: break-all;
+            user-select: all;
+            cursor: pointer;
+        }
+
+        /* History Table */
+        .history-container {
+            margin-top: 20px;
+            flex-grow: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-header {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .history-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .history-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .h-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .h-key {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+
+        .h-copy {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--accent-blue);
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.7rem;
+        }
+
+        .h-copy:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #10b981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            display: none;
+            z-index: 200;
+        }
+
+        .login-error {
+            color: var(--error);
+            font-size: 0.8rem;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ambient"></div>
+
+    <!-- Login Overlay -->
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2 style="margin-bottom: 20px; font-weight: 600;">Admin Access</h2>
+            <div class="form-group">
+                <input type="password" id="login-pass" placeholder="Enter Password" onkeyup="checkEnter(event)">
+            </div>
+            <button class="generate-btn" onclick="attemptLogin()">Unlock</button>
+            <div id="login-err" class="login-error">Invalid password</div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>MAVI KeyGen</h1>
+                <p>Lifetime License Generator</p>
+            </div>
+
+            <div class="form-group">
+                <label>User Name</label>
+                <input type="text" id="user-name" placeholder="e.g. John Doe / Company Name">
+            </div>
+
+            <!-- "Lifetime" enforced implicitly, no sequence ID needed specifically for Lifetime but we can add random salt to keep it unique if name is same, or just use name.
+                 Actually, previous code used Sequence ID. We can hide it or auto-generate it. 
+                 The prompt says "User name". I will use the name as primary seed. 
+                 To ensure uniqueness, I'll append a random 4-char hex if needed, but let's stick to the previous logic: Name + 'FFFF' (Lifetime)
+            -->
+
+            <button class="generate-btn" onclick="handleGenerate()">GENERATE LIFETIME KEY</button>
+
+            <div id="result-panel" class="result-panel">
+                <div class="license-key" id="key-output" onclick="copyKey('key-output')">MAVI-XXXX-XXXX-XXXX</div>
+                <div style="font-size: 0.7rem; color: #666; margin-top: 5px;">Click to Copy</div>
+            </div>
+        </div>
+
+        <div class="history-container">
+            <div class="history-header">Session History</div>
+            <div class="history-list" id="history-list">
+                <!-- Items will go here -->
+                <div style="padding:20px; text-align:center; color: #555; font-size:0.8rem;">No keys generated yet.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Key copied!</div>
+
+    <script>
+        const SECRET_SALT = 'MAVI_ROCKS_2024';
+        const ACCESS_PASS = 'b6434eju';
+
+        // Login Logic
+        function attemptLogin() {
+            const pass = document.getElementById('login-pass').value;
+            if (pass === ACCESS_PASS) {
+                document.getElementById('login-overlay').classList.add('hidden');
+            } else {
+                document.getElementById('login-err').style.display = 'block';
+            }
+        }
+        function checkEnter(e) {
+            if (e.key === 'Enter') attemptLogin();
+        }
+
+        // Key Gen Logic
+        function generateUniversalKey(part1) {
+            // Part 1: First 4 chars of name, uppercase
+            const p1 = (part1 || 'USER').toUpperCase().slice(0, 4).padEnd(4, 'X');
+            // Part 2: Always FFFF for Lifetime
+            const p2 = 'FFFF';
+
+            const input = p1 + p2 + SECRET_SALT;
+            let hash = 0;
+            for (let i = 0; i < input.length; i++) {
+                const char = input.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            const checksum = Math.abs(hash).toString(16).substring(0, 4).toUpperCase().padStart(4, '0');
+
+            return `MAVI-${p1}-${p2}-${checksum}`;
+        }
+
+        const history = [];
+
+        function handleGenerate() {
+            const nameInput = document.getElementById('user-name');
+            const nameComp = nameInput.value.trim();
+
+            if (!nameComp) {
+                alert('Please enter a User Name');
+                return;
+            }
+
+            const key = generateUniversalKey(nameComp);
+
+            // Show result
+            const panel = document.getElementById('result-panel');
+            const output = document.getElementById('key-output');
+            output.innerText = key;
+            panel.classList.add('active');
+
+            // Add to history
+            addToHistory(nameComp, key);
+        }
+
+        function addToHistory(name, key) {
+            const list = document.getElementById('history-list');
+            if (history.length === 0) list.innerHTML = ''; // clear empty msg
+
+            history.unshift({ name, key, time: new Date().toLocaleTimeString() });
+
+            // Re-render
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = history.map((item, index) => `
+                <div class="history-item">
+                    <div>
+                        <div class="h-name">${item.name}</div>
+                        <div class="h-key">${item.key}</div>
+                    </div>
+                    <button class="h-copy" onclick="copyText('${item.key}')">COPY</button>
+                </div>
+            `).join('');
+        }
+
+        async function copyKey(id) {
+            const text = document.getElementById(id).innerText;
+            await copyText(text);
+        }
+
+        async function copyText(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast();
+            } catch (err) {
+                console.error('Failed to copy', err);
+            }
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        }
+    </script>
+</body>
+
+</html>

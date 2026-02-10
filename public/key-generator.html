@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAVi Cloud License Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --bg: #050505;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --text: #ffffff;
+            --text-dim: #888888;
+            --error: #ff4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .container {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            transition: all 0.3s ease;
+            max-height: 95vh;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .icon-wrapper {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px auto;
+            box-shadow: 0 10px 25px -5px rgba(118, 75, 162, 0.4);
+            flex-shrink: 0;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            background: linear-gradient(to right, #fff, #ccc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            color: var(--text-dim);
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s;
+            margin-bottom: 15px;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--primary);
+        }
+
+        .config-box {
+            text-align: left;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+
+        .key-display {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            margin-bottom: 24px;
+            color: #4ade80;
+            min-height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .key-display:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .key-display.copied::after {
+            content: 'COPIED!';
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: var(--primary);
+            font-size: 0.7rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: sans-serif;
+            font-weight: bold;
+            color: white;
+            animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0);
+            }
+
+            to {
+                transform: scale(1);
+            }
+        }
+
+        button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            flex-shrink: 0;
+            margin-bottom: 10px;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            background: #444;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Login View -->
+    <div id="loginView" class="container">
+        <div class="icon-wrapper" style="background: linear-gradient(135deg, #444 0%, #222 100%);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+        </div>
+        <h1>Restricted Access</h1>
+        <p>Enter the master password to access the generator.</p>
+
+        <form onsubmit="checkPassword(event)">
+            <div style="margin-bottom: 10px; text-align: left;">
+                <label style="color: #aaa; font-size: 0.8rem; margin-bottom: 4px; display: block;">Master
+                    Password</label>
+                <input type="password" id="passwordInput" placeholder="Enter password..." autofocus>
+            </div>
+            <div id="loginError"
+                style="color: #ff4444; font-size: 0.85rem; height: 20px; display: flex; align-items: center; gap: 6px; margin-bottom: 10px;">
+            </div>
+            <button type="submit">Unlock Generator</button>
+        </form>
+    </div>
+
+    <!-- Generator View -->
+    <div id="generatorView" class="container hidden" style="max-width: 900px;">
+        <div class="icon-wrapper">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path
+                    d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4">
+                </path>
+            </svg>
+        </div>
+
+        <h1 style="font-size: 1.5rem;">Cloud License Generator</h1>
+        <p style="margin-bottom: 20px;">Generate & Manage Keys in Supabase Database</p>
+
+        <!-- Tab Navigation -->
+        <div
+            style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+            <button onclick="switchTab('generate')" id="tabGenerate"
+                style="flex: 1; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); padding: 10px; border-radius: 8px; font-size: 0.9rem;">
+                Generate New Key
+            </button>
+            <button onclick="switchTab('manage')" id="tabManage"
+                style="flex: 1; background: transparent; border: 1px solid #333; color: #888; padding: 10px; border-radius: 8px; font-size: 0.9rem;">
+                Manage Licenses
+            </button>
+        </div>
+
+        <!-- Generate Tab -->
+        <div id="generateTab">
+            <!-- Configuration Section -->
+            <div class="config-box">
+                <div
+                    style="font-size: 0.75rem; color: #888; margin-bottom: 8px; font-weight: bold; letter-spacing: 1px;">
+                    SUPABASE DATABASE CONFIG</div>
+                <input id="sbUrl" type="text" placeholder="Supabase URL"
+                    value="https://frmfspnkkyudiojsqwhe.supabase.co"
+                    style="background: #111; border: 1px solid #333; color: #ccc; margin-bottom: 8px; font-family: monospace; font-size: 0.8rem;">
+                <input id="sbKey" type="text" placeholder="Supabase Anon Key"
+                    value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZybWZzcG5ra3l1ZGlvanNxd2hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyODU4NjcsImV4cCI6MjA4MDg2MTg2N30.KijEF8GotSPapoXdUOd8SpIMWggQhSa6TGQKcgKUcqs"
+                    style="background: #111; border: 1px solid #333; color: #ccc; margin-bottom: 0; font-family: monospace; font-size: 0.8rem;">
+            </div>
+
+            <!-- Settings -->
+            <div style="display: flex; gap: 10px;">
+                <div style="flex: 1; text-align: left;">
+                    <label style="color: #aaa; font-size: 0.8rem; margin-bottom: 4px; display: block;">Type</label>
+                    <select id="licenseType" onchange="toggleDateInput()">
+                        <option value="permanent">Permanent License</option>
+                        <option value="limited">Limited Time</option>
+                    </select>
+                </div>
+                <div id="dateInputSection" style="flex: 1; text-align: left;" class="hidden">
+                    <label style="color: #aaa; font-size: 0.8rem; margin-bottom: 4px; display: block;">Expires
+                        On</label>
+                    <input type="date" id="expiryDate" style="color-scheme: dark;">
+                </div>
+            </div>
+
+            <div id="keyDisplay" class="key-display" onclick="copyKey()">
+                CLICK GENERATE
+            </div>
+
+            <button onclick="generateAndSaveKey()" id="generateBtn">Generate & Save to Cloud</button>
+            <div id="statusMsg" style="margin-top: 5px; font-size: 0.85rem; color: #888; min-height: 1.2em;"></div>
+
+            <div style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+                <button onclick="clearStatus()"
+                    style="background: transparent; border: 1px solid #333; font-size: 0.8rem; color: #666; padding: 8px;">Reset
+                    Form</button>
+            </div>
+        </div>
+
+        <!-- Manage Tab -->
+        <div id="manageTab" class="hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div style="color: #aaa; font-size: 0.9rem;">
+                    <span id="licenseCount">0</span> licenses in database
+                </div>
+                <button onclick="loadLicenses()"
+                    style="padding: 8px 16px; background: rgba(102, 126, 234, 0.2); border: 1px solid var(--primary); color: var(--primary); border-radius: 6px; font-size: 0.8rem; cursor: pointer;">
+                    🔄 Refresh
+                </button>
+            </div>
+
+            <div id="licenseTableContainer"
+                style="max-height: 400px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid #333;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                    <thead style="position: sticky; top: 0; background: #1a1a1a; z-index: 1;">
+                        <tr style="border-bottom: 1px solid #333;">
+                            <th style="padding: 12px; text-align: left; color: #888; font-weight: 600;">License Key</th>
+                            <th style="padding: 12px; text-align: left; color: #888; font-weight: 600;">Type</th>
+                            <th style="padding: 12px; text-align: left; color: #888; font-weight: 600;">Status</th>
+                            <th style="padding: 12px; text-align: left; color: #888; font-weight: 600;">Expires</th>
+                            <th style="padding: 12px; text-align: center; color: #888; font-weight: 600;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="licenseTableBody">
+                        <tr>
+                            <td colspan="5" style="padding: 40px; text-align: center; color: #666;">
+                                Click "Refresh" to load licenses
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SECRET_SALT = 'MAVI_ROCKS_2024';
+        const ACCESS_CODE = 'b6434eju';
+        let supabaseInstance = null;
+
+        function checkPassword(e) {
+            e.preventDefault();
+            const input = document.getElementById('passwordInput');
+            const errorMsg = document.getElementById('loginError');
+
+            // Trim whitespace to avoid copy-paste errors
+            if (input.value.trim() === ACCESS_CODE) {
+                document.getElementById('loginView').classList.add('hidden');
+                document.getElementById('generatorView').classList.remove('hidden');
+            } else {
+                errorMsg.innerText = 'Invalid password (check spaces)';
+                input.style.borderColor = '#ff4444';
+                input.value = '';
+
+                // Shake animation
+                const container = document.getElementById('loginView');
+                container.style.transform = 'translateX(10px)';
+                setTimeout(() => container.style.transform = 'translateX(-10px)', 100);
+                setTimeout(() => container.style.transform = 'translateX(0)', 200);
+            }
+        }
+
+        function initSupabase() {
+            const url = document.getElementById('sbUrl').value;
+            const key = document.getElementById('sbKey').value;
+            if (window.supabase) {
+                supabaseInstance = window.supabase.createClient(url, key);
+            }
+        }
+
+        function toggleDateInput() {
+            const type = document.getElementById('licenseType').value;
+            const dateSection = document.getElementById('dateInputSection');
+            if (type === 'limited') {
+                dateSection.classList.remove('hidden');
+                // Default to 1 year from now
+                const d = new Date();
+                d.setFullYear(d.getFullYear() + 1);
+                document.getElementById('expiryDate').valueAsDate = d;
+            } else {
+                dateSection.classList.add('hidden');
+            }
+        }
+
+        function generateRandomString(length) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        function calculateChecksum(part1, part2) {
+            const input = part1 + part2 + SECRET_SALT;
+            let hash = 0;
+            for (let i = 0; i < input.length; i++) {
+                const char = input.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32bit integer
+            }
+            return Math.abs(hash).toString(16).substring(0, 4).toUpperCase().padStart(4, '0');
+        }
+
+        async function generateAndSaveKey() {
+            const btn = document.getElementById('generateBtn');
+            const status = document.getElementById('statusMsg');
+
+            // 1. Generate Key Local Logic
+            const part1 = generateRandomString(4);
+            const part2 = generateRandomString(4);
+            const checksum = calculateChecksum(part1, part2);
+            const fullKey = `MAVI-${part1}-${part2}-${checksum}`;
+
+            // Update Display
+            const display = document.getElementById('keyDisplay');
+            display.textContent = fullKey;
+            display.classList.remove('copied');
+
+            // 2. Initializing Supabase Connection
+            btn.disabled = true;
+            status.textContent = 'Connecting to Supabase...';
+            status.style.color = '#888';
+
+            initSupabase();
+
+            if (!supabaseInstance) {
+                status.textContent = '❌ Failed to load Supabase client';
+                status.style.color = '#ff4444';
+                btn.disabled = false;
+                return;
+            }
+
+            const type = document.getElementById('licenseType').value;
+            let expires_at = null;
+
+            if (type === 'limited') {
+                const dateVal = document.getElementById('expiryDate').value;
+                if (!dateVal) {
+                    status.textContent = '❌ Please select an expiration date';
+                    status.style.color = '#ff4444';
+                    btn.disabled = false;
+                    return;
+                }
+                expires_at = new Date(dateVal).toISOString();
+            }
+
+            try {
+                // Insert into 'licenses' table
+                const { data, error } = await supabaseInstance
+                    .from('licenses')
+                    .insert([
+                        {
+                            key_string: fullKey,
+                            type: type,
+                            status: 'active',
+                            expires_at: expires_at
+                        }
+                    ]);
+
+                if (error) throw error;
+
+                status.textContent = '✅ Key Generated & Saved to Cloud!';
+                status.style.color = '#4ade80';
+
+                // Add animation
+                display.style.transform = 'scale(1.05)';
+                setTimeout(() => display.style.transform = 'scale(1)', 200);
+
+            } catch (err) {
+                console.error(err);
+                if (err.message && err.message.includes('licenses" does not exist')) {
+                    status.innerHTML = '❌ Table missing! Please run SQL script.';
+                } else {
+                    status.textContent = '❌ Database Error: ' + err.message;
+                }
+                status.style.color = '#ff4444';
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function copyKey() {
+            const display = document.getElementById('keyDisplay');
+            const key = display.textContent.trim();
+            if (key === 'CLICK GENERATE') return;
+            navigator.clipboard.writeText(key).then(() => {
+                display.classList.add('copied');
+                setTimeout(() => display.classList.remove('copied'), 2000);
+            });
+        }
+
+        function clearStatus() {
+            document.getElementById('statusMsg').textContent = '';
+            document.getElementById('keyDisplay').textContent = 'CLICK GENERATE';
+        }
+
+        // Tab Management
+        function switchTab(tab) {
+            const generateTab = document.getElementById('generateTab');
+            const manageTab = document.getElementById('manageTab');
+            const btnGenerate = document.getElementById('tabGenerate');
+            const btnManage = document.getElementById('tabManage');
+
+            if (tab === 'generate') {
+                generateTab.classList.remove('hidden');
+                manageTab.classList.add('hidden');
+                btnGenerate.style.background = 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)';
+                btnGenerate.style.color = 'white';
+                btnManage.style.background = 'transparent';
+                btnManage.style.color = '#888';
+            } else {
+                generateTab.classList.add('hidden');
+                manageTab.classList.remove('hidden');
+                btnManage.style.background = 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)';
+                btnManage.style.color = 'white';
+                btnGenerate.style.background = 'transparent';
+                btnGenerate.style.color = '#888';
+                // Auto-load licenses when switching to manage tab
+                loadLicenses();
+            }
+        }
+
+        // Load all licenses from Supabase
+        async function loadLicenses() {
+            initSupabase();
+            if (!supabaseInstance) {
+                alert('Please configure Supabase credentials first');
+                return;
+            }
+
+            const tbody = document.getElementById('licenseTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" style="padding: 20px; text-align: center; color: #888;">Loading...</td></tr>';
+
+            try {
+                const { data, error } = await supabaseInstance
+                    .from('licenses')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                document.getElementById('licenseCount').textContent = data.length;
+
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="padding: 40px; text-align: center; color: #666;">No licenses found</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.map(license => {
+                    const isExpired = license.expires_at && new Date(license.expires_at) < new Date();
+                    const statusColor = license.status === 'active' ? (isExpired ? '#ff9800' : '#4ade80') : '#ff4444';
+                    const statusText = license.status === 'active' ? (isExpired ? 'Expired' : 'Active') : 'Revoked';
+                    const expiryText = license.expires_at ? new Date(license.expires_at).toLocaleDateString() : 'Never';
+
+                    return `
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 12px; font-family: monospace; color: #ccc; font-size: 0.8rem;">${license.key_string}</td>
+                            <td style="padding: 12px; color: #aaa;">
+                                <span style="background: rgba(102, 126, 234, 0.2); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color: var(--primary);">
+                                    ${license.type === 'permanent' ? '∞ Permanent' : '⏱ Limited'}
+                                </span>
+                            </td>
+                            <td style="padding: 12px;">
+                                <span style="color: ${statusColor}; font-weight: 600; font-size: 0.8rem;">● ${statusText}</span>
+                            </td>
+                            <td style="padding: 12px; color: #888; font-size: 0.8rem;">${expiryText}</td>
+                            <td style="padding: 12px; text-align: center;">
+                                <button 
+                                    onclick="toggleLicenseStatus('${license.key_string}', '${license.status}')"
+                                    style="
+                                        padding: 6px 12px; 
+                                        background: ${license.status === 'active' ? 'rgba(255, 68, 68, 0.15)' : 'rgba(74, 222, 128, 0.15)'}; 
+                                        color: ${license.status === 'active' ? '#ff4444' : '#4ade80'}; 
+                                        border: 1px solid ${license.status === 'active' ? 'rgba(255, 68, 68, 0.3)' : 'rgba(74, 222, 128, 0.3)'};
+                                        border-radius: 6px;
+                                        cursor: pointer;
+                                        font-size: 0.75rem;
+                                        font-weight: 600;
+                                        transition: all 0.2s;
+                                    "
+                                    onmouseover="this.style.opacity='0.8'"
+                                    onmouseout="this.style.opacity='1'"
+                                >
+                                    ${license.status === 'active' ? '🚫 Revoke' : '✅ Activate'}
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = `<tr><td colspan="5" style="padding: 20px; text-align: center; color: #ff4444;">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        // Toggle license status (activate/revoke)
+        async function toggleLicenseStatus(keyString, currentStatus) {
+            if (!confirm(`Are you sure you want to ${currentStatus === 'active' ? 'REVOKE' : 'ACTIVATE'} this license?\n\nKey: ${keyString}`)) {
+                return;
+            }
+
+            initSupabase();
+            const newStatus = currentStatus === 'active' ? 'revoked' : 'active';
+
+            try {
+                const { error } = await supabaseInstance
+                    .from('licenses')
+                    .update({ status: newStatus })
+                    .eq('key_string', keyString);
+
+                if (error) throw error;
+
+                // Reload the table
+                loadLicenses();
+            } catch (err) {
+                alert('Error updating license: ' + err.message);
+            }
+        }
+
+    </script>
+</body>
+
+</html>

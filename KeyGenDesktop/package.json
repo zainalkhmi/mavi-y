@@ -1,0 +1,20 @@
+{
+    "name": "mavi-keygen",
+    "private": true,
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "tauri": "tauri",
+        "dev:tauri": "tauri dev",
+        "build:tauri": "tauri build"
+    },
+    "dependencies": {
+        "vite": "^5.0.0"
+    },
+    "devDependencies": {
+        "@tauri-apps/cli": "^1.5.0"
+    }
+}

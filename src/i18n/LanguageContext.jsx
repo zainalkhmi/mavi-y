@@ -22,9 +22,9 @@ export const LanguageProvider = ({ children }) => {
             await loadDynamicTranslations(getDynamicTranslations);
             // Trigger a re-render or state update if needed, 
             // though i18n.addResourceBundle usually handles it.
-            setCurrentLanguageState(i18n.language);
+            // setCurrentLanguageState(i18n.language);
         };
-        initDynamicTranslations();
+        // initDynamicTranslations();
     }, []);
 
     const changeLanguage = (langCode) => {

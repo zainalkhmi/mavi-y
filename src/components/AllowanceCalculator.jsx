@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import HelpButton from './HelpButton';
 import { helpContent } from '../utils/helpContent.jsx';
+import { useLanguage } from '../i18n/LanguageContext';
 
 function AllowanceCalculator() {
+    const { t } = useLanguage();
     const [normalTime, setNormalTime] = useState(0);
     const [allowances, setAllowances] = useState({
         personal: 5,
@@ -107,9 +109,9 @@ function AllowanceCalculator() {
         <div style={{ padding: '20px', backgroundColor: '#1e1e1e', minHeight: '100vh', color: '#fff' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div>
-                    <h2 style={{ margin: '0 0 5px 0', color: '#00a6ff' }}>Allowance Calculator</h2>
+                    <h2 style={{ margin: '0 0 5px 0', color: '#00a6ff' }}>{t('allowance.calculatorTitle')}</h2>
                     <p style={{ color: '#aaa', margin: 0, fontSize: '0.9rem' }}>
-                        Calculate standard time with personal, fatigue, delay, and special allowances
+                        {t('allowance.subtitle')}
                     </p>
                 </div>
                 <HelpButton
@@ -123,10 +125,10 @@ function AllowanceCalculator() {
                 <div>
                     {/* Normal Time Input */}
                     <div style={{ backgroundColor: '#2a2a2a', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-                        <h3 style={{ marginTop: 0 }}>Normal Time</h3>
+                        <h3 style={{ marginTop: 0 }}>{t('allowance.normalTime')}</h3>
                         <div style={{ marginBottom: '15px' }}>
                             <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.85rem', color: '#aaa' }}>
-                                Normal Time (minutes)
+                                {t('allowance.normalTimeMinutes')}
                             </label>
                             <input
                                 type="number"
@@ -148,11 +150,11 @@ function AllowanceCalculator() {
 
                     {/* Basic Allowances */}
                     <div style={{ backgroundColor: '#2a2a2a', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-                        <h3 style={{ marginTop: 0 }}>Basic Allowances</h3>
+                        <h3 style={{ marginTop: 0 }}>{t('allowance.basicAllowances')}</h3>
 
                         <div style={{ marginBottom: '15px' }}>
                             <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.85rem', color: '#aaa' }}>
-                                Personal Allowance (%): {allowances.personal}
+                                {t('allowance.personal')}: {allowances.personal}
                             </label>
                             <input
                                 type="range"
@@ -164,13 +166,13 @@ function AllowanceCalculator() {
                                 style={{ width: '100%', accentColor: '#005a9e' }}
                             />
                             <p style={{ fontSize: '0.75rem', color: '#666', margin: '5px 0 0 0' }}>
-                                Typical: 5-7% (rest breaks, personal needs)
+                                {t('allowance.typicalPersonal')}
                             </p>
                         </div>
 
                         <div style={{ marginBottom: '15px' }}>
                             <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.85rem', color: '#aaa' }}>
-                                Basic Fatigue Allowance (%): {allowances.basicFatigue}
+                                {t('allowance.basicFatigue')}: {allowances.basicFatigue}
                             </label>
                             <input
                                 type="range"
@@ -182,13 +184,13 @@ function AllowanceCalculator() {
                                 style={{ width: '100%', accentColor: '#005a9e' }}
                             />
                             <p style={{ fontSize: '0.75rem', color: '#666', margin: '5px 0 0 0' }}>
-                                Typical: 4% (basic physical/mental fatigue)
+                                {t('allowance.typicalFatigue')}
                             </p>
                         </div>
 
                         <div style={{ marginBottom: '15px' }}>
                             <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.85rem', color: '#aaa' }}>
-                                Delay Allowance (%): {allowances.delay}
+                                {t('allowance.delay')}: {allowances.delay}
                             </label>
                             <input
                                 type="range"
@@ -200,13 +202,13 @@ function AllowanceCalculator() {
                                 style={{ width: '100%', accentColor: '#005a9e' }}
                             />
                             <p style={{ fontSize: '0.75rem', color: '#666', margin: '5px 0 0 0' }}>
-                                Typical: 2-5% (unavoidable delays)
+                                {t('allowance.typicalDelay')}
                             </p>
                         </div>
 
                         <div style={{ marginBottom: '0' }}>
                             <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.85rem', color: '#aaa' }}>
-                                Special Allowance (%): {allowances.special}
+                                {t('allowance.special')}: {allowances.special}
                             </label>
                             <input
                                 type="range"
@@ -218,7 +220,7 @@ function AllowanceCalculator() {
                                 style={{ width: '100%', accentColor: '#005a9e' }}
                             />
                             <p style={{ fontSize: '0.75rem', color: '#666', margin: '5px 0 0 0' }}>
-                                For special circumstances
+                                {t('allowance.specialDesc')}
                             </p>
                         </div>
                     </div>
@@ -227,7 +229,7 @@ function AllowanceCalculator() {
                 {/* Variable Fatigue Allowances */}
                 <div>
                     <div style={{ backgroundColor: '#2a2a2a', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-                        <h3 style={{ marginTop: 0 }}>Variable Fatigue Allowances</h3>
+                        <h3 style={{ marginTop: 0 }}>{t('allowance.variableFatigue')}</h3>
                         <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
                             {Object.entries(variableFatigueOptions).map(([factor, options]) => (
                                 <div key={factor} style={{ marginBottom: '15px' }}>
@@ -262,16 +264,16 @@ function AllowanceCalculator() {
 
             {/* Results */}
             <div style={{ backgroundColor: '#2a2a2a', padding: '20px', borderRadius: '8px', marginTop: '20px' }}>
-                <h3 style={{ marginTop: 0 }}>Results</h3>
+                <h3 style={{ marginTop: 0 }}>{t('allowance.results')}</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                     <div style={{ backgroundColor: '#1a1a1a', padding: '15px', borderRadius: '4px' }}>
-                        <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '5px' }}>Normal Time</div>
+                        <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '5px' }}>{t('allowance.normalTime')}</div>
                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fff' }}>
                             {normalTime.toFixed(2)} min
                         </div>
                     </div>
                     <div style={{ backgroundColor: '#1a1a1a', padding: '15px', borderRadius: '4px' }}>
-                        <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '5px' }}>Total Fatigue</div>
+                        <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '5px' }}>{t('allowance.total')}</div>
                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ff9800' }}>
                             {totalFatigue.toFixed(1)}%
                         </div>
@@ -280,13 +282,13 @@ function AllowanceCalculator() {
                         </div>
                     </div>
                     <div style={{ backgroundColor: '#1a1a1a', padding: '15px', borderRadius: '4px' }}>
-                        <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '5px' }}>Total Allowance</div>
+                        <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '5px' }}>{t('allowance.total')}</div>
                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#4ecdc4' }}>
                             {totalAllowancePercent.toFixed(1)}%
                         </div>
                     </div>
                     <div style={{ backgroundColor: '#1a1a1a', padding: '15px', borderRadius: '4px', border: '2px solid #4ecdc4' }}>
-                        <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '5px' }}>Standard Time</div>
+                        <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '5px' }}>{t('allowance.standardTime')}</div>
                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#4ecdc4' }}>
                             {standardTime.toFixed(2)} min
                         </div>
@@ -298,7 +300,7 @@ function AllowanceCalculator() {
 
                 {/* Formula */}
                 <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#1a1a1a', borderRadius: '4px', borderLeft: '4px solid #4ecdc4' }}>
-                    <div style={{ fontSize: '0.85rem', color: '#aaa', marginBottom: '5px' }}>Formula:</div>
+                    <div style={{ fontSize: '0.85rem', color: '#aaa', marginBottom: '5px' }}>{t('allowance.formula')}:</div>
                     <div style={{ fontSize: '1rem', fontFamily: 'monospace', color: '#fff' }}>
                         Standard Time = Normal Time × (1 + Total Allowance %)
                     </div>

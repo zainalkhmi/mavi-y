@@ -4,7 +4,7 @@ import { Bot, X, CheckCircle, Eye, EyeOff, Settings } from 'lucide-react';
 import { exportToExcel } from '../utils/excelExport';
 import { THERBLIGS } from '../constants/therbligs.jsx';
 import { chatWithAI } from '../utils/aiGenerator';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeasurements, videoState, selectedId, onSelect, stopwatches = {}, fullScreenMode, onToggleFullScreen, currentCycle }) {
     const { showAlert, showConfirm, showPrompt } = useDialog();

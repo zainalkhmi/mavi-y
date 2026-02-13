@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Circle, PlayCircle, Clock, BookOpen, ChevronRight, ChevronDown, Award, Target, Zap, MessageCircle, Send, X, Bot, User, Loader, Settings, Youtube, Volume2, VolumeX, BookmarkCheck, BookmarkPlus, CheckCheck, RotateCcw, Search, FileText, Trophy, BarChart3, GraduationCap, HelpCircle, RefreshCw, ChevronLeft, Flame, Star, Medal, BookMarked, StickyNote, Download, ExternalLink, Info, BadgeCheck, Printer, Map } from 'lucide-react';
 import CertificateModal from './features/CertificateModal';
 import { getStoredApiKey } from '../utils/aiGenerator';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { modules as staticModules } from '../data/maviClassData';
 import { getAllYouTubeLinks } from '../utils/tursoAPI';
 import { useTour } from '../hooks/useTour'; // NEW: Interactive Tours

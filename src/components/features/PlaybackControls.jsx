@@ -11,7 +11,7 @@ import {
     Star,
     ChevronDown
 } from 'lucide-react';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 function PlaybackControls({
     videoState,

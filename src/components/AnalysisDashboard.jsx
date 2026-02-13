@@ -9,7 +9,7 @@ import { helpContent } from '../utils/helpContent.jsx';
 import SafetyAnalysis from './SafetyAnalysis';
 import QualityControlAI from './QualityControlAI';
 import VideoIntelligence from './VideoIntelligence';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 function AnalysisDashboard({ measurements = [], videoRef, onUpdateMeasurements }) {
     const { t } = useLanguage();

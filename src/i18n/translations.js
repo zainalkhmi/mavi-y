@@ -9,7 +9,7 @@ export const translations = {
         // English
         app: {
             title: 'MAVi - Motion Analysis & Visualization',
-            welcome: 'Welcome to MAVi'
+            welcome: 'Welcome to MAVi',
         },
         header: {
             mainMenu: 'Main Menu',
@@ -49,7 +49,7 @@ export const translations = {
             diagnostics: 'System Diagnostics',
             pitchDeck: 'Pitch Deck',
             standardWorkLayout: 'Spaghetti Chart (Motion)',
-            ergoCopilot: 'Ergo Copilot'
+            ergoCopilot: 'Ergo Copilot',
         },
         complianceDashboard: {
             title: 'Real-time Compliance Dashboard',
@@ -92,7 +92,7 @@ export const translations = {
             selectModel: '-- Select Model --',
             saveConfiguration: 'Save Configuration',
             configuredStations: 'Configured Stations',
-            deleteStation: 'Delete Station'
+            deleteStation: 'Delete Station',
         },
         ergoCopilot: {
             title: 'Ergo Copilot',
@@ -129,7 +129,7 @@ export const translations = {
             high: 'High',
             'high risk': 'High Risk',
             'very high': 'Very High',
-            'very high risk': 'Very High Risk'
+            'very high risk': 'Very High Risk',
         },
         spaghettiChart: {
             title: 'Spaghetti Chart Analysis',
@@ -141,7 +141,7 @@ export const translations = {
                 partNo: 'Part No',
                 machine: 'Machine',
                 author: 'Author',
-                date: 'Date'
+                date: 'Date',
             },
             toolbox: {
                 station: 'Operator Station',
@@ -149,7 +149,7 @@ export const translations = {
                 machine: 'Processing Unit',
                 qc: 'Quality Inspection',
                 parts: 'Buffer Storage',
-                clear: 'Clear Canvas'
+                clear: 'Clear Canvas',
             },
             simulation: {
                 run: 'Run Simulation',
@@ -170,7 +170,7 @@ export const translations = {
                 taktViolation: 'Takt Violation!',
                 uShapeOptimize: 'U-Shape Optimizer',
                 applyingUShape: 'Applying U-Shape Layout...',
-                uShapeRecommendation: 'U-Shape Recommendation'
+                uShapeRecommendation: 'U-Shape Recommendation',
             },
             helpGuide: {
                 title: 'Spaghetti Chart Guide',
@@ -179,18 +179,18 @@ export const translations = {
                 step2: 'Connect nodes to create a work sequence.',
                 step3: 'Use AI Optimize to minimize walking distance.',
                 step4: 'Use U-Shape for the best manufacturing cell.',
-                step5: 'Click nodes to edit Manual/Machine times.'
+                step5: 'Click nodes to edit Manual/Machine times.',
             },
             aiChat: {
                 title: 'Mavi Lean Assistant',
                 subtitle: 'Toyota Production System Expert',
                 placeholder: 'Ask about layout optimization...',
-                systemPrompt: 'You are an expert in Toyota Production System (TPS). Help the user optimize their spaghetti diagram. Provide advice on reducing walking, operator balance, and cell layout.'
+                systemPrompt: 'You are an expert in Toyota Production System (TPS). Help the user optimize their spaghetti diagram. Provide advice on reducing walking, operator balance, and cell layout.',
             },
             empty: {
                 title: 'No Spaghetti data',
-                desc: 'Select a project to start spaghetti diagram analysis.'
-            }
+                desc: 'Select a project to start spaghetti diagram analysis.',
+            },
         },
         common: {
             save: 'Save',
@@ -198,6 +198,8 @@ export const translations = {
             delete: 'Delete',
             edit: 'Edit',
             close: 'Close',
+            you: 'You',
+            aiAssistant: 'AI Assistant',
             upload: 'Upload',
             export: 'Export',
             import: 'Import',
@@ -226,12 +228,12 @@ export const translations = {
             alignTop: 'Align Top',
             exportAsPng: 'Export as PNG',
             color: 'Color',
-            normal: 'Normal'
+            normal: 'Normal',
         },
         categories: {
             valueAdded: 'Value-Added',
             nonValueAdded: 'Non Value-Added',
-            waste: 'Waste'
+            waste: 'Waste',
         },
         project: {
             newProject: 'New Project',
@@ -255,8 +257,8 @@ export const translations = {
                 nameRequired: 'Project name cannot be empty',
                 videoRequired: 'Please select a video file',
                 nameExists: 'Project name already exists',
-                notFound: 'Project not found'
-            }
+                notFound: 'Project not found',
+            },
         },
         allowance: {
             title: 'Margin Rate Settings',
@@ -278,9 +280,8 @@ export const translations = {
             variableFatigue: 'Variable Fatigue Allowances',
             results: 'Results',
             standardTime: 'Standard Time',
-            formula: 'Formula'
+            formula: 'Formula',
         },
-
         ipCamera: {
             title: 'IP Camera Connection',
             preset: 'Preset',
@@ -294,14 +295,14 @@ export const translations = {
                 title: 'Tips',
                 tip1: 'URL must be a direct link to the video file (not a webpage).',
                 tip2: 'For RTSP, use a conversion server (like FFmpeg/VLC) to HTTP/HLS.',
-                tip3: 'Look for URLs ending in .m3u8 or .mp4.'
+                tip3: 'Look for URLs ending in .m3u8 or .mp4.',
             },
             errors: {
                 missingUrl: 'Enter stream URL',
                 videoUnavailable: 'Video element not available',
                 connectionFailed: 'Failed to connect. Ensure the URL is a direct stream (e.g. .m3u8, .mp4, or MJPEG), not a webpage.',
-                generic: 'Failed to connect to stream'
-            }
+                generic: 'Failed to connect to stream',
+            },
         },
         measurement: {
             startMeasurement: 'Start Measurement',
@@ -310,14 +311,14 @@ export const translations = {
             category: 'Category',
             duration: 'Duration',
             startTime: 'Start Time',
-            endTime: 'End Time'
+            endTime: 'End Time',
         },
         landing: {
             nav: {
                 features: 'Features',
                 solutions: 'Solutions',
                 login: 'Log In',
-                startDemo: 'Start Demo'
+                startDemo: 'Start Demo',
             },
             hero: {
                 newBadge: '✨ New: AI Manual Generation',
@@ -325,7 +326,7 @@ export const translations = {
                 highlight: 'Intelligent Analysis',
                 subtitle: 'Mavi uses advanced computer vision to analyze workflows, calculating standard times and identifying waste automatically. Increase productivity by up to 40%.',
                 ctaPrimary: 'Start Free Demo',
-                ctaSecondary: 'Learn More'
+                ctaSecondary: 'Learn More',
             },
             solutions: {
                 title: 'Why choose Mavi?',
@@ -334,439 +335,731 @@ export const translations = {
                 old: {
                     stopwatch: {
                         title: 'Manual Stopwatch',
-                        desc: 'Inaccurate timing dependent on human reaction speed.'
+                        desc: 'Inaccurate timing dependent on human reaction speed.',
                     },
                     paper: {
                         title: 'Paper & Clipboard',
-                        desc: 'Data is trapped on paper, requiring manual entry into Excel later.'
+                        desc: 'Data is trapped on paper, requiring manual entry into Excel later.',
                     },
                     subjective: {
                         title: 'Subjective Analysis',
-                        desc: 'Different engineers produce different results for the same task.'
-                    }
+                        desc: 'Different engineers produce different results for the same task.',
+                    },
                 },
                 mavi: {
                     video: {
                         title: 'AI Video Analysis',
-                        desc: 'Frame-perfect timing automatically extracted from video footage.'
+                        desc: 'Frame-perfect timing automatically extracted from video footage.',
                     },
                     digital: {
                         title: 'Digital & Instant',
-                        desc: 'Data is digitized immediately. Generate reports and manuals in one click.'
+                        desc: 'Data is digitized immediately. Generate reports and manuals in one click.',
                     },
                     standardized: {
                         title: 'Standardized & Accurate',
-                        desc: 'Consistent analysis every time, eliminating human error and bias.'
+                        desc: 'Consistent analysis every time, eliminating human error and bias.',
                     },
-                    cta: 'Switch to Mavi Today'
-                }
+                    cta: 'Switch to Mavi Today',
+                },
             },
             features: {
                 title: 'More powerful features',
                 manual: {
                     title: 'Manual Creator',
-                    desc: 'Turn analysis into training manuals. Import from Excel/Word or generate from video steps.'
+                    desc: 'Turn analysis into training manuals. Import from Excel/Word or generate from video steps.',
                 },
                 workflow: {
                     title: 'Drag & Drop Workflow',
-                    desc: 'Rearrange process elements visually to test new layouts without disrupting the line.'
+                    desc: 'Rearrange process elements visually to test new layouts without disrupting the line.',
                 },
                 cloud: {
                     title: 'Cloud Sync',
-                    desc: 'Collaborate with your team in real-time. Sync projects and manuals across devices securely.'
-                }
+                    desc: 'Collaborate with your team in real-time. Sync projects and manuals across devices securely.',
+                },
             },
-
-            allowance: {
-                title: 'Allowance Settings',
-                personal: 'Personal (%)',
-                basicFatigue: 'Basic Fatigue (%)',
-                delay: 'Delay (%)',
-                total: 'Total Allowance:',
-                done: 'Done'
+        },
+        allowance: {
+            title: 'Allowance Settings',
+            personal: 'Personal (%)',
+            basicFatigue: 'Basic Fatigue (%)',
+            delay: 'Delay (%)',
+            total: 'Total Allowance:',
+            done: 'Done',
+        },
+        studioModel: {
+            title: 'Studio Model',
+            subtitle: 'Design and build motion analysis models',
+            createButton: 'Create New Model',
+            helpButton: 'Help',
+            assistant: {
+                welcome: 'Hello! I am your Studio Model assistant. Need help building Rules or States? Just ask me!',
+                placeholder: 'Ask about Rules / Logic...',
+                thinking: 'Assistant is thinking...',
+                error: 'Sorry, I\'m having some trouble. Please try again later (Connection/API error).',
+                botName: 'Studio AI Assistant',
+                expertRole: 'Expert in Motion Logic',
             },
-            studioModel: {
-                title: 'Studio Model',
-                subtitle: 'Design and build motion analysis models',
-                createButton: 'Create New Model',
-                helpButton: 'Help',
-                searchPlaceholder: 'Search models...',
-                noModels: 'No models found',
-                createFirst: 'Create your first model',
-                deleteConfirm: 'Are you sure you want to delete this model?',
-                renamePrompt: 'Enter new name for this model:',
-                descPrompt: 'Enter new description:',
-                openEditor: 'Open Editor',
-                delete: 'Delete Model',
-                clickRename: 'Click to rename',
-                clickDesc: 'Click to change description',
-                states: 'States',
-                rules: 'Rules',
-                helpModal: {
-                    title: 'Studio Model Guide (Motion Rules)',
-                    intro: 'This system is designed to create **"Motion Rules"** without coding, using **Finite State Machine (FSM)** logic.',
-                    concepts: {
-                        title: '1. Basic Concepts (Logic)',
-                        state: 'State (Status): Operator condition (e.g., Waiting, Grasping, Assembling).',
-                        transition: 'Transition: Moving from one State to another.',
-                        rule: 'Rule: Condition for transition (e.g., If Right Hand > Table, move to \'Grasping\').'
-                    },
-                    workflow: {
-                        title: '2. Model Creation Workflow',
-                        step1: 'Upload Video: Input standard operator video.',
-                        step2: 'Define States: List activities (work steps).',
-                        step3: 'Create Transitions & Rules: Connect states with auto-detection logic.',
-                        step4: 'Validation: Test with other videos to ensure accuracy.'
-                    },
-                    navigation: {
-                        title: '3. Editor Navigation',
-                        tabStates: 'States Tab: Add/Edit work steps.',
-                        tabRules: 'Rules Tab: Create logic "When to move steps".',
-                        tabTest: 'Test/Debug Tab: View real-time detection results.'
-                    },
-                    aiIntegration: {
-                        title: '2. AI Integration (Roboflow)',
-                        desc: 'Detect PPE, components, or tools using custom AI models.',
-                        config: 'Config: Go to Settings -> Roboflow Models. Enter API Key and Project ID.',
-                        demo: 'Demo: Click "Try Demo" to simulate detection.',
-                        rule: 'Rule: Use "Roboflow Detection" rule type, type object name (e.g. helmet), and threshold.'
-                    },
-                    testRun: {
-                        title: '3. Test Run',
-                        desc: 'Test your logic with video or webcam.',
-                        panel: 'Left Panel: Visualization (Video, Skeleton, Bounding Box).',
-                        console: 'Live Console: Monitor real-time logs.',
-                        timeline: 'Visual Timeline: Shows when transitions occur.',
-                        analytics: 'Cycle Analytics: VA/NVA ratio calculation.'
-                    },
-                    tips: {
-                        title: '4. Accuracy Tips',
-                        colors: 'Color Indicators: Blue rule means condition is currently met.',
-                        holding: 'Holding Time: Add duration to avoid flickering transitions.',
-                        refresh: 'Refresh: If data is stuck, save and refresh browser.'
-                    },
-                    close: 'Close Guide'
+            searchPlaceholder: 'Search models...',
+            noModels: 'No models found',
+            createFirst: 'Create your first model',
+            deleteConfirm: 'Are you sure you want to delete this model?',
+            renamePrompt: 'Enter new name for this model:',
+            descPrompt: 'Enter new description:',
+            openEditor: 'Open Editor',
+            delete: 'Delete Model',
+            clickRename: 'Click to rename',
+            clickDesc: 'Click to change description',
+            states: 'States',
+            rules: 'Rules',
+            helpModal: {
+                title: 'Studio Model Guide (Motion Rules)',
+                intro: 'This system is designed to create **"Motion Rules"** without coding, using **Finite State Machine (FSM)** logic.',
+                concepts: {
+                    title: '1. Basic Concepts (Logic)',
+                    state: 'State (Status): Operator condition (e.g., Waiting, Grasping, Assembling).',
+                    transition: 'Transition: Moving from one State to another.',
+                    rule: 'Rule: Condition for transition (e.g., If Right Hand > Table, move to \'Grasping\').',
                 },
-                modelBuilder: {
-                    title: 'Model Builder',
-                    tabs: {
-                        rules: 'Rules & Logic',
-                        steps: 'Steps',
-                        data: 'Data',
-                        test: 'Test Run',
-                        settings: 'Settings'
+                workflow: {
+                    title: '2. Model Creation Workflow',
+                    step1: 'Upload Video: Input standard operator video.',
+                    step2: 'Define States: List activities (work steps).',
+                    step3: 'Create Transitions & Rules: Connect states with auto-detection logic.',
+                    step4: 'Validation: Test with other videos to ensure accuracy.',
+                },
+                navigation: {
+                    title: '3. Editor Navigation',
+                    tabStates: 'States Tab: Add/Edit work steps.',
+                    tabRules: 'Rules Tab: Create logic "When to move steps".',
+                    tabTest: 'Test/Debug Tab: View real-time detection results.',
+                },
+                aiIntegration: {
+                    title: '2. AI Integration (Roboflow)',
+                    desc: 'Detect PPE, components, or tools using custom AI models.',
+                    config: 'Config: Go to Settings -> Roboflow Models. Enter API Key and Project ID.',
+                    demo: 'Demo: Click "Try Demo" to simulate detection.',
+                    rule: 'Rule: Use "Roboflow Detection" rule type, type object name (e.g. helmet), and threshold.',
+                },
+                testRun: {
+                    title: '3. Test Run',
+                    desc: 'Test your logic with video or webcam.',
+                    panel: 'Left Panel: Visualization (Video, Skeleton, Bounding Box).',
+                    console: 'Live Console: Monitor real-time logs.',
+                    timeline: 'Visual Timeline: Shows when transitions occur.',
+                    analytics: 'Cycle Analytics: VA/NVA ratio calculation.',
+                },
+                tips: {
+                    title: '4. Accuracy Tips',
+                    colors: 'Color Indicators: Blue rule means condition is currently met.',
+                    holding: 'Holding Time: Add duration to avoid flickering transitions.',
+                    refresh: 'Refresh: If data is stuck, save and refresh browser.',
+                },
+                ruleTypes: {
+                    title: '4. Rule Types (Logic)',
+                    POSE_ANGLE: {
+                        label: 'Joint Angle',
+                        desc: 'Joint angle (Elbow < 90°).',
+                        usage: 'Usage: Check posture/ergonomics.',
                     },
-                    buttons: {
-                        save: 'Save',
-                        undo: 'Undo',
-                        redo: 'Redo',
-                        help: 'Help',
-                        close: 'Close',
-                        changeVideo: 'Change Video',
-                        uploadVideo: 'Upload Video',
-                        referenceVideo: 'Reference Video',
-                        liveCamera: 'Live Camera',
-                        simulator: 'Simulator',
-                        clearConsole: 'Clear',
-                        exportPdf: 'Export PDF',
-                        addState: 'Add State',
-                        backToList: 'Back to List',
-                        drawRoi: 'Draw ROI',
-                        captureFrame: 'Capture Frame',
-                        addSound: 'Sound',
-                        addWebhook: 'Webhook',
-                        addPlc: 'PLC',
-                        onEnter: 'On Enter State',
-                        onExit: 'On Exit State',
-                        delete: 'Delete',
-                        backToVideo: 'Back to Video',
-                        backToCamera: 'Back to Camera'
+                    POSE_RELATION: {
+                        label: 'Pose Relation (XYZ)',
+                        desc: 'Relative position (Wrist Y < Nose Y).',
+                        usage: 'Usage: Check hand vs body position.',
                     },
-                    labels: {
-                        motionTimeline: 'MOTION TIMELINE',
-                        currentState: 'Current State',
-                        liveConsole: 'Live Console',
-                        cycleAnalytics: 'Cycle Analytics',
-                        plcMonitor: 'PLC Signal Monitor',
-                        detailedMetrics: 'Detailed Metrics',
-                        totalCycles: 'TOTAL CYCLES',
-                        vaRatio: 'VA RATIO',
-                        avgStats: 'AVERAGE STATISTICS',
-                        cycleTime: 'Cycle Time (TC)',
-                        vaTime: 'VA Time',
-                        cycleHistory: 'CYCLE HISTORY',
-                        definedStates: 'Defined States',
-                        stateName: 'State Name',
-                        minDuration: 'Min Duration (s)',
-                        valueAdded: 'Value Added (VA)',
-                        markEssential: 'Mark this state as essential...',
-                        actionTriggers: 'Action Triggers',
-                        roi: 'ROI',
-                        drawBoxHint: 'Draw a box on the video...',
-                        poseRef: 'Pose Reference',
-                        projectVault: 'Project Vault',
-                        localFile: 'Local File',
-                        selectFromProject: 'Select from Project',
-                        defined: 'Defined',
-                        none: 'None',
-                        stepCount: 'Step',
-                        duplicateState: 'Duplicate State',
-                        addNextStep: 'Add Next Step',
-                        drawRoiHint: 'Draw a box on the video to define the valid area for this step.',
-                        camera: 'Camera',
-                        simulator: 'Simulator',
-                        addState: 'Add State',
-                        backToList: 'Back to List',
-                        definedStates: 'Defined States'
+                    POSE_VELOCITY: {
+                        label: 'Pose Velocity',
+                        desc: 'Joint movement speed.',
+                        usage: 'Usage: Detect wait (static) or fast movement.',
                     },
-                    measure: {
-                        result: 'RESULT',
-                        distance: 'DISTANCE',
-                        angle: 'ANGLE',
-                        addToRule: 'Add to Rule',
-                        hint: 'Pick points on skeleton (max 3)',
-                        ruler: 'RULER',
-                        measureDistance: 'Measure Distance',
-                        measureAngle: 'Measure Angle',
-                        clear: 'Clear Measurement'
+                    OBJECT_PROXIMITY: {
+                        label: 'Object Proximity',
+                        desc: 'Distance from hand to object.',
+                        usage: 'Usage: Detect pick/place activity.',
                     },
-                    vsm: {
-                        title: 'Value Stream Map',
-                        toolbox: {
-                            title: 'VSM Toolbox',
-                            desc: 'Drag & drop to canvas',
-                            flowTitle: 'FLOW RELATIONSHIP',
-                            material: 'Material',
-                            manualInfo: 'Manual Info',
-                            electronicInfo: 'Electronic Info',
-                            processData: 'PROCESS DATA',
-                            processBox: 'Process Box',
-                            operator: 'Operator',
-                            kaizenBurst: 'Kaizen Burst',
-                            materialFlow: 'MATERIAL FLOW',
-                            supplier: 'Supplier',
-                            customer: 'Customer',
-                            inventory: 'Inventory',
-                            supermarket: 'Supermarket',
-                            fifo: 'FIFO',
-                            safetyStock: 'Safety Stock',
-                            truck: 'Truck',
-                            rawMaterial: 'Raw Material',
-                            finishedGoods: 'Finished Goods',
-                            push: 'Push',
-                            informationFlow: 'INFORMATION FLOW',
-                            productionControl: 'Production Control',
-                            heijunka: 'Heijunka',
-                            kanbanPost: 'Kanban Post',
-                            productionKanban: 'Production Kanban',
-                            withdrawalKanban: 'Withdrawal Kanban',
-                            signalKanban: 'Signal Kanban',
-                            goSee: 'Go See',
-                            buffer: 'Buffer',
-                            timelineMetrics: 'TIMELINE & METRICS',
-                            timeline: 'Timeline',
-                            generalNotes: 'GENERAL / NOTES',
-                            stickyNote: 'Sticky Note',
-                            customIcons: 'CUSTOM ICONS',
-                            uploadIcon: 'Upload Icon'
-                        },
-                        ai: {
-                            title: 'VSM AI Assistant',
-                            subtitle: 'AI Generation',
-                            modeReplace: 'Replace All',
-                            modeMerge: 'Merge',
-                            generateButton: 'Generate AI',
-                            examplesButton: 'Examples',
-                            wizardTitle: 'Setup Wizard'
-                        },
-                        wizard: {
-                            title: 'Setup Wizard'
-                        },
-                        analysis: {
-                            yamazumiTitle: 'Yamazumi Chart'
-                        },
-                        calculate: 'Recalculate',
-                        nodes: {
-                            noteDefault: '(Default)'
-                        },
-                        addProcess: 'Add Process'
+                    OBJECT_IN_ROI: {
+                        label: 'Object in ROI',
+                        desc: 'Object enters a defined area.',
+                        usage: 'Usage: Safety zone or material detection.',
                     },
-                    projectPicker: {
-                        title: 'Select Project Video',
-                        noProjects: 'No projects found.',
-                        select: 'Select'
+                    OPERATOR_PROXIMITY: {
+                        label: 'Operator Proximity',
+                        desc: 'Distance from operator to camera/point.',
+                        usage: 'Usage: Check if operator is at workstation.',
                     },
-                    ipCamera: {
-                        title: 'Record from IP Camera',
-                        streamUrl: 'Camera Stream URL (MJPEG/HTTP)',
-                        recording: 'REC',
-                        previewHint: 'Enter camera URL to preview or switch to Simulator'
+                    POSE_MATCHING: {
+                        label: 'Golden Pose Match',
+                        desc: 'Similarity to reference photo.',
+                        usage: 'Usage: Validate complex postures (SOP).',
                     },
-                    rules: {
-                        types: {
-                            POSE_ANGLE: 'Joint Angle',
-                            POSE_RELATION: 'Pose Relation (XYZ)',
-                            POSE_VELOCITY: 'Pose Velocity (Speed)',
-                            OBJECT_PROXIMITY: 'Object Proximity',
-                            OBJECT_IN_ROI: 'Object in ROI',
-                            OPERATOR_PROXIMITY: 'Operator Proximity',
-                            POSE_MATCHING: 'Golden Pose Match',
-                            SEQUENCE_MATCH: 'Motion Sequence Match (DTW)',
-                            TEACHABLE_MACHINE: 'Teachable Machine',
-                            ROBOFLOW_DETECTION: 'Roboflow Detection',
-                            CVAT_MODEL: 'CVAT / Custom Model',
-                            ADVANCED_SCRIPT: 'Advanced Script (DSL)'
-                        },
-                        operators: {
-                            LESS: '<',
-                            GREATER: '>',
-                            LESS_EQUAL: '<=',
-                            GREATER_EQUAL: '>=',
-                            EQUAL: '=',
-                            NOT_EQUAL: '!=',
-                            BETWEEN: 'Between'
-                        },
-                        conditionMet: 'Condition Met',
-                        noMatch: 'No Match',
-                        ready: 'Ready',
-                        mustBeIn: 'must be in',
-                        distanceTo: 'distance to'
+                    ADVANCED_SCRIPT: {
+                        label: 'Advanced Script',
+                        desc: 'Custom logic (DSL).',
+                        usage: 'Usage: Complex scenarios (AND/OR logic).',
                     },
-                    step: 'Step',
-                    prompts: {
-                        soundUrl: 'Enter Sound URL (mp3/wav):',
-                        webhookUrl: 'Enter Webhook URL:',
-                        plcSignalId: 'Enter PLC Signal ID (e.g. DO_01):',
-                        plcValue: 'Enter Value (HIGH/LOW):',
-                        versionName: 'Enter version name (e.g. "V1 Initial Draft"):',
-                        restoreVersion: 'Restore version "{{version}}"? Current unsaved changes will be lost.',
-                        deleteVersion: 'Delete version "{{version}}"?',
-                        templateLoad: 'Load "{{name}}"? This will REPLACE your current states.'
+                    TEACHABLE_MACHINE: {
+                        label: 'Teachable Machine',
+                        desc: 'Custom AI classification.',
+                        usage: 'Usage: Detect complex activities (e.g. "Working").',
                     },
-                    settings: {
-                        title: 'Model Settings',
-                        versionHistory: 'Version History',
-                        saveSnapshot: 'Save Snapshot',
-                        noVersions: 'No saved versions yet.',
-                        restore: 'Restore',
-                        coordinateSystem: 'Coordinate System',
-                        screen: 'Screen (Absolute 0-1)',
-                        bodyCentric: 'Body-Centric (Relative to Hip)',
-                        bodyCentricHint: 'Body-Centric is recommended for precision. It remains accurate even if the operator moves around or the camera shifts. (0,0) is the center of the hips.',
-                        states: 'states'
+                },
+                useCases: {
+                    title: '5. 📚 Use Case Examples',
+                    case1: {
+                        title: 'Case 1: Assembly Count',
+                        desc: 'Count cycle when hand picks part.',
+                        rule: 'Rule: Hand Proximity < 10cm to Box.',
                     },
-                    teachableMachine: {
-                        title: 'Teachable Machine Models',
-                        goToSite: 'Go to Site',
-                        addModel: 'Add Model',
-                        modelUrl: 'Model URL',
-                        image: 'Image',
-                        pose: 'Pose',
-                        loading: 'Loading Model...',
-                        offlineMode: 'Offline Mode: Upload Files',
-                        loadFiles: 'Load Files'
+                    case2: {
+                        title: 'Case 2: Safety Zone',
+                        desc: 'Alarm if hand enters machine.',
+                        rule: 'Rule: Object in ROI (Hand in Danger Zone).',
                     },
-                    roboflow: {
-                        title: 'Roboflow Models',
-                        tryDemo: 'Try Demo',
-                        apiKey: 'API Key',
-                        projectId: 'Project ID',
-                        version: 'Ver.',
-                        noModels: 'No Roboflow models configured.'
+                    case3: {
+                        title: 'Case 3: Ergonomics',
+                        desc: 'Prevent overhead arm work.',
+                        rule: 'Script: right_wrist.y < nose.y',
                     },
-                    portability: {
-                        title: 'Portability & Templates',
-                        exportJson: 'Export JSON',
-                        importJson: 'Import JSON',
-                        loadTemplate: 'Load from Template Library',
-                        selectTemplate: 'Select Motion Template'
+                    case4: {
+                        title: 'Case 4: Two Hands',
+                        desc: 'Must lift with both hands.',
+                        rule: 'Script: dist(L_Hand) < 0.1 && dist(R_Hand) < 0.1',
                     },
-                    extraction: {
-                        title: 'Pose Extraction Data',
-                        mode: 'Mode',
-                        trackingLive: 'Tracking Live',
-                        noData: 'No Data',
-                        keypoint: 'Keypoint',
-                        conf: 'Conf'
+                },
+                exampleCycle: {
+                    title: '6. 🏭 Step-by-Step Example (CNC Machine)',
+                    scenario: 'Scenario: Operator runs machine, assembles, and moves items.',
+                    step1: 'Press MACHINE ON: Rule: Object Proximity (Right < 5cm to "Start Button").',
+                    step2: 'Pick Bolt: Rule: Hand Proximity (Left < 10cm to "Bolt Box").',
+                    step3: 'Install Bolt: Rule: Pose Relation (Left < Chest Y).',
+                    step4: 'Move Back: Rule: Pose Relation (Ankle Y > Floor Line).',
+                    step5: 'Inspect Item: Rule: Pose Angle (Neck Angle < 150°).',
+                    step6: 'Press RUN: Rule: Object Proximity (Right < 5cm to "Run Panel").',
+                    step7: 'Wait Machine: Rule: Pose Velocity (All Joints < 10).',
+                    step8: 'Take Finished Item: Rule: Hand Proximity (Both Hands < 10cm to "Machine Chuck").',
+                    step9: 'Place on Table: Rule: Object Proximity (Object < 5cm to "Finish Table").',
+                },
+                aiIntegration: {
+                    title: '7. 🤖 Teachable Machine Integration',
+                    desc: 'Use custom classification models from Teachable Machine.',
+                    connectTitle: 'A. How to Connect:',
+                    connectStep1: 'Go to Settings tab → Click Add Model.',
+                    connectStep2: 'Enter model URL (Online) or upload 3 files (Offline).',
+                    usageTitle: 'B. How to Use in Rule:',
+                    usageDesc: 'In Rule Editor, select Teachable Machine type → Select Model → Enter Target Class.',
+                },
+                accuracyAnalysis: {
+                    title: '8. ⚖️ Accuracy Analysis',
+                    typeLogic: 'Logic Type',
+                    pros: 'Pros',
+                    cons: 'Cons',
+                    poseJoint: {
+                        label: 'Pose/Joint',
+                        pros: 'Very fast, 30FPS real-time.',
+                        cons: 'Fails if body is occluded.',
                     },
-                    indicators: {
-                        referenceCaptured: '✓ Reference Pose Captured',
-                        drawing: 'Drawing...',
-                        loadingPose: 'Loading Pose Detector...',
-                        detectorReady: 'Skeleton Ready - Play video to detect',
-                        detecting: 'Detecting...',
-                        operatorDetected: 'Operator Detected',
-                        logicMatched: 'Logic matched',
-                        playToTest: 'Play video to test',
-                        systemReady: 'System ready. Press Play on video to start simulation.',
-                        waiting: 'Waiting...',
-                        noSignals: 'No signals active',
-                        completeCycle: 'Complete one cycle to see analytics'
+                    objectDetection: {
+                        label: 'Object Detection',
+                        pros: 'Recognizes specific tools.',
+                        cons: 'Heavier (FPS drop).',
                     },
-                    tooltips: {
-                        restoreLayout: 'Restore Layout',
-                        maximizeEditor: 'Maximize Editor',
-                        changeVideo: 'Change or upload new video'
-                    }
-                }
+                },
+                close: 'Close Guide',
             },
-            how: {
-                title: 'How Mavi Works',
-                capture: {
-                    title: 'Capture',
-                    desc: 'Record your production line or upload an existing video file directly to the platform.'
+            modelBuilder: {
+                title: 'Model Builder',
+                tabs: {
+                    rules: 'Rules & Logic',
+                    steps: 'Steps',
+                    data: 'Data',
+                    test: 'Test Run',
+                    settings: 'Settings',
                 },
-                analyze: {
-                    title: 'Analyze',
-                    desc: 'Our Computer Vision engine detects cycles, calculates times, and identifies waste automatically.'
+                buttons: {
+                    save: 'Save',
+                    undo: 'Undo',
+                    redo: 'Redo',
+                    help: 'Help',
+                    close: 'Close',
+                    changeVideo: 'Change Video',
+                    uploadVideo: 'Upload Video',
+                    referenceVideo: 'Reference Video',
+                    liveCamera: 'Live Camera',
+                    simulator: 'Simulator',
+                    clearConsole: 'Clear',
+                    exportPdf: 'Export PDF',
+                    addState: 'Add State',
+                    backToList: 'Back to List',
+                    drawRoi: 'Draw ROI',
+                    captureFrame: 'Capture Frame',
+                    addSound: 'Sound',
+                    addWebhook: 'Webhook',
+                    addPlc: 'PLC',
+                    onEnter: 'On Enter State',
+                    onExit: 'On Exit State',
+                    delete: 'Delete',
+                    backToVideo: 'Back to Video',
+                    backToCamera: 'Back to Camera',
                 },
-                improve: {
-                    title: 'Improve',
-                    desc: 'Use data-backed insights to rebalance lines, eliminate bottlenecks, and boost productivity.'
-                }
+                rulesEditor: {
+                    addTransition: 'Add Transition',
+                    fromState: 'From State',
+                    toState: 'To State',
+                    add: 'Add',
+                    currentValue: 'Current Value:',
+                    deg: 'deg',
+                    value: 'Value',
+                    point: 'Point',
+                    self: 'Self',
+                    nearestOther: 'Nearest Other',
+                    anyOther: 'Any Other',
+                    track: 'Track',
+                    targetJoint: 'Target Joint',
+                    selectObject: 'Select Object',
+                    customNamePlaceholder: 'Custom Object Name',
+                    toggleCustomName: 'Toggle Custom Name',
+                    currentState: 'Current State ROI',
+                    noTransitions: 'No transitions defined yet',
+                    definePaths: 'Define state transition paths above',
+                    unknownState: 'Unknown State',
+                    hysteresis: 'Hysteresis',
+                    seconds: 'seconds',
+                    conditions: 'Conditions',
+                    ruleHash: 'Rule #',
+                    invertNOT: 'Invert (NOT)',
+                    duplicateRule: 'Duplicate Rule',
+                    addRuleCondition: 'Add Rule Condition',
+                    aiSuggestRule: 'AI Rule Suggestion',
+                    aiThinking: 'AI is thinking...',
+                    anyDefault: 'Any (Default)',
+                    units: 'units',
+                    threshold: 'Threshold',
+                    windowSize: 'Window Size',
+                    frames: 'frames',
+                    startMarker: 'Start Marker (s)',
+                    finishMarker: 'Finish Marker (s)',
+                    setToCurrentVideoTime: 'Set to current video time',
+                    set: 'Set',
+                    templateCaptured: '{{count}} frames captured successfully',
+                    noTemplateRecorded: 'No template recorded',
+                    readyToMatch: 'Ready to match against live motion',
+                    selectRangeCapture: 'Select range and capture to create template',
+                    selectRange: 'Select Range First',
+                    captureRange: 'Capture Range',
+                    motionStorage: 'Motion Storage',
+                    playVideoBuildMemory: '▶ Play video to build motion memory',
+                    referenceStored: 'Reference motion stored successfully',
+                    matchAgainstState: 'Match Against State',
+                    selectState: 'Select State',
+                    roboflowModel: 'Roboflow Model',
+                    customModel: 'Custom Model',
+                    model: 'Model',
+                    targetClass: 'Target Class',
+                    targetClassPlaceholder: 'e.g., person',
+                    advancedScriptPlaceholder: 'Write custom JavaScript logic...\nExample: pose.keypoints[0].y < 0.5',
+                    aiLogicCheck: 'AI Logic Check',
+                    advancedScriptTips: 'Tip: Use variables "pose", "objects", "hands". Return true/false.',
+                    predictionTolerance: 'Prediction Tolerance',
+                    resilient: 'Resilient',
+                    strict: 'Strict',
+                },
+                labels: {
+                    motionTimeline: 'MOTION TIMELINE',
+                    currentState: 'Current State',
+                    liveConsole: 'Live Console',
+                    cycleAnalytics: 'Cycle Analytics',
+                    plcMonitor: 'PLC Signal Monitor',
+                    detailedMetrics: 'Detailed Metrics',
+                    totalCycles: 'TOTAL CYCLES',
+                    vaRatio: 'VA RATIO',
+                    avgStats: 'AVERAGE STATISTICS',
+                    cycleTime: 'Cycle Time (TC)',
+                    vaTime: 'VA Time',
+                    cycleHistory: 'CYCLE HISTORY',
+                    definedStates: 'Defined States',
+                    stateName: 'State Name',
+                    minDuration: 'Min Duration (s)',
+                    valueAdded: 'Value Added (VA)',
+                    markEssential: 'Mark this state as essential...',
+                    actionTriggers: 'Action Triggers',
+                    roi: 'ROI',
+                    drawBoxHint: 'Draw a box on the video...',
+                    poseRef: 'Pose Reference',
+                    projectVault: 'Project Vault',
+                    localFile: 'Local File',
+                    selectFromProject: 'Select from Project',
+                    defined: 'Defined',
+                    none: 'None',
+                    stepCount: 'Step',
+                    duplicateState: 'Duplicate State',
+                    addNextStep: 'Add Next Step',
+                    drawRoiHint: 'Draw a box on the video to define the valid area for this step.',
+                    camera: 'Camera',
+                    simulator: 'Simulator',
+                    addState: 'Add State',
+                    backToList: 'Back to List',
+                    definedStates: 'Defined States',
+                    videoSidebar: 'VIDEO SIDEBAR',
+                },
+                measure: {
+                    result: 'RESULT',
+                    distance: 'DISTANCE',
+                    angle: 'ANGLE',
+                    addToRule: 'Add to Rule',
+                    hint: 'Pick points on skeleton (max 3)',
+                    ruler: 'RULER',
+                    measureDistance: 'Measure Distance',
+                    measureAngle: 'Measure Angle',
+                    clear: 'Clear Measurement',
+                },
+                projectPicker: {
+                    title: 'Select Project Video',
+                    noProjects: 'No projects found.',
+                    select: 'Select',
+                },
+                ipCamera: {
+                    title: 'IP Camera Connection',
+                    streamUrl: 'Stream URL',
+                    recording: 'Recording',
+                    previewHint: 'Enter URL and click Start',
+                },
+                messages: {
+                    minOneState: 'At least one state determines the model.',
+                    loadListError: 'Failed to load project list.',
+                    projectImported: 'Project "{{name}}" imported successfully with {{count}} elements as baseline model.',
+                    noVideoData: 'This project has no video data.',
+                    selectStateVideo: 'Please select a state and ensure video is loaded.',
+                    motionSaved: 'Motion successfully saved as reference!',
+                    detectBodyError: 'Failed to detect body. Ensure body is clearly visible to the camera.',
+                    switchTabPlay: 'Please switch to "Rules & Logic" or "Test Run" tab and play the video briefly.',
+                    noOperator: 'No operator detected. Please play the video so the system can identify the operator.',
+                    noBufferData: 'No motion data available in buffer.',
+                    tooFewFrames: 'Too few frames in selected range ({{count}} frames). Please ensure the video was played through the selected range.',
+                    insufficientData: 'Insufficient data. Need {{required}} frames, but only have {{current}}.',
+                    capturedRecent: 'Captured {{count}} frames from recent motion.',
+                    capturedRange: 'Captured {{count}} frames from range {{start}}s - {{end}}s.',
+                    captureFrameError: 'Failed to capture video frame.',
+                    aiSuggestError: 'AI failed to provide rule suggestion: {{error}}',
+                    emptyScriptPrompt: 'Script is empty. Please write logic first.',
+                    aiLogicCheck: 'AI Logic Check',
+                    aiLogicIssue: 'Issue: ',
+                    aiLogicNoIssue: 'No issues found.',
+                    aiLogicSuggestion: 'Suggestion: ',
+                    aiLogicFoundError: 'AI found potential errors. Use AI suggestion?',
+                    scriptValidateError: 'Failed to validate script: {{error}}',
+                    duplicateStateInfo: 'Duplicated state: {{name}}',
+                    invalidFileFormat: 'Invalid model file format.',
+                    modelImported: 'Model imported successfully!',
+                    jsonParseError: 'Error parsing JSON file',
+                    tmFileRequired: 'Please upload all 3 required files: model.json, weights.bin, and metadata.json',
+                    tmModelLoaded: '✅ Local Model Loaded Successfully!',
+                    tmModelLoadError: '❌ Failed to load local model: {{error}}',
+                    loadTemplateConfirm: 'Load "{{name}}"? This will REPLACE your current states.',
+                    ipCameraRecordingTip: '💡 Tip: Recording will automatically stop after 30 seconds. Make sure the camera URL is accessible.',
+                    ipCameraRecordStart: 'Start Recording',
+                    ipCameraRecordStop: 'Stop Recording',
+                },
+                indicators: {
+                    aiSuggestion: 'AI Suggestion',
+                    loadingPose: 'Loading Pose Detector...',
+                    detectorReady: 'Detector Ready',
+                    waiting: 'Waiting for detection...',
+                    logicMatched: 'Logic Matched',
+                    playToTest: 'Play video to test logic',
+                    systemReady: 'System Ready - Waiting for detection...',
+                    noSignals: 'No PLC signals detected in logic',
+                    completeCycle: 'Complete an assembly cycle to see detailed analytics',
+                },
+                rules: {
+                    types: {
+                        POSE_ANGLE: 'Joint Angle',
+                        POSE_RELATION: 'Pose Relation (XYZ)',
+                        POSE_VELOCITY: 'Pose Velocity (Speed)',
+                        OBJECT_PROXIMITY: 'Object Proximity',
+                        OBJECT_IN_ROI: 'Object in ROI',
+                        OPERATOR_PROXIMITY: 'Operator Proximity',
+                        POSE_MATCHING: 'Golden Pose Match',
+                        SEQUENCE_MATCH: 'Motion Sequence Match (DTW)',
+                        TEACHABLE_MACHINE: 'Teachable Machine',
+                        ROBOFLOW_DETECTION: 'Roboflow Detection',
+                        CVAT_MODEL: 'CVAT / Custom Model',
+                        ADVANCED_SCRIPT: 'Advanced Script (DSL)',
+                    },
+                    operators: {
+                        LESS: '<',
+                        GREATER: '>',
+                        LESS_EQUAL: '<=',
+                        GREATER_EQUAL: '>=',
+                        EQUAL: '=',
+                        NOT_EQUAL: '!=',
+                        BETWEEN: 'Between',
+                    },
+                    conditionMet: 'Condition Met',
+                    noMatch: 'No Match',
+                    ready: 'Ready',
+                    mustBeIn: 'must be in',
+                    distanceTo: 'distance to',
+                    rulesEditor: {
+                        addTransition: 'Add Transition',
+                        fromState: 'From State',
+                        toState: 'To State',
+                        add: 'Add',
+                        noTransitions: 'No transitions defined yet',
+                        definePaths: 'Define state transition paths above',
+                        unknownState: 'Unknown State',
+                        hysteresis: 'Hysteresis',
+                        seconds: 'seconds',
+                        conditions: 'Conditions',
+                        ruleHash: 'Rule #',
+                        invertNOT: 'Invert (NOT)',
+                        duplicateRule: 'Duplicate Rule',
+                        addRuleCondition: 'Add Rule Condition',
+                        aiSuggestRule: 'AI Suggest Rule',
+                        aiThinking: 'AI Thinking...',
+                        targetJoint: 'Target Joint',
+                        selectObject: 'Select Object',
+                        customNamePlaceholder: 'Custom name...',
+                        toggleCustomName: 'Toggle Custom Name',
+                        currentState: 'Current State ROI',
+                        anyDefault: 'Any (Default)',
+                        units: 'units',
+                        threshold: 'Threshold',
+                        windowSize: 'Window Size',
+                        frames: 'frames',
+                        startMarker: 'Start Marker (s)',
+                        finishMarker: 'Finish Marker (s)',
+                        setToCurrentVideoTime: 'Set to current video time',
+                        set: 'Set',
+                        templateCaptured: '{{count}} frames captured',
+                        noTemplateRecorded: 'No template recorded',
+                        readyToMatch: 'Ready to match against live motion',
+                        selectRangeCapture: 'Select range and capture to create template',
+                        selectRange: 'Select Range First',
+                        captureRange: 'Capture Range',
+                        motionStorage: 'Motion Storage',
+                        playVideoBuildMemory: '▶ Play video to build motion memory',
+                        referenceStored: 'Reference motion stored successfully',
+                        matchAgainstState: 'Match Against State',
+                        selectState: 'Select State',
+                        roboflowModel: 'Roboflow Model',
+                        customModel: 'Custom Model',
+                        model: 'Model',
+                        targetClass: 'Target Class',
+                        targetClassPlaceholder: 'e.g., person',
+                        advancedScriptPlaceholder: 'Write custom JavaScript logic...\nExample: pose.keypoints[0].y < 0.5',
+                        aiLogicCheck: 'AI Logic Check',
+                        advancedScriptTips: 'Tip: Use "pose", "objects", "hands" variables. Return true/false.',
+                        predictionTolerance: 'Prediction Tolerance',
+                        resilient: 'Resilient',
+                        strict: 'Strict',
+                        deg: 'deg',
+                        value: 'Value',
+                        point: 'Point',
+                        self: 'Self',
+                        nearestOther: 'Nearest Other',
+                        anyOther: 'Any Other',
+                        track: 'Track',
+                    },
+                    jointSelector: {
+                        title: 'Visual Keypoint Selector',
+                        subtitle: 'All 33 points (BlazePose + Hands Detail)',
+                        selected: 'Selected',
+                        majorJoint: 'Major Joint',
+                        detailPoint: 'Detail Point (Facial/Hands)',
+                        precicePoseLogic: 'Click points for precise Pose Logic. Works best in Body-Centric mode.',
+                    },
+                },
+                step: 'Step',
+                prompts: {
+                    soundUrl: 'Enter Sound URL (mp3/wav):',
+                    webhookUrl: 'Enter Webhook URL:',
+                    plcSignalId: 'Enter PLC Signal ID (e.g. DO_01):',
+                    plcValue: 'Enter Value (HIGH/LOW):',
+                    versionName: 'Enter version name (e.g. "V1 Initial Draft"):',
+                    restoreVersion: 'Restore version "{{version}}"? Current unsaved changes will be lost.',
+                    deleteVersion: 'Delete version "{{version}}"?',
+                    templateLoad: 'Load "{{name}}"? This will REPLACE your current states.',
+                },
+                settings: {
+                    title: 'Model Settings',
+                    versionHistory: 'Version History',
+                    saveSnapshot: 'Save Snapshot',
+                    noVersions: 'No saved versions yet.',
+                    restore: 'Restore',
+                    coordinateSystem: 'Coordinate System',
+                    screen: 'Screen (Absolute 0-1)',
+                    bodyCentric: 'Body-Centric (Relative to Hip)',
+                    bodyCentricHint: 'Body-Centric is recommended for precision. It remains accurate even if the operator moves around or the camera shifts. (0,0) is the center of the hips.',
+                },
+                teachableMachine: {
+                    title: 'Teachable Machine Models',
+                    goToSite: 'Go to Site',
+                    addModel: 'Add Model',
+                    modelUrl: 'Model URL',
+                    image: 'Image',
+                    pose: 'Pose',
+                    loading: 'Loading Model...',
+                    offlineMode: 'Offline Mode: Upload Files',
+                    loadFiles: 'Load Files',
+                },
+                roboflow: {
+                    title: 'Roboflow Models',
+                    tryDemo: 'Try Demo',
+                    apiKey: 'API Key',
+                    projectId: 'Project ID',
+                    version: 'Ver.',
+                    noModels: 'No Roboflow models configured.',
+                },
+                portability: {
+                    title: 'Portability & Templates',
+                    exportJson: 'Export JSON',
+                    importJson: 'Import JSON',
+                    loadTemplate: 'Load from Template Library',
+                    selectTemplate: 'Select Motion Template',
+                },
+                extraction: {
+                    title: 'Pose Extraction Data',
+                    mode: 'Mode',
+                    trackingLive: 'Tracking Live',
+                    noData: 'No Data',
+                    keypoint: 'Keypoint',
+                    conf: 'Conf',
+                },
             },
-            audience: {
-                title: 'Built for professionals',
-                ie: {
-                    title: 'Industrial Engineers',
-                    desc: 'Stop spending hours on manual data entry. Capture cycles automatically and generate standard work charts in minutes.'
-                },
-                pm: {
-                    title: 'Plant Managers',
-                    desc: 'Gain full visibility into your production lines. Identify bottlenecks instantly and track efficiency improvements over time.'
-                },
-                lc: {
-                    title: 'Lean Consultants',
-                    desc: 'Deliver value to your clients faster. Use Mavi to provide data-backed recommendations and impressive "Before/After" visual proof.'
-                }
+        },
+        vsm: {
+            title: 'Value Stream Map',
+            toolbox: {
+                title: 'VSM Toolbox',
+                desc: 'Drag & drop to canvas',
+                flowTitle: 'FLOW RELATIONSHIP',
+                material: 'Material',
+                manualInfo: 'Manual Info',
+                electronicInfo: 'Electronic Info',
+                processData: 'PROCESS DATA',
+                processBox: 'Process Box',
+                operator: 'Operator',
+                kaizenBurst: 'Kaizen Burst',
+                materialFlow: 'MATERIAL FLOW',
+                supplier: 'Supplier',
+                customer: 'Customer',
+                inventory: 'Inventory',
+                supermarket: 'Supermarket',
+                fifo: 'FIFO',
+                safetyStock: 'Safety Stock',
+                truck: 'Truck',
+                rawMaterial: 'Raw Material',
+                finishedGoods: 'Finished Goods',
+                push: 'Push',
+                informationFlow: 'INFORMATION FLOW',
+                productionControl: 'Production Control',
+                heijunka: 'Heijunka',
+                kanbanPost: 'Kanban Post',
+                productionKanban: 'Production Kanban',
+                withdrawalKanban: 'Withdrawal Kanban',
+                signalKanban: 'Signal Kanban',
+                goSee: 'Go See',
+                buffer: 'Buffer',
+                timelineMetrics: 'TIMELINE & METRICS',
+                timeline: 'Timeline',
+                generalNotes: 'GENERAL / NOTES',
+                stickyNote: 'Sticky Note',
+                customIcons: 'CUSTOM ICONS',
+                uploadIcon: 'Upload Icon',
+            },
+            ai: {
+                title: 'VSM AI Assistant',
+                subtitle: 'AI Generation',
+                modeReplace: 'Replace All',
+                modeMerge: 'Merge',
+                generateButton: 'Generate AI',
+                examplesButton: 'Examples',
+                wizardTitle: 'Setup Wizard',
+            },
+            wizard: {
+                title: 'Setup Wizard',
+            },
+            analysis: {
+                yamazumiTitle: 'Yamazumi Chart',
+            },
+            calculate: 'Recalculate',
+            nodes: {
+                noteDefault: '(Default)',
+            },
+            addProcess: 'Add Process',
+        },
+        projectPicker: {
+            title: 'Select Project Video',
+            noProjects: 'No projects found.',
+            select: 'Select',
+        },
+        ipCamera: {
+            title: 'Record from IP Camera',
+            streamUrl: 'Camera Stream URL (MJPEG/HTTP)',
+            recording: 'REC',
+            previewHint: 'Enter camera URL to preview or switch to Simulator',
+        },
+        completeCycle: 'Complete one cycle to see analytics',
+        tooltips: {
+            restoreLayout: 'Restore Layout',
+            maximizeEditor: 'Maximize Editor',
+            changeVideo: 'Change or upload new video',
+        },
+        how: {
+            title: 'How Mavi Works',
+            capture: {
+                title: 'Capture',
+                desc: 'Record your production line or upload an existing video file directly to the platform.',
+            },
+            analyze: {
+                title: 'Analyze',
+                desc: 'Our Computer Vision engine detects cycles, calculates times, and identifies waste automatically.',
+            },
+            improve: {
+                title: 'Improve',
+                desc: 'Use data-backed insights to rebalance lines, eliminate bottlenecks, and boost productivity.',
+            },
+        },
+        audience: {
+            title: 'Built for professionals',
+            ie: {
+                title: 'Industrial Engineers',
+                desc: 'Stop spending hours on manual data entry. Capture cycles automatically and generate standard work charts in minutes.',
+            },
+            pm: {
+                title: 'Plant Managers',
+                desc: 'Gain full visibility into your production lines. Identify bottlenecks instantly and track efficiency improvements over time.',
+            },
+            lc: {
+                title: 'Lean Consultants',
+                desc: 'Deliver value to your clients faster. Use Mavi to provide data-backed recommendations and impressive "Before/After" visual proof.',
             },
             faq: {
                 title: 'Frequently Asked Questions',
                 q1: {
                     q: 'Is my video data secure?',
-                    a: 'Yes. Mavi uses enterprise-grade encryption. For Pro plans, data is stored securely in the cloud. For Starter plans, data never leaves your local device.'
+                    a: 'Yes. Mavi uses enterprise-grade encryption. For Pro plans, data is stored securely in the cloud. For Starter plans, data never leaves your local device.',
                 },
                 q2: {
                     q: 'Can I export reports to Excel?',
-                    a: 'Absolutely. You can export all analysis data, charts, and standard work sheets directly to Excel, PDF, or Word formats.'
+                    a: 'Absolutely. You can export all analysis data, charts, and standard work sheets directly to Excel, PDF, or Word formats.',
                 },
                 q3: {
                     q: 'Do I need special hardware?',
-                    a: 'No. Mavi works with any standard video file (MP4, WEBM) or IP Camera input. No expensive sensors required.'
-                }
+                    a: 'No. Mavi works with any standard video file (MP4, WEBM) or IP Camera input. No expensive sensors required.',
+                },
             },
             cta: {
                 title: 'Ready to optimize your workflow?',
                 desc: 'Join thousands of engineers who are saving time and improving efficiency with Mavi.',
-                button: 'Start Free Trial'
+                button: 'Start Free Trial',
             },
             footer: {
                 product: 'Product',
                 company: 'Company',
                 resources: 'Resources',
                 legal: 'Legal',
-                rights: '© 2025 Mavi Systems Inc. All rights reserved.'
-            }
+                rights: '© 2025 Mavi Systems Inc. All rights reserved.',
+            },
         },
         sensei: {
             welcome: "👋 Hello! I am **MAVi Sensei**, an AI assistant ready to help you learn how to use the MAVi application.\n\nYou can ask about:\n- How to use specific features\n- Explanation of TPS tools\n- Tips & tricks\n- Troubleshooting\n\nWhat would you like to learn today?",
@@ -778,7 +1071,7 @@ export const translations = {
             apiKeyWarning: 'Please set the Gemini API Key in **Settings** to use full AI features.',
             openSettings: 'Open AI Settings',
             onlineStatus: 'Online & Ready to Help',
-            errorTechnical: 'Sorry, there is a technical issue. Make sure the API Key is correct and your internet connection is stable.'
+            errorTechnical: 'Sorry, there is a technical issue. Make sure the API Key is correct and your internet connection is stable.',
         },
         maviClass: {
             title: 'MAVi Class',
@@ -806,8 +1099,8 @@ export const translations = {
                 wasteElimination: '🗑️ 7 Wastes (Muda):\n- Transport, Inventory, Motion, Waiting\n- Over-processing, Over-production, Defects\n\nUse **Waste Elimination** menu (/waste-elimination) for identification',
                 therblig: '📍 18 Therblig Motions:\n- Transport Empty, Grasp, Transport Loaded\n- Position, Release, Use, Assemble, etc.\n\nOpen **Therblig Analysis** (/therblig) for details',
                 createWorkInstruction: '📘 Create Work Instruction:\n1. Open **Manual Creation** (/manual-creation)\n2. Capture frame from video\n3. Use AI to generate instructions\n4. Export to PDF/Word/PowerPoint',
-                fallback: "🤔 Hmm, I need more context. Try asking about video upload or AI features."
-            }
+                fallback: "🤔 Hmm, I need more context. Try asking about video upload or AI features.",
+            },
         },
         videoWorkspace: {
             title: 'Video Workspace',
@@ -846,7 +1139,9 @@ export const translations = {
             size: 'Size',
             clearDrawings: 'Clear All Drawings',
             dragToResize: 'Drag to resize',
-            aiIntelligence: 'AI Video Intelligence'
+            aiIntelligence: 'AI Video Intelligence',
+            ergonomicAnalysis: 'Ergonomic Analysis',
+            aiAnalysis: 'AI Analysis',
         },
         elementEditor: {
             title: 'Element Editor',
@@ -876,6 +1171,7 @@ export const translations = {
             prevCycle: 'Previous Cycle',
             zoomLevel: 'Zoom Level',
             playbackSpeed: 'Playback Speed',
+            playbackSpeed: 'Playback Speed',
             actions: 'Actions',
             cycle: 'Cycle',
             process: 'Process',
@@ -896,7 +1192,7 @@ export const translations = {
             errors: {
                 positiveTimes: 'Start and Finish times must be positive numbers.',
                 startLessFinish: 'Start time must be less than Finish time.',
-                totalSplitExceeds: 'Total breakdown time cannot exceed element duration.'
+                totalSplitExceeds: 'Total breakdown time cannot exceed element duration.',
             },
             ratingSpeed: 'Rating Speed',
             stopTracking: 'Stop {{type}} Tracking',
@@ -920,7 +1216,7 @@ export const translations = {
             splitTimePrompt: 'Enter split time (between {{start}}s - {{end}}s):',
             invalidSplitTime: 'Invalid split time! Must be between start and end time.',
             toggleRatingSpeed: 'Toggle Rating Speed',
-            zoomLevelTitle: 'Zoom Level'
+            zoomLevelTitle: 'Zoom Level',
         },
         timeline: {
             title: 'Timeline Statistics',
@@ -936,7 +1232,7 @@ export const translations = {
             grid: 'Grid',
             standard: 'Standard',
             vsm: 'VSM',
-            compact: 'Compact'
+            compact: 'Compact',
         },
         yamazumi: {
             title: 'Yamazumi Chart',
@@ -951,7 +1247,7 @@ export const translations = {
             importData: 'Import Data',
             exportChart: 'Export Chart',
             showTaktLine: 'Show Takt Line',
-            noData: 'No data to display'
+            noData: 'No data to display',
         },
         vsm: {
             title: 'Value Stream Mapping',
@@ -983,7 +1279,7 @@ export const translations = {
                 replace: 'Replace Canvas',
                 replaceDesc: 'Clear all & load new',
                 merge: 'Merge Existing',
-                mergeDesc: 'Add to current canvas'
+                mergeDesc: 'Add to current canvas',
             },
             currentState: 'Current State',
             futureState: 'Future State',
@@ -998,7 +1294,7 @@ export const translations = {
             addProcess: 'Add Process',
             pcsPerHour: 'Pcs per Hour',
             addInventory: 'Add Inventory',
-            calculate: 'Recalculate', // Update key
+            calculate: 'Recalculate', // Update key,
             clear: 'Clear',
             newVsm: 'New VSM',
             ai: {
@@ -1017,10 +1313,10 @@ export const translations = {
                 cancelButton: 'Cancel',
                 charCount: 'characters',
                 tip: 'Include cycle time, operators, inventory, AND info flow (control, kanban, forecast) for a complete VSM.',
-                loadConfirm: 'Found {{nodes}} nodes & {{edges}} connections.\n\nOK = {{replace}}\nCancel = {{merge}}'
+                loadConfirm: 'Found {{nodes}} nodes & {{edges}} connections.\n\nOK = {{replace}}\nCancel = {{merge}}',
             },
             wizard: {
-                title: 'Setup Wizard'
+                title: 'Setup Wizard',
             },
             analysis: {
                 yamazumiTitle: 'Yamazumi Chart',
@@ -1052,7 +1348,7 @@ export const translations = {
                 supplier: 'Supplier',
                 logistic: 'Logistic',
                 process: 'Process',
-                failCause: 'Failure Cause:'
+                failCause: 'Failure Cause:',
             },
             confirmDeleteNode: 'Delete selected node?',
             confirmDeleteIcon: 'Delete this icon?',
@@ -1066,7 +1362,7 @@ export const translations = {
                 shortage: 'SHORTAGE!',
                 demandMet: 'Demand Met',
                 delivering: 'Delivering...',
-                title: 'Flow Simulation'
+                title: 'Flow Simulation',
             },
             supplyChain: {
                 title: 'Supply Chain Simulation',
@@ -1091,7 +1387,7 @@ export const translations = {
                 issue: 'Issue',
                 runPrompt: 'Click "Run Simulation" to see analysis results.',
                 runFirst: 'Run simulation first!',
-                customerNotFound: 'Customer Node not found!'
+                customerNotFound: 'Customer Node not found!',
             },
             help: {
                 mainTitle: 'Value Stream Mapping',
@@ -1124,7 +1420,7 @@ export const translations = {
                 paramTime: 'Time: How long stock lasts (Days) = Stock / Daily Demand.',
                 customerTitle: 'Customer / Supplier (Factory)',
                 paramDemand: 'Demand: Customer requirement per day.',
-                paramTakt: 'Takt Time: Required production rhythm = Available Time / Demand.'
+                paramTakt: 'Takt Time: Required production rhythm = Available Time / Demand.',
             },
             toolbox: {
                 title: 'VSM Toolbox',
@@ -1167,7 +1463,7 @@ export const translations = {
                 generalNotes: 'GENERAL / NOTES',
                 stickyNote: 'Sticky Note',
                 customIcons: 'MY ICONS',
-                uploadIcon: 'Upload Icon'
+                uploadIcon: 'Upload Icon',
             },
             wizard: {
                 title: 'MAGIC WIZARD',
@@ -1213,7 +1509,7 @@ export const translations = {
                 generate: 'Generate VSM',
                 rawMatWh: 'WH RAW MAT',
                 fgWh: 'WH FINISHED GOODS',
-                shipping: 'SHIPPING'
+                shipping: 'SHIPPING',
             },
             ai: {
                 title: 'Generate VSM from Description',
@@ -1229,7 +1525,7 @@ export const translations = {
                 generateButton: 'Generate VSM',
                 cancelButton: 'Cancel',
                 charCount: 'characters',
-                tip: 'Include cycle times, operators, inventory, AND information flow (production control, kanban, forecast) for complete VSM.'
+                tip: 'Include cycle times, operators, inventory, AND information flow (production control, kanban, forecast) for complete VSM.',
             },
             analysis: {
                 taktTime: 'Takt Time',
@@ -1266,7 +1562,7 @@ export const translations = {
                 holdingCost: 'Holding Cost/Day ($)',
                 wipLimit: 'WIP Limit (units)',
                 yield: 'Yield (%)',
-                noAnalysisData: 'No processes found for analysis'
+                noAnalysisData: 'No processes found for analysis',
             },
             nodes: {
                 bottleneck: 'BOTTLENECK',
@@ -1293,7 +1589,7 @@ export const translations = {
                 operators: 'Operators',
                 pacemaker: 'PACEMAKER',
                 shared: 'SHARED',
-                outside: 'OUTSIDE'
+                outside: 'OUTSIDE',
             },
             scenarios: {
                 title: 'Scenarios',
@@ -1315,7 +1611,7 @@ export const translations = {
                 nameRequired: 'Please enter a scenario name!',
                 noSimToSave: 'No simulation to save!',
                 fulfilledQty: 'Fulfilled Qty',
-                demand: 'Demand'
+                demand: 'Demand',
             },
             logs: {
                 title: 'Logs',
@@ -1333,8 +1629,8 @@ export const translations = {
                 secondsAgo: '{{count}}s ago',
                 minutesAgo: '{{count}}m ago',
                 level: 'Level:',
-                time: 'Time:'
-            }
+                time: 'Time:',
+            },
         },
         therblig: {
             title: 'Therblig Analysis',
@@ -1353,7 +1649,7 @@ export const translations = {
             release: 'Release',
             use: 'Use',
             assemble: 'Assemble',
-            disassemble: 'Disassemble'
+            disassemble: 'Disassemble',
         },
         waste: {
             title: 'Waste Elimination',
@@ -1369,7 +1665,7 @@ export const translations = {
             analyze: 'Analyze',
             eliminate: 'Eliminate',
             noWaste: 'No waste identified',
-            wasteFound: 'Waste found'
+            wasteFound: 'Waste found',
         },
         statistics: {
             title: 'Statistical Analysis',
@@ -1384,7 +1680,7 @@ export const translations = {
             confidence: 'Confidence Interval',
             histogram: 'Histogram',
             boxPlot: 'Box Plot',
-            calculate: 'Calculate'
+            calculate: 'Calculate',
         },
         manual: {
             title: 'Manual Creation',
@@ -1406,14 +1702,14 @@ export const translations = {
                 proposed: 'Proposed',
                 review: 'In Review',
                 approved: 'Approved',
-                released: 'Released'
+                released: 'Released',
             },
             difficulties: {
                 veryEasy: 'Very Easy',
                 easy: 'Easy',
                 moderate: 'Moderate',
                 difficult: 'Difficult',
-                veryDifficult: 'Very Difficult'
+                veryDifficult: 'Very Difficult',
             },
             creator: 'Manual Creator',
             workInstructions: 'Work Instructions',
@@ -1424,7 +1720,7 @@ export const translations = {
             documentInfo: 'Document Information',
             stepTitle: 'Step Title',
             pointsAlerts: 'Points & Alerts',
-            instructions: 'Instructions'
+            instructions: 'Instructions',
         },
         swcs: {
             title: 'Standard Work Combination Sheet',
@@ -1445,7 +1741,7 @@ export const translations = {
             legend: {
                 manual: 'Manual (Solid)',
                 auto: 'Auto (Dashed)',
-                walk: 'Walk (Wavy)'
+                walk: 'Walk (Wavy)',
             },
             table: {
                 no: 'No',
@@ -1461,7 +1757,7 @@ export const translations = {
                 quality: 'Quality',
                 safety: 'Safety',
                 kaizen: 'Kaizen',
-                add: 'Add Element'
+                add: 'Add Element',
             },
             header: {
                 process: 'Process',
@@ -1471,11 +1767,11 @@ export const translations = {
                 taktTime: 'Takt Time',
                 stdWip: 'Std WIP',
                 date: 'Date',
-                revision: 'Rev'
+                revision: 'Rev',
             },
             noData: 'No Data Available',
             noDataDescProject: 'Select a project with data or switch to Manual Mode.',
-            noDataDescManual: 'Add work elements in the table to visualize data.'
+            noDataDescManual: 'Add work elements in the table to visualize data.',
         },
         workspace: {
             title: 'Manage Projects',
@@ -1486,7 +1782,7 @@ export const translations = {
             projectName: 'Project Name',
             lastModified: 'Last Modified',
             noProjects: 'No saved projects found',
-            confirmDelete: 'Delete this project?'
+            confirmDelete: 'Delete this project?',
         },
         fileExplorer: {
             title: 'File Explorer',
@@ -1505,7 +1801,7 @@ export const translations = {
             root: 'Root',
             search: 'Search...',
             empty: 'No items found',
-            deleteConfirm: 'Delete selected items?'
+            deleteConfirm: 'Delete selected items?',
         },
         settings: {
             title: 'Global Settings',
@@ -1520,7 +1816,9 @@ export const translations = {
             cancel: 'Cancel',
             openRouterHeaders: 'OpenRouter Headers (Auto)',
             testSuccess: 'Connected!',
-            testFailed: 'Failed'
+            testFailed: 'Failed',
+            system: 'System',
+            editManual: 'Edit Manual',
         },
         rearrangement: {
             title: 'Rearrange Elements',
@@ -1542,7 +1840,7 @@ export const translations = {
             selectProjectSub: 'Pick a project with measurement data',
             noReadyVideo: 'No video ready',
             loadInstruction: 'Select a project from the menu to load simulation video',
-            noProjects: 'No projects with measurement data found'
+            noProjects: 'No projects with measurement data found',
         },
         swcs: {
             title: 'Standard Work Combination Sheet',
@@ -1575,7 +1873,7 @@ export const translations = {
                 taktTime: 'Takt Time',
                 stdWip: 'Std WIP',
                 date: 'Date',
-                revision: 'Revision'
+                revision: 'Revision',
             },
             table: {
                 no: 'No',
@@ -1588,13 +1886,13 @@ export const translations = {
                 finish: 'Finish',
                 duration: 'Duration',
                 total: 'Total',
-                add: 'Add Element'
+                add: 'Add Element',
             },
             legend: {
                 manual: 'Manual (Solid)',
                 auto: 'Auto (Dashed)',
-                walk: 'Walk (Wavy)'
-            }
+                walk: 'Walk (Wavy)',
+            },
         },
         analysisDashboard: {
             title: 'Analysis Summary',
@@ -1615,7 +1913,7 @@ export const translations = {
             topElements: 'Top 10 Elements (Duration)',
             categoryBreakdown: 'Breakdown by Category',
             elementsCount: 'elements',
-            swcs: 'Standard Work Combination Sheet'
+            swcs: 'Standard Work Combination Sheet',
         },
         senseiKnowledge: {
             intro: 'MAVi (Motion Analysis Video Intelligence) is a video analysis application for Industrial Engineering.',
@@ -1644,7 +1942,7 @@ export const translations = {
                 '- /action-recognition: AI action recognition',
                 '- /files: File Explorer',
                 '- /diagnostics: System Diagnostics',
-                '- /help: Help & Documentation'
+                '- /help: Help & Documentation',
             ],
             tipsHeader: 'USAGE TIPS:',
             tips: [
@@ -1658,7 +1956,7 @@ export const translations = {
                 '8. Export data to Excel for advanced spreadsheet analysis',
                 '9. REBA Assessment for ergonomic posture evaluation',
                 '10. Keyboard shortcut Space to play/pause, S to start measurement'
-            ]
+            ],
         },
         maviClassData: {
             glossary: {
@@ -1681,7 +1979,7 @@ export const translations = {
                 allowance: { term: 'Allowance', def: 'Additional factor for personal needs and delays.' },
                 normalTime: { term: 'Normal Time', def: 'Observed time adjusted by rating factor.' },
                 ratingFactor: { term: 'Rating Factor', def: 'Comparison of operator speed to standard.' },
-                workSampling: { term: 'Work Sampling', def: 'Work measurement technique using random observations.' }
+                workSampling: { term: 'Work Sampling', def: 'Work measurement technique using random observations.' },
             },
             badges: {
                 firstLesson: { name: 'First Step', desc: 'Complete first lesson' },
@@ -1695,7 +1993,7 @@ export const translations = {
                 consistent: { name: 'Consistent', desc: 'Study 3 days in a row' },
                 weekWarrior: { name: 'Week Warrior', desc: 'Study 7 days in a row' },
                 noteTaker: { name: 'Note Taker', desc: 'Create 5 notes' },
-                explorer: { name: 'Explorer', desc: 'Visit all tabs' }
+                explorer: { name: 'Explorer', desc: 'Visit all tabs' },
             },
             syllabus: {
                 title: 'MAVi Class - Industrial Engineering Video Analysis',
@@ -1709,21 +2007,21 @@ export const translations = {
                 outcome2: 'Identify and eliminate waste',
                 outcome3: 'Create Work Instructions and SOPs from video',
                 outcome4: 'Use AI for automatic analysis',
-                outcome5: 'Setup real-time compliance monitoring'
+                outcome5: 'Setup real-time compliance monitoring',
             },
             actions: {
                 tryIt: 'Try This Feature',
                 watchVideo: 'Watch Tutorial Video',
                 markComplete: 'Mark as Complete',
                 completed: 'Completed',
-                keyPoints: 'Key Points'
+                keyPoints: 'Key Points',
             },
             levels: {
                 beginner: 'Beginner',
                 apprentice: 'Apprentice',
                 practitioner: 'Practitioner',
                 expert: 'Expert',
-                master: 'Master'
+                master: 'Master',
             },
             modules: {
                 'getting-started': {
@@ -1738,7 +2036,7 @@ export const translations = {
                                 'Integration with TPS (Toyota Production System) methodology',
                                 'Support for automatic SOP and Work Instruction creation',
                                 'Real-time collaboration and knowledge sharing'
-                            ]
+                            ],
                         },
                         'gs-2': {
                             title: 'App Navigation',
@@ -1748,7 +2046,7 @@ export const translations = {
                                 'Click icons to switch features',
                                 'Hover to see feature names',
                                 'Toggle sidebar with arrow button'
-                            ]
+                            ],
                         },
                         'gs-3': {
                             title: 'First Video Upload',
@@ -1758,7 +2056,7 @@ export const translations = {
                                 'Supported formats: MP4, WebM, AVI',
                                 'View footage in left video panel',
                                 'Control video with playback controls'
-                            ]
+                            ],
                         },
                         'gs-4': {
                             title: 'Create New Project',
@@ -1768,8 +2066,8 @@ export const translations = {
                                 'Enter a clear project name',
                                 'Select the video to analyze',
                                 'Projects are automatically saved to local database'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'Mission 1: Ground Zero 🚀',
@@ -1779,8 +2077,8 @@ export const translations = {
                             'Create a new project named "Practice MAVi 1"',
                             'Open sidebar menu and explore at least 3 features'
                         ],
-                        actionLabel: 'Start Practice Now'
-                    }
+                        actionLabel: 'Start Practice Now',
+                    },
                 },
                 'time-measurement': {
                     title: '⏱️ Time & Motion Study',
@@ -1794,7 +2092,7 @@ export const translations = {
                                 'Click End Measurement to finish',
                                 'Give specific names to elements',
                                 'Select the appropriate Therblig type'
-                            ]
+                            ],
                         },
                         'tm-2': {
                             title: 'Keyboard Shortcuts',
@@ -1804,7 +2102,7 @@ export const translations = {
                                 'Press "Arrow Right/Left" to navigate frames',
                                 'Press "S" to Start Measurement',
                                 'Press "E" to End Measurement'
-                            ]
+                            ],
                         },
                         'tm-4': {
                             title: 'Value Added Analysis',
@@ -1814,7 +2112,7 @@ export const translations = {
                                 'NVA (Non-Value Added) - waste to be eliminated',
                                 'NNVA (Necessary NVA) - necessary but non-value adding',
                                 'Mark each element with correct classification'
-                            ]
+                            ],
                         },
                         'tm-5': {
                             title: 'Cycle Time Analysis',
@@ -1824,7 +2122,7 @@ export const translations = {
                                 'Compare cycle times between operators',
                                 'Identify variations and causes',
                                 'Use Best/Worst Cycle for comparison'
-                            ]
+                            ],
                         },
                         'tm-6': {
                             title: 'Rearrangement',
@@ -1834,8 +2132,8 @@ export const translations = {
                                 'See impact on total lead time',
                                 'Identify optimal sequence for balancing',
                                 'Export rearrangement results as new SOP reference'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'Mission 2: Time Master ⏱️',
@@ -1845,8 +2143,8 @@ export const translations = {
                             'Mark which elements are VA and which are NVA',
                             'Try using keyboard shortcuts S and E'
                         ],
-                        actionLabel: 'Open Video Workspace'
-                    }
+                        actionLabel: 'Open Video Workspace',
+                    },
                 },
                 'ai-features': {
                     title: '🧠 AI Features',
@@ -1860,7 +2158,7 @@ export const translations = {
                                 'Set conditions and thresholds for validation',
                                 'Test model with sample video',
                                 'Export model for compliance monitoring usage'
-                            ]
+                            ],
                         },
                         'ai-2': {
                             title: 'Action Recognition',
@@ -1870,7 +2168,7 @@ export const translations = {
                                 'AI detects types of actions performed',
                                 'Review and correct detection results',
                                 'Export results for advanced analysis'
-                            ]
+                            ],
                         },
                         'ai-3': {
                             title: 'Real-time Compliance',
@@ -1880,7 +2178,7 @@ export const translations = {
                                 'AI compares performance against standards',
                                 'Automatic alerts for deviations',
                                 'Log all anomalies for review'
-                            ]
+                            ],
                         },
                         'ai-4': {
                             title: 'Video Intelligence',
@@ -1890,7 +2188,7 @@ export const translations = {
                                 'Ask questions in natural language',
                                 'AI analyzes and answers',
                                 'Use for deep insights'
-                            ]
+                            ],
                         },
                         'ai-5': {
                             title: 'AI Accuracy & Calibration',
@@ -1901,7 +2199,7 @@ export const translations = {
                                 'Importance of video quality: Static camera and good lighting',
                                 'How 33 body joint coordinates work (Pose Estimation)',
                                 'Integration of custom models via Teachable Machine'
-                            ]
+                            ],
                         },
                         'ai-6': {
                             title: 'End-to-End AI Deployment',
@@ -1911,8 +2209,8 @@ export const translations = {
                                 'Step 2: Training Model via Studio Model or Teachable Machine',
                                 'Step 3: Upload & Load Model (model.json, metadata.json) into system',
                                 'Step 4: Monitoring via Camera - Connect webcam for real-time detection',
-                                'Step 5: Review Dashboard - Monitor Cycle Time and Compliance automatically'
-                            ]
+                                'Step 5: Review Dashboard - Monitor Cycle Time and Compliance automatically',
+                            ],
                         },
                         'ai-7': {
                             title: 'Studio Model Masterclass',
@@ -1923,9 +2221,9 @@ export const translations = {
                                 '3. Rule Logic Builder: Use "Add Rule" for IF-THEN logic without coding',
                                 '4. Rule Types: Joint Angle, Position (XY), and Velocity',
                                 '5. Teachable Integration: Link Teachable Machine classes to rule logic',
-                                '6. Testing & Debugging: Run standard video to validate AI state transitions'
-                            ]
-                        }
+                                '6. Testing & Debugging: Run standard video to validate AI state transitions',
+                            ],
+                        },
                     },
                     practice: {
                         title: 'Mission 3: AI Commander 🧠',
@@ -1936,8 +2234,8 @@ export const translations = {
                             'Create 1 model in Studio Model with at least 3 states and 3 rules',
                             'Connect live camera and activate Real-time Compliance monitoring'
                         ],
-                        actionLabel: 'Open Studio Model'
-                    }
+                        actionLabel: 'Open Studio Model',
+                    },
                 },
                 'tps-tools': {
                     title: '📊 TPS Tools',
@@ -1951,7 +2249,7 @@ export const translations = {
                                 'Identify waste in every process',
                                 'Calculate lead time and cycle time',
                                 'Design more efficient Future State Map'
-                            ]
+                            ],
                         },
                         'tps-2': {
                             title: 'Yamazumi Chart',
@@ -1961,7 +2259,7 @@ export const translations = {
                                 'View stack bar per operator/station',
                                 'Compare with takt time',
                                 'Identify bottlenecks and idle time'
-                            ]
+                            ],
                         },
                         'tps-3': {
                             title: 'Standard Work Combination Sheet',
@@ -1971,7 +2269,7 @@ export const translations = {
                                 'Visualize walking time',
                                 'Set takt time as reference',
                                 'Export for SOP documentation'
-                            ]
+                            ],
                         },
                         'tps-4': {
                             title: 'Waste Elimination',
@@ -1984,7 +2282,7 @@ export const translations = {
                                 'Over-processing - excessive processing',
                                 'Over-production - excessive production',
                                 'Defects - product defects'
-                            ]
+                            ],
                         },
                         'tps-5': {
                             title: 'Statistical Analysis',
@@ -1994,8 +2292,8 @@ export const translations = {
                                 'Control chart for process monitoring',
                                 'Process capability analysis',
                                 'Identify outliers and causes'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'Mission 4: Lean Architect 📊',
@@ -2005,8 +2303,8 @@ export const translations = {
                             'Identify which operator is busiest (bottleneck)',
                             'Try creating 1 draft Standard Work Combination Sheet'
                         ],
-                        actionLabel: 'Open Yamazumi Chart'
-                    }
+                        actionLabel: 'Open Yamazumi Chart',
+                    },
                 },
                 'documentation': {
                     title: '📘 Documentation',
@@ -2020,7 +2318,7 @@ export const translations = {
                                 'Add descriptions and annotations',
                                 'Use AI to generate instructions',
                                 'Export to PDF, Word, or PowerPoint'
-                            ]
+                            ],
                         },
                         'doc-2': {
                             title: 'AI-Generated Instructions',
@@ -2030,7 +2328,7 @@ export const translations = {
                                 'AI analyzes the image',
                                 'Generate step descriptions',
                                 'Edit and adjust as needed'
-                            ]
+                            ],
                         },
                         'doc-3': {
                             title: 'Knowledge Base',
@@ -2040,8 +2338,8 @@ export const translations = {
                                 'Add tags for searching',
                                 'Rate and review from other users',
                                 'Download templates for new projects'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'Mission 5: SOP Director 📘',
@@ -2051,8 +2349,8 @@ export const translations = {
                             'Use AI Generate to create step descriptions',
                             'Export SOP result as PDF or Word file'
                         ],
-                        actionLabel: 'Open Manual Creation'
-                    }
+                        actionLabel: 'Open Manual Creation',
+                    },
                 },
                 'advanced': {
                     title: '⚡ Advanced Features',
@@ -2066,7 +2364,7 @@ export const translations = {
                                 'Practice mode for training',
                                 'Assessment mode for evaluation',
                                 'Tracking trainee progress'
-                            ]
+                            ],
                         },
                         'adv-3': {
                             title: 'Broadcast & Collaboration',
@@ -2076,7 +2374,7 @@ export const translations = {
                                 'Real-time cursor sharing',
                                 'Chat and collaboration tools',
                                 'Remote training and review'
-                            ]
+                            ],
                         },
                         'adv-4': {
                             title: 'Multi-Axial Analysis',
@@ -2086,8 +2384,8 @@ export const translations = {
                                 'Compare performance between cycles or operators visually',
                                 'Identify variations on a larger scale',
                                 'Use for multi-process auditing'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'Mission 7: Future Engineer ⚡',
@@ -2097,8 +2395,8 @@ export const translations = {
                             'Open Video Workspace and try Collaborate with a viewer',
                             'Explore VR Training mode if you have a device'
                         ],
-                        actionLabel: 'Open Video Workspace'
-                    }
+                        actionLabel: 'Open Video Workspace',
+                    },
                 },
                 'study-cases': {
                     title: '📂 Study Cases',
@@ -2112,7 +2410,7 @@ export const translations = {
                                 'Redistribute work elements between operators',
                                 'Throughput increased by 15%',
                                 'Elimination of waiting time at critical stations'
-                            ]
+                            ],
                         },
                         'sc-2': {
                             title: 'Textile: Waste Elimination',
@@ -2122,7 +2420,7 @@ export const translations = {
                                 'Rearrangement of material layout',
                                 'Cycle time reduction of 20%',
                                 'Improved ergonomics and work comfort'
-                            ]
+                            ],
                         },
                         'sc-3': {
                             title: 'Logistics: VSM Optimization',
@@ -2132,7 +2430,7 @@ export const translations = {
                                 'Identification of disconnected Information Flow',
                                 'Lead time reduction from 2 days to 4 hours',
                                 'Implementation of Kan-ban for replenishment'
-                            ]
+                            ],
                         },
                         'sc-4': {
                             title: 'Electronics: AI Compliance',
@@ -2142,8 +2440,8 @@ export const translations = {
                                 'Real-time anomaly detection during installation',
                                 'Defect (rework) rate reduction up to 90%',
                                 'Automated auditing without disrupting production'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'Mission 8: Case Solver 📂',
@@ -2153,8 +2451,8 @@ export const translations = {
                             'Try to replicate the analysis in Video Workspace',
                             'Write 3 improvement proposals for that case'
                         ],
-                        actionLabel: 'Open Workspace'
-                    }
+                        actionLabel: 'Open Workspace',
+                    },
                 },
                 'line-balancing': {
                     title: '⚖️ Line Balancing & Digital Twin',
@@ -2168,7 +2466,7 @@ export const translations = {
                                 'Calculating Line Efficiency',
                                 'Distribution of work elements',
                                 'Minimizing Balance Delay'
-                            ]
+                            ],
                         },
                         'lb-2': {
                             title: 'Digital Twin Simulation',
@@ -2178,8 +2476,8 @@ export const translations = {
                                 'Test different operator configurations',
                                 'Simulate "What-if" scenarios',
                                 'Validate improvements virtually'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'Mission: Line Optimizer',
@@ -2189,8 +2487,8 @@ export const translations = {
                             'Adjust operator work elements to meet Takt',
                             'Achieve line efficiency > 85%'
                         ],
-                        actionLabel: 'Open Line Balancing'
-                    }
+                        actionLabel: 'Open Line Balancing',
+                    },
                 },
                 'studio-model': {
                     title: '🎬 Studio Model & Compliance',
@@ -2204,7 +2502,7 @@ export const translations = {
                                 'Define states (conditions) to detect',
                                 'Set rules for transitions between states',
                                 'Use for real-time compliance monitoring'
-                            ]
+                            ],
                         },
                         'sm-2': {
                             title: 'Creating a New Model',
@@ -2214,7 +2512,7 @@ export const translations = {
                                 'Give a descriptive model name (e.g., "Assembly Process")',
                                 'Choose coordinate system: Body-Centric or Screen-Based',
                                 'Add description for documentation'
-                            ]
+                            ],
                         },
                         'sm-3': {
                             title: 'Defining States',
@@ -2224,7 +2522,7 @@ export const translations = {
                                 'Capture reference pose from video for each state',
                                 'Define ROI (Region of Interest) if needed',
                                 'Set minimum duration for detection stability'
-                            ]
+                            ],
                         },
                         'sm-4': {
                             title: 'Rule Configuration',
@@ -2235,8 +2533,8 @@ export const translations = {
                                 'Pose Velocity: Movement speed (e.g., Detect sudden motion)',
                                 'Object Proximity: Distance to AI object (e.g., Hand touching tool)',
                                 'Golden Pose: Match with recorded ideal reference pose',
-                                'Logic Operator: Use AND/OR to combine multiple rules'
-                            ]
+                                'Logic Operator: Use AND/OR to combine multiple rules',
+                            ],
                         },
                         'sm-5': {
                             title: 'Teachable Machine Studio',
@@ -2246,7 +2544,7 @@ export const translations = {
                                 'Review dataset to ensure it is representative',
                                 'Integrate dataset with rules in Studio Model',
                                 'Use AI models for more complex state detection'
-                            ]
+                            ],
                         },
                         'sm-6': {
                             title: 'Test Mode & Validation',
@@ -2256,7 +2554,7 @@ export const translations = {
                                 'View timeline events for validation',
                                 'Check if state transitions are correct',
                                 'Adjust rules if there are false positives/negatives'
-                            ]
+                            ],
                         },
                         'sm-7': {
                             title: 'Real-time Compliance Setup',
@@ -2267,7 +2565,7 @@ export const translations = {
                                 'Select Studio Model from dropdown',
                                 'Select webcam or enter IP camera URL',
                                 'Click "Start Monitoring" to begin'
-                            ]
+                            ],
                         },
                         'sm-8': {
                             title: 'Timeline Events Analysis',
@@ -2278,8 +2576,8 @@ export const translations = {
                                 'Green = fast (<5s), Red = slow (>5s)',
                                 'Identify bottlenecks from long-duration states',
                                 'Export data for further analysis'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'Mission 9: Model Master 🎬',
@@ -2289,8 +2587,8 @@ export const translations = {
                             'Define at least 2 states (e.g., Work vs Rest)',
                             'Test the model in Test Mode with a video'
                         ],
-                        actionLabel: 'Open Studio Model'
-                    }
+                        actionLabel: 'Open Studio Model',
+                    },
                 },
                 'ai-settings': {
                     title: '⚙️ AI Settings & Configuration',
@@ -2305,7 +2603,7 @@ export const translations = {
                                 'Click "Get API Key" → "Create API Key"',
                                 'Copy API Key and paste into MAVi Settings',
                                 'Free for standard use (60 requests/minute)'
-                            ]
+                            ],
                         },
                         'ais-2': {
                             title: 'Configuring API Key in MAVi',
@@ -2316,7 +2614,7 @@ export const translations = {
                                 'Click "Test Connection" to verify',
                                 'Green status = connection successful',
                                 'API Key is saved in browser (localStorage)'
-                            ]
+                            ],
                         },
                         'ais-3': {
                             title: 'Pose Detection Settings',
@@ -2326,8 +2624,8 @@ export const translations = {
                                 'Detection Confidence: pose detection threshold (0.5-0.9)',
                                 'Tracking Confidence: tracking smoothness (0.5-0.9)',
                                 'Higher confidence = more accurate but heavier',
-                                'Recommendation: 0.7 for balance of speed & accuracy'
-                            ]
+                                'Recommendation: 0.7 for balance of speed & accuracy',
+                            ],
                         },
                         'ais-4': {
                             title: 'Setup Teachable Machine Model',
@@ -2338,7 +2636,7 @@ export const translations = {
                                 'Train rule detection using learned conditions',
                                 'Use global model URL to sync between stations',
                                 'Model can be updated anytime if process changes'
-                            ]
+                            ],
                         },
                         'ais-5': {
                             title: 'Troubleshooting AI Errors',
@@ -2349,8 +2647,8 @@ export const translations = {
                                 'Pose not detected: ensure sufficient lighting',
                                 'Slow model: reduce model complexity',
                                 'Check System Diagnostics for full status'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'Mission 10: SysAdmin AI ⚙️',
@@ -2360,8 +2658,8 @@ export const translations = {
                             'Try changing Pose Detection Confidence to 0.8',
                             'Run System Diagnostics'
                         ],
-                        actionLabel: 'Open Settings'
-                    }
+                        actionLabel: 'Open Settings',
+                    },
                 },
                 'ui-tutorial': {
                     title: '🖥️ User Interface Deep Dive',
@@ -2376,7 +2674,7 @@ export const translations = {
                                 'Timeline (bottom): video navigation and markers',
                                 'Sidebar (far right): navigation menu between features',
                                 'All panels can be resized by dragging dividers'
-                            ]
+                            ],
                         },
                         'ui-2': {
                             title: 'Keyboard Shortcuts',
@@ -2387,8 +2685,8 @@ export const translations = {
                                 'S: Start measurement',
                                 'E: End measurement',
                                 'Ctrl+S: Save project',
-                                'F: Toggle fullscreen video'
-                            ]
+                                'F: Toggle fullscreen video',
+                            ],
                         },
                         'ui-3': {
                             title: 'Theme & Display Settings',
@@ -2399,7 +2697,7 @@ export const translations = {
                                 'Font Size: adjust for reading comfort',
                                 'Skeleton Overlay: toggle pose skeleton display',
                                 'Settings saved automatically'
-                            ]
+                            ],
                         },
                         'ui-4': {
                             title: 'Panel Customization',
@@ -2410,7 +2708,7 @@ export const translations = {
                                 'Element Panel can be expanded/collapsed',
                                 'Timeline height can be adjusted',
                                 'Layout saved for next usage'
-                            ]
+                            ],
                         },
                         'ui-5': {
                             title: 'Video Controls Mastery',
@@ -2420,9 +2718,9 @@ export const translations = {
                                 'Frame Counter: see current frame position',
                                 'Zoom Controls: magnify specific areas',
                                 'Loop Region: repeat playback of specific area',
-                                'Seek Bar: click to jump directly to video position'
-                            ]
-                        }
+                                'Seek Bar: click to jump directly to video position',
+                            ],
+                        },
                     },
                     practice: {
                         title: 'Mission 11: UI Pro 🖥️',
@@ -2432,8 +2730,8 @@ export const translations = {
                             'Try changing application language to English/Japanese',
                             'Resize Video Panel and Element Panel'
                         ],
-                        actionLabel: 'Open Workspace'
-                    }
+                        actionLabel: 'Open Workspace',
+                    },
                 },
                 'export-integration': {
                     title: '📤 Data Export & Integration',
@@ -2448,7 +2746,7 @@ export const translations = {
                                 'Data includes: element name, duration, type, timestamp',
                                 'Additional columns: therblig classification, VA/NVA',
                                 'File automatically downloads to Downloads folder'
-                            ]
+                            ],
                         },
                         'exp-2': {
                             title: 'Export Work Instruction',
@@ -2459,7 +2757,7 @@ export const translations = {
                                 'PowerPoint: for training presentations',
                                 'Includes images, work steps, and notes',
                                 'Custom header with company logo'
-                            ]
+                            ],
                         },
                         'exp-4': {
                             title: 'Project Backup & Restore',
@@ -2470,8 +2768,8 @@ export const translations = {
                                 'Import Project: restore from backup',
                                 'Use for data migration between computers',
                                 'Save backups periodically'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'Mission 12: Data Scientist 📤',
@@ -2481,8 +2779,8 @@ export const translations = {
                             'Export project as JSON file (Backup)',
                             'Try opening exported Excel file on computer'
                         ],
-                        actionLabel: 'Open File Explorer'
-                    }
+                        actionLabel: 'Open File Explorer',
+                    },
                 },
                 'pose-ergonomics': {
                     title: '🔍 Pose Detection & Ergonomics',
@@ -2497,7 +2795,7 @@ export const translations = {
                                 'Each landmark has x, y, z coordinates',
                                 'Visibility score indicates detection confidence',
                                 'Process runs real-time in browser (WebGL)'
-                            ]
+                            ],
                         },
                         'pe-2': {
                             title: 'Joint Angle Analysis',
@@ -2508,7 +2806,7 @@ export const translations = {
                                 'Shoulder Angle: detect arm lifting',
                                 'Back Angle: evaluate stooping posture',
                                 'Angle data used for rules in Studio Model'
-                            ]
+                            ],
                         },
                         'pe-3': {
                             title: 'REBA Assessment',
@@ -2518,8 +2816,8 @@ export const translations = {
                                 'Score 1-3: Low risk (Acceptable)',
                                 'Score 4-7: Medium risk (Investigate)',
                                 'Score 8-10: High risk (Investigate soon)',
-                                'Score 11+: Very high risk (Implement change)'
-                            ]
+                                'Score 11+: Very high risk (Implement change)',
+                            ],
                         },
                         'pe-4': {
                             title: 'Fatigue Analysis',
@@ -2530,7 +2828,7 @@ export const translations = {
                                 'Alert when pattern indicates exhaustion',
                                 'Optimal rest time recommendations',
                                 'Integration with compliance monitoring'
-                            ]
+                            ],
                         },
                         'pe-5': {
                             title: 'Ergonomic Improvement',
@@ -2541,8 +2839,8 @@ export const translations = {
                                 'Document workstation changes',
                                 'Track improvement score over time',
                                 'Generate report for management'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'Mission 6: Ergo Guardian 🔍',
@@ -2552,10 +2850,10 @@ export const translations = {
                             'View elbow or back angle graphs',
                             'Identify moments with high REBA score (>7)'
                         ],
-                        actionLabel: 'Open Video Workspace'
-                    }
-                }
-            }
+                        actionLabel: 'Open Video Workspace',
+                    },
+                },
+            },
         },
         machineLearning: {
             title: 'Teachable Machine Studio',
@@ -2578,7 +2876,7 @@ export const translations = {
             useTeachableMachine: 'Use Teachable Machine',
             startAnalysis: 'Start Analysis',
             stopAnalysis: 'Stop Analysis',
-            consistencyTrend: 'Consistency Trend'
+            consistencyTrend: 'Consistency Trend',
         },
         bestWorst: {
             title: 'Best vs Worst Cycle Analysis',
@@ -2604,9 +2902,10 @@ export const translations = {
             selectLeft: 'Select Left Project...',
             selectRight: 'Select Right Project...',
             best: 'BEST',
-            worst: 'WORST'
+            worst: 'WORST',
         },
     },
+
     id: {
         ipCamera: {
             title: 'Koneksi Kamera IP',
@@ -2621,14 +2920,14 @@ export const translations = {
                 title: 'Tips',
                 tip1: 'URL harus link langsung ke file video (bukan halaman web).',
                 tip2: 'Untuk RTSP, gunakan server konversi (seperti FFmpeg/VLC) ke HTTP/HLS.',
-                tip3: 'Cari URL yang berakhiran .m3u8 atau .mp4.'
+                tip3: 'Cari URL yang berakhiran .m3u8 atau .mp4.',
             },
             errors: {
                 missingUrl: 'Masukkan URL stream',
                 videoUnavailable: 'Elemen video tidak tersedia',
                 connectionFailed: 'Gagal menghubungkan. Pastikan URL adalah stream langsung (contoh: .m3u8, .mp4, atau MJPEG), bukan halaman web.',
-                generic: 'Gagal menghubungkan ke stream'
-            }
+                generic: 'Gagal menghubungkan ke stream',
+            },
         },
         fileExplorer: {
             recent: 'Terbaru',
@@ -2660,13 +2959,21 @@ export const translations = {
             measurements: 'Pengukuran',
             designAction: 'Desain',
             globalMap: 'Peta Global',
-            noVideoShort: 'Tanpa Video'
+            noVideoShort: 'Tanpa Video',
         },
         studioModel: {
             title: 'Model Studio',
             subtitle: 'Desain dan bangun model analisis gerakan',
             createButton: 'Buat Model Baru',
             helpButton: 'Bantuan',
+            assistant: {
+                welcome: 'Halo! Saya asisten khusus Studio Model. Bingung cara bikin Rule atau State? Tanya saya saja!',
+                placeholder: 'Tanya tentang Rule / Logic...',
+                thinking: 'Asisten sedang berpikir...',
+                error: 'Maaf, saya sedang pusing. Coba lagi nanti ya (Error koneksi/API).',
+                botName: 'Asisten AI Studio',
+                expertRole: 'Ahli Logika Gerakan',
+            },
             searchPlaceholder: 'Cari model...',
             noModels: 'Tidak ada model ditemukan',
             createFirst: 'Buat model pertama Anda',
@@ -2686,27 +2993,27 @@ export const translations = {
                     title: '1. Konsep Dasar (Logika)',
                     state: 'State (Status): Kondisi operator (mis. Menunggu, Menggenggam, Merakit).',
                     transition: 'Transisi: Perpindahan dari satu State ke State lain.',
-                    rule: 'Rule (Aturan): Kondisi untuk transisi (mis. Jika Tangan Kanan > Meja, pindah ke \'Menggenggam\').'
+                    rule: 'Rule (Aturan): Kondisi untuk transisi (mis. Jika Tangan Kanan > Meja, pindah ke \'Menggenggam\').',
                 },
                 workflow: {
                     title: '2. Alur Kerja Pembuatan Model',
                     step1: 'Upload Video: Masukkan video operator standar.',
                     step2: 'Definisikan State: Daftar aktivitas (langkah kerja).',
                     step3: 'Buat Transisi & Aturan: Hubungkan state dengan logika deteksi otomatis.',
-                    step4: 'Validasi: Tes dengan video lain untuk memastikan akurasi.'
+                    step4: 'Validasi: Tes dengan video lain untuk memastikan akurasi.',
                 },
                 navigation: {
                     title: '3. Navigasi Editor',
                     tabStates: 'Tab State: Tambah/Edit langkah kerja.',
                     tabRules: 'Tab Rules: Buat logika "Kapan pindah langkah".',
-                    tabTest: 'Tab Test/Debug: Lihat hasil deteksi realtime.'
+                    tabTest: 'Tab Test/Debug: Lihat hasil deteksi realtime.',
                 },
                 aiIntegration: {
                     title: '2. Integrasi AI (Roboflow)',
                     desc: 'Mendeteksi APD, komponen, atau alat kerja menggunakan model AI kustom.',
                     config: 'Konfigurasi: Masuk ke tab Settings -> Roboflow Models. Masukkan API Key dan Project ID.',
                     demo: 'Demo: Klik "Try Demo" untuk simulasi deteksi.',
-                    rule: 'Rule: Gunakan tipe rule "Roboflow Detection", ketik nama objek (misal: helmet), dan ambang batas.'
+                    rule: 'Rule: Gunakan tipe rule "Roboflow Detection", ketik nama objek (misal: helmet), dan ambang batas.',
                 },
                 testRun: {
                     title: '3. Melakukan Pengujian (Test Run)',
@@ -2714,15 +3021,124 @@ export const translations = {
                     panel: 'Panel Kiri: Visualisasi (Video, Boneka Pose, dan Kotak Deteksi).',
                     console: 'Live Console: Memantau log sistem secara real-time.',
                     timeline: 'Visual Timeline: Menunjukkan kapan transisi terjadi.',
-                    analytics: 'Cycle Analytics: Perhitungan rasio VA/NVA.'
+                    analytics: 'Cycle Analytics: Perhitungan rasio VA/NVA.',
                 },
                 tips: {
                     title: '4. Tips Akurasi',
                     colors: 'Indikator Warna: Biru artinya syarat sedang dipenuhi.',
                     holding: 'Holding Time: Tambahkan durasi agar status tidak pindah terlalu cepat.',
-                    refresh: 'Refresh: Jika data macet, simpan dan refresh browser.'
+                    refresh: 'Refresh: Jika data macet, simpan dan refresh browser.',
                 },
-                close: 'Tutup Panduan'
+                ruleTypes: {
+                    title: '4. Tipe Rule (Aturan)',
+                    POSE_ANGLE: {
+                        label: 'Joint Angle',
+                        desc: 'Sudut sendi (Siku < 90°).',
+                        usage: 'Guna: Cek postur tubuh/ergonomi.',
+                    },
+                    POSE_RELATION: {
+                        label: 'Pose Relation (XYZ)',
+                        desc: 'Posisi relatif (Wrist Y < Nose Y).',
+                        usage: 'Guna: Cek posisi tangan vs badan.',
+                    },
+                    POSE_VELOCITY: {
+                        label: 'Pose Velocity',
+                        desc: 'Kecepatan gerak sendi.',
+                        usage: 'Guna: Deteksi diam (tunggu) atau gerakan cepat.',
+                    },
+                    OBJECT_PROXIMITY: {
+                        label: 'Object Proximity',
+                        desc: 'Jarak tangan ke objek.',
+                        usage: 'Guna: Deteksi ambil/taruh barang.',
+                    },
+                    OBJECT_IN_ROI: {
+                        label: 'Object in ROI',
+                        desc: 'Objek masuk area.',
+                        usage: 'Guna: Safety zone atau deteksi material masuk.',
+                    },
+                    OPERATOR_PROXIMITY: {
+                        label: 'Operator Proximity',
+                        desc: 'Jarak operator ke kamera/titik.',
+                        usage: 'Guna: Cek apakah operator di stasiun kerja.',
+                    },
+                    POSE_MATCHING: {
+                        label: 'Golden Pose Match',
+                        desc: 'Kemiripan dengan foto referensi.',
+                        usage: 'Guna: Validasi postur kompleks (SOP).',
+                    },
+                    ADVANCED_SCRIPT: {
+                        label: 'Advanced Script',
+                        desc: 'Logika custom (DSL).',
+                        usage: 'Guna: Skenario rumit (Logika AND/OR).',
+                    },
+                    TEACHABLE_MACHINE: {
+                        label: 'Teachable Machine',
+                        desc: 'Klasifikasi AI kustom.',
+                        usage: 'Guna: Deteksi aktivitas kompleks (e.g. "Working").',
+                    },
+                },
+                useCases: {
+                    title: '5. 📚 Contoh Kasus Penggunaan',
+                    case1: {
+                        title: 'Case 1: Hitung Rakitan',
+                        desc: 'Hitung cycle saat tangan ambil part.',
+                        rule: 'Rule: Hand Proximity < 10cm ke Box.',
+                    },
+                    case2: {
+                        title: 'Case 2: Safety Zone',
+                        desc: 'Alarm jika tangan masuk mesin.',
+                        rule: 'Rule: Object in ROI (Hand in Danger Zone).',
+                    },
+                    case3: {
+                        title: 'Case 3: Ergonomi',
+                        desc: 'Cegah kerja tangan di atas kepala.',
+                        rule: 'Script: right_wrist.y < nose.y',
+                    },
+                    case4: {
+                        title: 'Case 4: Dua Tangan',
+                        desc: 'Wajib angkat dengan 2 tangan.',
+                        rule: 'Script: dist(L_Hand) < 0.1 && dist(R_Hand) < 0.1',
+                    },
+                },
+                exampleCycle: {
+                    title: '6. 🏭 Contoh Step-by-Step (Siklus Mesin CNC)',
+                    scenario: 'Skenario: Operator menjalankan mesin, merakit, dan memindahkan barang.',
+                    step1: 'Tekan Tombol MSIN ON: Rule: Object Proximity (Kanan < 5cm ke "Start Button").',
+                    step2: 'Ambil Baut: Rule: Hand Proximity (Kiri < 10cm ke "Box Baut").',
+                    step3: 'Pasang Baut: Rule: Pose Relation (Kiri < Dada Y).',
+                    step4: 'Pindah Belakang (Mundur): Rule: Pose Relation (Ankle Y > Line Batas Lantai).',
+                    step5: 'Periksa Barang (Inspeksi): Rule: Pose Angle (Leher Angle < 150°).',
+                    step6: 'Tekan Tombol RUN: Rule: Object Proximity (Kanan < 5cm ke "Panel Run").',
+                    step7: 'Tunggu Mesin Berhenti: Rule: Pose Velocity (Semua Sendi < 10).',
+                    step8: 'Ambil Barang Jadi: Rule: Hand Proximity (Kedua Tangan < 10cm ke "Machine Chuck").',
+                    step9: 'Taruh di Meja: Rule: Object Proximity (Object < 5cm ke "Meja Finish").',
+                },
+                aiIntegration: {
+                    title: '7. 🤖 Integrasi Teachable Machine',
+                    desc: 'Gunakan model klasifikasi kustom dari Teachable Machine.',
+                    connectTitle: 'A. Cara Menghubungkan:',
+                    connectStep1: 'Buka tab Settings → Klik Add Model.',
+                    connectStep2: 'Masukkan URL model (Online) atau upload 3 file (Offline).',
+                    usageTitle: 'B. Cara Menggunakan di Rule:',
+                    usageDesc: 'Di Rule Editor, pilih tipe Teachable Machine → Pilih Model → Masukkan Target Class.',
+                },
+                accuracyAnalysis: {
+                    title: '8. ⚖️ Analisa Akurasi',
+                    typeLogic: 'Tipe Logic',
+                    pros: 'Kelebihan (Pros)',
+                    cons: 'Kekurangan (Cons)',
+                    poseJoint: {
+                        label: 'Pose/Joint',
+                        pros: 'Sangat cepat, real-time 30FPS.',
+                        cons: 'Gagal jika badan tertutup.',
+                    },
+                    objectDetection: {
+                        label: 'Object Detection',
+                        pros: 'Mengenali alat spesifik.',
+                        cons: 'Lebih berat (FPS turun).',
+                    },
+                },
+                close: 'Tutup Panduan',
             },
             modelBuilder: {
                 title: 'Model Builder',
@@ -2731,7 +3147,7 @@ export const translations = {
                     steps: 'Langkah',
                     data: 'Data',
                     test: 'Uji Coba',
-                    settings: 'Pengaturan'
+                    settings: 'Pengaturan',
                 },
                 buttons: {
                     save: 'Simpan',
@@ -2739,6 +3155,8 @@ export const translations = {
                     redo: 'Redo',
                     help: 'Bantuan',
                     close: 'Tutup',
+                    you: 'Anda',
+                    aiAssistant: 'Asisten AI',
                     changeVideo: 'Ganti Video',
                     uploadVideo: 'Upload Video',
                     referenceVideo: 'Video Referensi',
@@ -2757,7 +3175,7 @@ export const translations = {
                     onExit: 'Saat Keluar State',
                     delete: 'Hapus',
                     backToVideo: 'Kembali ke Video',
-                    backToCamera: 'Kembali ke Kamera'
+                    backToCamera: 'Kembali ke Kamera',
                 },
                 labels: {
                     motionTimeline: 'TIMELINE GERAKAN',
@@ -2794,7 +3212,8 @@ export const translations = {
                     simulator: 'Simulator',
                     addState: 'Tambah State',
                     backToList: 'Kembali ke Daftar',
-                    definedStates: 'State Terdefinisi'
+                    definedStates: 'State Terdefinisi',
+                    videoSidebar: 'SIDEBAR VIDEO',
                 },
                 measure: {
                     result: 'HASIL',
@@ -2805,18 +3224,18 @@ export const translations = {
                     ruler: 'PENGGARIS',
                     measureDistance: 'Ukur Jarak',
                     measureAngle: 'Ukur Sudut',
-                    clear: 'Hapus Pengukuran'
+                    clear: 'Hapus Pengukuran',
                 },
                 projectPicker: {
                     title: 'Pilih Video Proyek',
                     noProjects: 'Tidak ada proyek ditemukan.',
-                    select: 'Pilih'
+                    select: 'Pilih',
                 },
                 ipCamera: {
                     title: 'Rekam dari Kamera IP',
                     streamUrl: 'URL Stream Kamera (MJPEG/HTTP)',
                     recording: 'REK',
-                    previewHint: 'Masukkan URL kamera untuk pratinjau atau ganti ke Simulator'
+                    previewHint: 'Masukkan URL kamera untuk pratinjau atau ganti ke Simulator',
                 },
                 rules: {
                     types: {
@@ -2831,7 +3250,7 @@ export const translations = {
                         TEACHABLE_MACHINE: 'Teachable Machine',
                         ROBOFLOW_DETECTION: 'Deteksi Roboflow',
                         CVAT_MODEL: 'CVAT / Model Kustom',
-                        ADVANCED_SCRIPT: 'Skrip Lanjutan (DSL)'
+                        ADVANCED_SCRIPT: 'Skrip Lanjutan (DSL)',
                     },
                     operators: {
                         LESS: '<',
@@ -2840,13 +3259,82 @@ export const translations = {
                         GREATER_EQUAL: '>=',
                         EQUAL: '=',
                         NOT_EQUAL: '!=',
-                        BETWEEN: 'Di antara'
+                        BETWEEN: 'Di antara',
                     },
                     conditionMet: 'Kondisi Terpenuhi',
                     noMatch: 'Tidak Cocok',
                     ready: 'Siap',
                     mustBeIn: 'harus di',
-                    distanceTo: 'jarak ke'
+                    distanceTo: 'jarak ke',
+                    rulesEditor: {
+                        addTransition: 'Tambah Transisi',
+                        fromState: 'Dari State',
+                        toState: 'Ke State',
+                        add: 'Tambah',
+                        noTransitions: 'Belum ada transisi yang ditentukan',
+                        definePaths: 'Tentukan jalur transisi state di atas',
+                        unknownState: 'State Tidak Diketahui',
+                        hysteresis: 'Histeresis',
+                        seconds: 'detik',
+                        conditions: 'Kondisi',
+                        ruleHash: 'Aturan #',
+                        invertNOT: 'Inversi (TIDAK)',
+                        duplicateRule: 'Duplikasi Aturan',
+                        addRuleCondition: 'Tambah Kondisi Aturan',
+                        aiSuggestRule: 'Saran Aturan AI',
+                        aiThinking: 'AI Sedang Berpikir...',
+                        targetJoint: 'Sendi Target',
+                        selectObject: 'Pilih Objek',
+                        customNamePlaceholder: 'Nama kustom...',
+                        toggleCustomName: 'Ganti Nama Kustom',
+                        currentState: 'ROI State Saat Ini',
+                        anyDefault: 'Apa saja (Default)',
+                        units: 'unit',
+                        threshold: 'Ambang Batas',
+                        windowSize: 'Ukuran Jendela',
+                        frames: 'frame',
+                        startMarker: 'Penanda Mulai (s)',
+                        finishMarker: 'Penanda Selesai (s)',
+                        setToCurrentVideoTime: 'Atur ke waktu video saat ini',
+                        set: 'Atur',
+                        templateCaptured: '{{count}} frame berhasil diambil',
+                        noTemplateRecorded: 'Tidak ada templat yang direkam',
+                        readyToMatch: 'Siap untuk pencocokan dengan gerakan langsung',
+                        selectRangeCapture: 'Pilih rentang dan ambil untuk membuat templat',
+                        selectRange: 'Pilih Rentang Terlebih Dahulu',
+                        captureRange: 'Ambil Rentang',
+                        motionStorage: 'Penyimpanan Gerakan',
+                        playVideoBuildMemory: '▶ Putar video untuk membangun memori gerakan',
+                        referenceStored: 'Gerakan referensi berhasil disimpan',
+                        matchAgainstState: 'Cocokkan Terhadap State',
+                        selectState: 'Pilih State',
+                        roboflowModel: 'Model Roboflow',
+                        customModel: 'Model Kustom',
+                        model: 'Model',
+                        targetClass: 'Kelas Target',
+                        targetClassPlaceholder: 'mis., orang',
+                        advancedScriptPlaceholder: 'Tulis logika JavaScript kustom...\nContoh: pose.keypoints[0].y < 0.5',
+                        aiLogicCheck: 'Cek Logika AI',
+                        advancedScriptTips: 'Tip: Gunakan variabel "pose", "objects", "hands". Kembalikan true/false.',
+                        predictionTolerance: 'Toleransi Prediksi',
+                        resilient: 'Resilien',
+                        strict: 'Ketat',
+                        deg: 'derajat',
+                        value: 'Nilai',
+                        point: 'Titik',
+                        self: 'Diri Sendiri',
+                        nearestOther: 'Terdekat Lainnya',
+                        anyOther: 'Lainnya Apa Saja',
+                        track: 'Track',
+                    },
+                    jointSelector: {
+                        title: 'Pemilih Keypoint Visual',
+                        subtitle: 'Seluruh 33 titik (BlazePose + Detail Tangan)',
+                        selected: 'Terpilih',
+                        majorJoint: 'Sendi Utama',
+                        detailPoint: 'Titik Detail (Wajah/Tangan)',
+                        precicePoseLogic: 'Klik titik untuk Logika Pose yang presisi. Berfungsi optimal dalam mode Body-Centric.',
+                    },
                 },
                 step: 'Langkah',
                 prompts: {
@@ -2857,7 +3345,7 @@ export const translations = {
                     versionName: 'Masukkan nama versi (contoh: "V1 Draf Awal"):',
                     restoreVersion: 'Pulihkan versi "{{version}}"? Perubahan yang belum disimpan akan hilang.',
                     deleteVersion: 'Hapus versi "{{version}}"?',
-                    templateLoad: 'Muat "{{name}}"? Ini akan MENGGANTI model saat ini.'
+                    templateLoad: 'Muat "{{name}}"? Ini akan MENGGANTI model saat ini.',
                 },
                 settings: {
                     title: 'Pengaturan Model',
@@ -2868,7 +3356,7 @@ export const translations = {
                     coordinateSystem: 'Sistem Koordinat',
                     screen: 'Layar (Absolut 0-1)',
                     bodyCentric: 'Berpusat pada Tubuh (Relatif ke Pinggul)',
-                    bodyCentricHint: 'Body-Centric disarankan untuk presisi. Tetap akurat meskipun operator bergerak atau kamera bergeser. (0,0) adalah pusat pinggul.'
+                    bodyCentricHint: 'Body-Centric disarankan untuk presisi. Tetap akurat meskipun operator bergerak atau kamera bergeser. (0,0) adalah pusat pinggul.',
                 },
                 teachableMachine: {
                     title: 'Model Teachable Machine',
@@ -2879,7 +3367,7 @@ export const translations = {
                     pose: 'Pose',
                     loading: 'Memuat Model...',
                     offlineMode: 'Mode Offline: Unggah File',
-                    loadFiles: 'Muat File'
+                    loadFiles: 'Muat File',
                 },
                 roboflow: {
                     title: 'Model Roboflow',
@@ -2887,14 +3375,14 @@ export const translations = {
                     apiKey: 'API Key',
                     projectId: 'Project ID',
                     version: 'Ver.',
-                    noModels: 'Tidak ada model Roboflow yang dikonfigurasi.'
+                    noModels: 'Tidak ada model Roboflow yang dikonfigurasi.',
                 },
                 portability: {
                     title: 'Portabilitas & Template',
                     exportJson: 'Ekspor JSON',
                     importJson: 'Impor JSON',
                     loadTemplate: 'Muat dari Pustaka Template',
-                    selectTemplate: 'Pilih Template Gerakan'
+                    selectTemplate: 'Pilih Template Gerakan',
                 },
                 extraction: {
                     title: 'Data Ekstraksi Pose',
@@ -2902,7 +3390,7 @@ export const translations = {
                     trackingLive: 'Pelacakan Aktif',
                     noData: 'Tidak Ada Data',
                     keypoint: 'Titik Kunci',
-                    conf: 'Konf'
+                    conf: 'Konf',
                 },
                 indicators: {
                     referenceCaptured: '✓ Pose Referensi Tertangkap',
@@ -2917,13 +3405,13 @@ export const translations = {
                     systemReady: 'Sistem siap. Tekan Putar pada video untuk memulai simulasi.',
                     waiting: 'Menunggu...',
                     noSignals: 'Tidak ada sinyal aktif',
-                    completeCycle: 'Selesaikan satu siklus untuk melihat analitik'
+                    completeCycle: 'Selesaikan satu siklus untuk melihat analitik',
                 },
                 tooltips: {
                     restoreLayout: 'Kembalikan Tata Letak',
                     maximizeEditor: 'Maksimalkan Editor',
-                    changeVideo: 'Ganti atau unggah video baru'
-                }
+                    changeVideo: 'Ganti atau unggah video baru',
+                },
             },
             vsm: {
                 title: 'Value Stream Map',
@@ -2955,7 +3443,7 @@ export const translations = {
                     replace: 'Ganti (Replace)',
                     replaceDesc: 'Hapus semua & muat baru',
                     merge: 'Gabung (Merge)',
-                    mergeDesc: 'Tambahkan ke canvas saat ini'
+                    mergeDesc: 'Tambahkan ke canvas saat ini',
                 },
                 currentState: 'Current State',
                 futureState: 'Future State',
@@ -3002,7 +3490,7 @@ export const translations = {
                     supplier: 'Pemasok',
                     logistic: 'Logistik',
                     process: 'Proses',
-                    failCause: 'Penyebab Kegagalan:'
+                    failCause: 'Penyebab Kegagalan:',
                 },
                 confirmDeleteNode: 'Hapus simbol yang dipilih?',
                 confirmDeleteIcon: 'Hapus ikon ini?',
@@ -3041,7 +3529,7 @@ export const translations = {
                     paramTime: 'Time: Berapa lama stok bertahan (Hari) = Stok / Daily Demand.',
                     customerTitle: 'Customer / Supplier (Pabrik)',
                     paramDemand: 'Demand: Permintaan pelanggan per hari.',
-                    paramTakt: 'Takt Time: Irama produksi yang dibutuhkan = Waktu Tersedia / Demand.'
+                    paramTakt: 'Takt Time: Irama produksi yang dibutuhkan = Waktu Tersedia / Demand.',
                 },
                 simulation: {
                     start: 'Mulai Simulasi',
@@ -3050,7 +3538,7 @@ export const translations = {
                     shortage: 'SHORTAGE!',
                     demandMet: 'Demand Terpenuhi',
                     delivering: 'Mengirim...',
-                    title: 'Simulasi Aliran'
+                    title: 'Simulasi Aliran',
                 },
                 toolbox: {
                     title: 'VSM Toolbox',
@@ -3093,12 +3581,12 @@ export const translations = {
                     generalNotes: 'CATATAN UMUM',
                     stickyNote: 'Catatan Tempel',
                     customIcons: 'IKON SAYA',
-                    uploadIcon: 'Unggah Ikon'
+                    uploadIcon: 'Unggah Ikon',
                 },
                 wizard: {
                     title: 'MAGIC WIZARD',
                     generateSuccess: '✅ Template "{{name}}" berhasil dihasilkan!',
-                    generateError: '❌ Gagal menghasilkan template VSM.'
+                    generateError: '❌ Gagal menghasilkan template VSM.',
                 },
                 customerTitle: 'Konfigurasi Pelanggan',
                 customerDesc: 'Tentukan siapa pelanggan Anda dan seberapa besar permintaan mereka.',
@@ -3142,7 +3630,7 @@ export const translations = {
                 generate: 'Hasilkan VSM',
                 rawMatWh: 'WH RAW MAT',
                 fgWh: 'WH FINISHED GOODS',
-                shipping: 'SHIPPING'
+                shipping: 'SHIPPING',
             },
             ai: {
                 title: 'Generate VSM dari Deskripsi',
@@ -3160,7 +3648,7 @@ export const translations = {
                 cancelButton: 'Batal',
                 charCount: 'karakter',
                 tip: 'Sertakan cycle time, operator, inventory, DAN aliran informasi (production control, kanban, forecast) untuk VSM lengkap.',
-                loadConfirm: 'Ditemukan {{nodes}} node & {{edges}} koneksi.\n\nOK = {{replace}}\nCancel = {{merge}}'
+                loadConfirm: 'Ditemukan {{nodes}} node & {{edges}} koneksi.\n\nOK = {{replace}}\nCancel = {{merge}}',
             },
             analysis: {
                 taktTime: 'Takt Time',
@@ -3244,7 +3732,7 @@ export const translations = {
                 availTime: 'Waktu Tersedia',
                 dailyDemand: 'Permintaan Harian',
                 spareCapacity: 'Kapasitas Cadangan',
-                totalCO: 'Total Waktu C/O'
+                totalCO: 'Total Waktu C/O',
             },
             nodeDetails: {
                 title: 'Node Details',
@@ -3261,7 +3749,7 @@ export const translations = {
                 customerName: 'Customer Name',
                 dailyDemand: 'Daily Demand',
                 truckFrequency: 'Freq/Shift',
-                leadTime: 'Lead Time'
+                leadTime: 'Lead Time',
             },
             nodes: {
                 bottleneck: 'BOTTLENECK',
@@ -3292,7 +3780,7 @@ export const translations = {
                 operators: 'Operator',
                 pacemaker: 'PACEMAKER',
                 shared: 'SHARED',
-                outside: 'DILUAR'
+                outside: 'DILUAR',
             },
             scenarios: {
                 title: 'Scenario',
@@ -3314,7 +3802,7 @@ export const translations = {
                 nameRequired: 'Masukkan nama scenario!',
                 noSimToSave: 'Tidak ada simulasi untuk disimpan!',
                 fulfilledQty: 'Qty Terpenuhi',
-                demand: 'Permintaan'
+                demand: 'Permintaan',
             },
             logs: {
                 title: 'Log',
@@ -3332,14 +3820,14 @@ export const translations = {
                 secondsAgo: '{{count}}d lalu',
                 minutesAgo: '{{count}}m lalu',
                 level: 'Level:',
-                time: 'Waktu:'
+                time: 'Waktu:',
             },
             workspace: {
                 saveAsProject: 'Simpan ke Proyek',
                 openInWorkspace: 'Buka di Workspace',
                 newProjectPrompt: 'Masukkan nama proyek:',
                 saveClipAsProject: 'Simpan Klip ke Proyek',
-                cuttingVideo: 'Memotong segmen video...'
+                cuttingVideo: 'Memotong segmen video...',
             },
             yamazumi: {
                 title: 'Visualisasi Keseimbangan Kerja',
@@ -3378,15 +3866,134 @@ export const translations = {
                 balanced: 'Seimbang',
                 loadingProjects: 'Memuat Proyek...',
                 aiEngineer: 'Insinyur Industri AI',
-                aiSubtitle: 'Analisis grafik Yamazumi ini'
+                aiSubtitle: 'Analisis grafik Yamazumi ini',
             },
             categories: {
                 valueAdded: 'Value Added',
                 nonValueAdded: 'Non Value Added',
-                waste: 'Waste'
-            }
-        }
+                waste: 'Waste',
+            },
+            common: {
+                you: 'Anda',
+                aiAssistant: 'Asisten AI',
+                save: 'Simpan',
+                cancel: 'Batal',
+                delete: 'Hapus',
+                close: 'Tutup',
+            },
+            settings: {
+                title: 'Pengaturan Global',
+                language: 'Bahasa',
+                theme: 'Tema',
+                ai: 'Konfigurasi AI',
+                provider: 'Penyedia AI',
+                ollama: 'AI Lokal (Ollama)',
+                apiKey: 'API Key',
+                model: 'Model',
+                testConnection: 'Tes Koneksi',
+                save: 'Simpan Perubahan',
+                cancel: 'Batal',
+                openRouterHeaders: 'Header OpenRouter (Otomatis)',
+                testSuccess: 'Terhubung!',
+                testFailed: 'Gagal',
+                system: 'Sistem',
+                editManual: 'Edit Manual',
+            },
+        },
+        videoWorkspace: {
+            pen: 'Pena',
+            line: 'Garis',
+            arrow: 'Panah',
+            rectangle: 'Kotak',
+            circle: 'Lingkaran',
+            text: 'Teks',
+            uploadVideo: 'Unggah Video',
+            uploadOrIP: 'Unggah Video / Kamera IP',
+            showDrawingTools: 'Tampilkan Alat Gambar',
+            hideDrawingTools: 'Sembunyikan Alat Gambar',
+            showCameraPanel: 'Tampilkan Panel Kamera',
+            hideCameraPanel: 'Sembunyikan Panel Kamera',
+            ergonomicAnalysis: 'Analisis Ergonomi',
+            aiAnalysis: 'Analisis AI',
+            fullscreen: 'Layar Penuh',
+            exitFullscreen: 'Keluar Layar Penuh',
+        },
+        elementEditor: {
+            title: 'Editor Elemen',
+            addElement: 'Tambah Elemen',
+            editElement: 'Edit Elemen',
+            deleteElement: 'Hapus Elemen',
+            elementName: 'Nama Elemen',
+            startTime: 'Waktu Mulai',
+            endTime: 'Waktu Selesai',
+            duration: 'Durasi',
+            category: 'Kategori',
+            therbligType: 'Tipe Therblig',
+            notes: 'Catatan',
+            startMeasurement: 'Mulai Pengukuran',
+            endMeasurement: 'Selesai Pengukuran',
+            cancelMeasurement: 'Batalkan Pengukuran',
+            measuring: 'Mengukur...',
+            noElements: 'Belum ada elemen',
+            confirmDelete: 'Hapus elemen ini?',
+            saveToDb: 'Simpan ke Database',
+            quickMode: 'Mode Cepat',
+            autoCounter: 'Penghitung Otomatis',
+            showDashboard: 'Tampilkan Dasbor',
+            hideDashboard: 'Sembunyikan Dasbor',
+            selectAnElement: 'Pilih elemen terlebih dahulu',
+            nextCycle: 'Siklus Berikutnya',
+            prevCycle: 'Siklus Sebelumnya',
+            zoomLevel: 'Level Zoom',
+            playbackSpeed: 'Kecepatan Pemutaran',
+            actions: 'Aksi',
+            cycle: 'Siklus',
+            process: 'Proses',
+            manual: 'Manual',
+            auto: 'Otomatis',
+            walk: 'Berjalan',
+            loss: 'Rugi (L)',
+            rating: 'Rating %',
+            normalTime: 'Waktu Normal (s)',
+            standardTime: 'Waktu Standar (s)',
+            emptyElements: 'Belum ada elemen. Mulai pengukuran untuk menambah elemen.',
+            noFilterMatch: 'Tidak ada elemen yang cocok dengan filter.',
+            exporting: 'Mengekspor...',
+            exportSuccess: 'Ekspor Berhasil!',
+            exportFailed: 'Ekspor Gagal',
+            preparingExcel: 'Menyiapkan file Excel...',
+            showingElements: 'Menampilkan {{filtered}} dari {{total}} elemen',
+            errors: {
+                positiveTimes: 'Waktu Mulai dan Selesai harus berupa angka positif.',
+                startLessFinish: 'Waktu Mulai harus lebih kecil dari Waktu Selesai.',
+                totalSplitExceeds: 'Total waktu pemecahan tidak boleh melebihi durasi elemen.',
+            },
+            ratingSpeed: 'Kecepatan Rating',
+            stopTracking: 'Hentikan Pelacakan {{type}}',
+            startTracking: 'Mulai Pelacakan {{type}}',
+            quickModeHint: 'Mode Cepat Aktif: Tekan <kbd>M</kbd> untuk mulai/akhir pengukuran. Elemen diberi nama otomatis.',
+            elements: 'Elemen',
+            cycles: 'Siklus',
+            untitled: 'Tanpa Judul',
+            exitFullscreen: 'Keluar Layar Penuh',
+            fullscreenEditor: 'Editor Layar Penuh',
+            allowanceSettings: 'Pengaturan Allowance',
+            toggleColumns: 'Sembunyikan/Tampilkan Kolom',
+            searchPlaceholder: 'Cari elemen...',
+            sortBy: 'Urutkan berdasarkan',
+            sortOriginal: 'Urutan Asli',
+            sortCycle: 'Siklus',
+            sortDuration: 'Durasi (Terpanjang)',
+            sortName: 'Nama (A-Z)',
+            selectOption: '-- Pilih --',
+            total: 'Total',
+            splitTimePrompt: 'Masukkan waktu pemecahan (antara {{start}}s - {{end}}s):',
+            invalidSplitTime: 'Waktu pemecahan tidak valid! Harus di antara waktu mulai dan selesai.',
+            toggleRatingSpeed: 'Beralih Kecepatan Rating',
+            zoomLevelTitle: 'Level Zoom',
+        },
     },
+
     ja: {
         // Japanese
         fileExplorer: {
@@ -3419,12 +4026,11 @@ export const translations = {
             measurements: '測定',
             designAction: '設計',
             globalMap: 'グローバルマップ',
-            noVideoShort: '動画なし'
+            noVideoShort: '動画なし',
         },
-
         app: {
             title: 'MAVi - 動作分析と可視化',
-            welcome: 'MAViへようこそ'
+            welcome: 'MAViへようこそ',
         },
         header: {
             mainMenu: 'メインメニュー',
@@ -3464,7 +4070,7 @@ export const translations = {
             diagnostics: 'システム診断',
             pitchDeck: 'ピッチデッキ',
             standardWorkLayout: 'スパゲッティ図 (Motion Analysis)',
-            ergoCopilot: 'エルゴ・コパイロット'
+            ergoCopilot: 'エルゴ・コパイロット',
         },
         complianceDashboard: {
             title: 'リアルタイム・コンプライアンス・ダッシュボード',
@@ -3507,7 +4113,7 @@ export const translations = {
             selectModel: '-- モデルを選択 --',
             saveConfiguration: '設定を保存',
             configuredStations: '設定済みステーション',
-            deleteStation: 'ステーションを削除'
+            deleteStation: 'ステーションを削除',
         },
         ergoCopilot: {
             title: 'エルゴ・コパイロット',
@@ -3544,7 +4150,7 @@ export const translations = {
             high: '高い',
             'high risk': '高リスク',
             'very high': '非常に高い',
-            'very high risk': '極めて高いリスク'
+            'very high risk': '極めて高いリスク',
         },
         spaghettiChart: {
             title: 'スパゲッティ図分析',
@@ -3556,7 +4162,7 @@ export const translations = {
                 partNo: '品番',
                 machine: '設備',
                 author: '作成者',
-                date: '日付'
+                date: '日付',
             },
             toolbox: {
                 station: 'オペレーター・ステーション',
@@ -3564,7 +4170,7 @@ export const translations = {
                 machine: '加工ユニット',
                 qc: '品質検査',
                 parts: '仕掛品バッファ',
-                clear: 'キャンバスをクリア'
+                clear: 'キャンバスをクリア',
             },
             simulation: {
                 run: 'シミュレーション実行',
@@ -3585,7 +4191,7 @@ export const translations = {
                 taktViolation: 'タクト違反!',
                 uShapeOptimize: 'U字型セル最適化',
                 applyingUShape: 'U字型レイアウトを適用中...',
-                uShapeRecommendation: 'U字型推奨'
+                uShapeRecommendation: 'U字型推奨',
             },
             helpGuide: {
                 title: 'スパゲッティ図ガイド',
@@ -3594,18 +4200,18 @@ export const translations = {
                 step2: 'ノードを接続して作業順序を作成。',
                 step3: 'AI最適化を使用して歩行距離を最小化。',
                 step4: 'U字型を使用して最高の製造セルを作成。',
-                step5: 'ノードをクリックして手作業/機械時間を編集。'
+                step5: 'ノードをクリックして手作業/機械時間を編集。',
             },
             aiChat: {
                 title: 'Maviリーン・アシスタント',
                 subtitle: 'トヨタ生産方式 (TPS) エキスパート',
                 placeholder: 'レイアウト最適化について質問...',
-                systemPrompt: 'あなたはトヨタ生産方式（TPS）のエキスパートです。ユーザーのスパゲッティ図の最適化を支援してください。歩行の削減、オペレーターのバランス、セルレイアウトについてアドバイスを提供してください。'
+                systemPrompt: 'あなたはトヨタ生産方式（TPS）のエキスパートです。ユーザーのスパゲッティ図の最適化を支援してください。歩行の削減、オペレーターのバランス、セルレイアウトについてアドバイスを提供してください。',
             },
             empty: {
                 title: 'スパゲッティデータなし',
-                desc: 'プロジェクトを選択してスパゲッティ図分析を開始してください。'
-            }
+                desc: 'プロジェクトを選択してスパゲッティ図分析を開始してください。',
+            },
         },
         vsm: {
             title: 'バリューストリームマップ (VSM)',
@@ -3635,7 +4241,7 @@ export const translations = {
                 confirmTitle: '読み込み確認',
                 loadQuestion: 'テンプレート "{{name}}" を読み込もうとしています。どのように処理しますか？',
                 replaceDesc: 'すべてクリアして新規読み込み',
-                mergeDesc: '現在のキャンバスに追加'
+                mergeDesc: '現在のキャンバスに追加',
             },
             currentState: '現状 (Current State)',
             futureState: '将来 (Future State)',
@@ -3683,7 +4289,7 @@ export const translations = {
                 supplier: 'サプライヤー',
                 logistic: '物流',
                 process: '工程',
-                failCause: '失敗原因:'
+                failCause: '失敗原因:',
             },
             confirmDeleteNode: '選択したノードを削除しますか？',
             confirmDeleteIcon: 'このアイコンを削除しますか？',
@@ -3697,7 +4303,7 @@ export const translations = {
                 shortage: '欠品発生！',
                 demandMet: '需要達成',
                 delivering: '配送中...',
-                title: '流れのシミュレーション'
+                title: '流れのシミュレーション',
             },
             supplyChain: {
                 title: 'サプライチェーンシミュレーション',
@@ -3722,7 +4328,7 @@ export const translations = {
                 issue: '問題',
                 runPrompt: '「シミュレーション実行」をクリックして分析結果を表示してください。',
                 runFirst: '先にシミュレーションを実行してください！',
-                customerNotFound: '顧客ノードが見つかりません！'
+                customerNotFound: '顧客ノードが見つかりません！',
             },
             help: {
                 mainTitle: 'バリューストリームマップ (VSM) の使い方',
@@ -3741,7 +4347,7 @@ export const translations = {
                 advancedHeading: '高度なTPS機能',
                 yamazumiDesc: 'タクトタイムに対する作業バランスを視覚化します。',
                 epeiDesc: '生産の柔軟性を分析します（Every Part Every Interval）。',
-                timelineDesc: '下部のタイムラインラダーがリードタイムと付加価値時間のステップを表示します。'
+                timelineDesc: '下部のタイムラインラダーがリードタイムと付加価値時間のステップを表示します。',
             },
             toolbox: {
                 title: 'VSMツールボックス',
@@ -3782,7 +4388,7 @@ export const translations = {
                 stickyNote: '付箋 / テキスト',
                 customIcons: 'カスタムアイコン',
                 uploadIcon: 'アイコンをアップロード',
-                scrollZoom: 'スクロールでズーム'
+                scrollZoom: 'スクロールでズーム',
             },
             wizard: {
                 title: 'マジックウィザード',
@@ -3827,7 +4433,7 @@ export const translations = {
                 generate: 'VSMを生成',
                 rawMatWh: '材料倉庫',
                 fgWh: '製品倉庫',
-                shipping: '出荷'
+                shipping: '出荷',
             },
             ai: {
                 title: '説明からVSMを生成',
@@ -3843,7 +4449,7 @@ export const translations = {
                 generateButton: 'VSM生成',
                 cancelButton: 'キャンセル',
                 charCount: '文字',
-                tip: '正確なVSMを作成するには、サイクルタイム、オペレーター数、在庫量、情報の流れ（生産管理、かんばん、予測）を含めてください。'
+                tip: '正確なVSMを作成するには、サイクルタイム、オペレーター数、在庫量、情報の流れ（生産管理、かんばん、予測）を含めてください。',
             },
             analysis: {
                 epeiTitle: 'EPEI分析 (Every Part Every Interval)',
@@ -3917,7 +4523,7 @@ export const translations = {
                 availTime: '稼働可能時間',
                 dailyDemand: '1日需要',
                 spareCapacity: '余裕能力',
-                totalCO: '合計切替時間'
+                totalCO: '合計切替時間',
             },
             nodes: {
                 bottleneck: 'ボトルネック',
@@ -3944,8 +4550,8 @@ export const translations = {
                 operators: '作業員',
                 pacemaker: 'ペースメーカー',
                 shared: '共用',
-                outside: '外部'
-            }
+                outside: '外部',
+            },
         },
         common: {
             front: '前',
@@ -3959,6 +4565,8 @@ export const translations = {
             delete: '削除',
             edit: '編集',
             close: '閉じる',
+            you: 'あなた',
+            aiAssistant: 'AIアシスタント',
             upload: 'アップロード',
             export: '出力',
             import: '入力',
@@ -3987,12 +4595,12 @@ export const translations = {
             alignTop: '上揃え',
             exportAsPng: 'PNGとして出力',
             color: '色',
-            normal: '標準'
+            normal: '標準',
         },
         categories: {
             valueAdded: '付加価値',
             nonValueAdded: '非付加価値',
-            waste: 'ムダ'
+            waste: 'ムダ',
         },
         project: {
             newProject: '新規プロジェクト',
@@ -4010,11 +4618,11 @@ export const translations = {
                 nameRequired: 'プロジェクト名は必須です',
                 videoRequired: 'ビデオファイルを選択してください',
                 nameExists: 'その名前はすでに使用されています',
-                notFound: 'プロジェクトが見つかりません'
+                notFound: 'プロジェクトが見つかりません',
             },
             folderOptional: 'フォルダ (任意)',
             rootNoFolder: 'ルート (フォルダなし)',
-            videoSelected: 'ビデオ選択済み'
+            videoSelected: 'ビデオ選択済み',
         },
         measurement: {
             startMeasurement: '計測開始',
@@ -4023,14 +4631,14 @@ export const translations = {
             category: 'カテゴリー',
             duration: '時間',
             startTime: '開始時刻',
-            endTime: '終了時刻'
+            endTime: '終了時刻',
         },
         landing: {
             nav: {
                 features: '機能',
                 solutions: 'ソリューション',
                 login: 'ログイン',
-                startDemo: 'デモ開始'
+                startDemo: 'デモ開始',
             },
             hero: {
                 newBadge: '✨ 新機能: AIマニュアル生成',
@@ -4038,7 +4646,7 @@ export const translations = {
                 highlight: 'インテリジェント分析',
                 subtitle: 'MAViは高度なコンピュータビジョンを使用してワークフローを分析し、標準時間を計算し、自動的にムダを特定します。生産性を最大40％向上させます。',
                 ctaPrimary: '無料デモを開始',
-                ctaSecondary: '詳細を見る'
+                ctaSecondary: '詳細を見る',
             },
             solutions: {
                 title: 'なぜMAViを選ぶのか？',
@@ -4047,105 +4655,105 @@ export const translations = {
                 old: {
                     stopwatch: {
                         title: '手動ストップウォッチ',
-                        desc: '人間の反応速度に依存する不正確なタイミング。'
+                        desc: '人間の反応速度に依存する不正確なタイミング。',
                     },
                     paper: {
                         title: '紙とクリップボード',
-                        desc: 'データは紙に閉じ込められ、後でExcelへの手動入力が必要です。'
+                        desc: 'データは紙に閉じ込められ、後でExcelへの手動入力が必要です。',
                     },
                     subjective: {
                         title: '主観的分析',
-                        desc: '同じタスクでも、エンジニアによって結果が異なります。'
-                    }
+                        desc: '同じタスクでも、エンジニアによって結果が異なります。',
+                    },
                 },
                 mavi: {
                     video: {
                         title: 'AIビデオ分析',
-                        desc: 'ビデオ映像から自動的に抽出されたフレーム単位の正確なタイミング。'
+                        desc: 'ビデオ映像から自動的に抽出されたフレーム単位の正確なタイミング。',
                     },
                     digital: {
                         title: 'デジタル＆インスタント',
-                        desc: 'データは即座にデジタル化されます。ワンクリックでレポートとマニュアルを作成します。'
+                        desc: 'データは即座にデジタル化されます。ワンクリックでレポートとマニュアルを作成します。',
                     },
                     standardized: {
                         title: '標準化＆正確',
-                        desc: '毎回一貫した分析を行い、人的ミスやバイアスを排除します。'
+                        desc: '毎回一貫した分析を行い、人的ミスやバイアスを排除します。',
                     },
-                    cta: '今すぐMAViに切り替える'
-                }
+                    cta: '今すぐMAViに切り替える',
+                },
             },
             features: {
                 title: 'より強力な機能',
                 manual: {
                     title: 'マニュアル作成',
-                    desc: '分析をトレーニングマニュアルに変えます。Excel/Wordからインポートするか、ビデオステップから生成します。'
+                    desc: '分析をトレーニングマニュアルに変えます。Excel/Wordからインポートするか、ビデオステップから生成します。',
                 },
                 workflow: {
                     title: 'ドラッグ＆ドロップ ワークフロー',
-                    desc: 'プロセス要素を視覚的に並べ替えて、生産ラインを中断することなく新しいレイアウトをテストします。'
+                    desc: 'プロセス要素を視覚的に並べ替えて、生産ラインを中断することなく新しいレイアウトをテストします。',
                 },
                 cloud: {
                     title: 'クラウド同期',
-                    desc: 'チームとリアルタイムでコラボレーションします。デバイス間でプロジェクトとマニュアルを安全に同期します。'
-                }
+                    desc: 'チームとリアルタイムでコラボレーションします。デバイス間でプロジェクトとマニュアルを安全に同期します。',
+                },
             },
             how: {
                 title: 'MAViの仕組み',
                 capture: {
                     title: '撮影',
-                    desc: '生産ラインを録画するか、既存のビデオファイルをプラットフォームに直接アップロードします。'
+                    desc: '生産ラインを録画するか、既存のビデオファイルをプラットフォームに直接アップロードします。',
                 },
                 analyze: {
                     title: '分析',
-                    desc: '当社のコンピュータビジョンエンジンは、サイクルを検出し、時間を計算し、自動的にムダを特定します。'
+                    desc: '当社のコンピュータビジョンエンジンは、サイクルを検出し、時間を計算し、自動的にムダを特定します。',
                 },
                 improve: {
                     title: '改善',
-                    desc: 'データに基づいた洞察を使用して、ラインのバランスを取り、ボトルネックを解消し、生産性を向上させます。'
-                }
+                    desc: 'データに基づいた洞察を使用して、ラインのバランスを取り、ボトルネックを解消し、生産性を向上させます。',
+                },
             },
             audience: {
                 title: 'プロフェッショナルのために',
                 ie: {
                     title: '産業エンジニア (IE)',
-                    desc: '手動データ入力に何時間も費やすのをやめましょう。サイクルを自動的にキャプチャし、標準作業チャートを数分で作成します。'
+                    desc: '手動データ入力に何時間も費やすのをやめましょう。サイクルを自動的にキャプチャし、標準作業チャートを数分で作成します。',
                 },
                 pm: {
                     title: '工場長',
-                    desc: '生産ラインを完全に可視化します。ボトルネックを即座に特定し、効率改善を追跡します。'
+                    desc: '生産ラインを完全に可視化します。ボトルネックを即座に特定し、効率改善を追跡します。',
                 },
                 lc: {
                     title: 'リーン・コンサルタント',
-                    desc: 'クライアントにより早く価値を提供します。MAViを使用して、データに基づいた推奨事項と印象的な「改善前/改善後」の視覚的証拠を提供します。'
-                }
+                    desc: 'クライアントにより早く価値を提供します。MAViを使用して、データに基づいた推奨事項と印象的な「改善前/改善後」の視覚的証拠を提供します。',
+                },
             },
             faq: {
                 title: 'よくある質問',
                 q1: {
                     q: 'ビデオデータは安全ですか？',
-                    a: 'はい。MAViはエンタープライズグレードの暗号化を使用しています。Proプランの場合、データはクラウドに安全に保存されます。Starterプランの場合、データはローカルデバイスから出ません。'
+                    a: 'はい。MAViはエンタープライズグレードの暗号化を使用しています。Proプランの場合、データはクラウドに安全に保存されます。Starterプランの場合、データはローカルデバイスから出ません。',
                 },
                 q2: {
                     q: 'レポートをExcelにエクスポートできますか？',
-                    a: 'もちろんです。すべての分析データ、チャート、および標準作業票を、Excel、PDF、またはWord形式に直接エクスポートできます。'
+                    a: 'もちろんです。すべての分析データ、チャート、および標準作業票を、Excel、PDF、またはWord形式に直接エクスポートできます。',
                 },
                 q3: {
                     q: '特別なハードウェアが必要ですか？',
-                    a: 'いいえ。MAViは、あらゆる標準ビデオファイル（MP4、WEBM）または直接Webカメラ入力で動作します。高価なセンサーは必要ありません。'
-                }
+                    a: 'いいえ。MAViは、あらゆる標準ビデオファイル（MP4、WEBM）または直接Webカメラ入力で動作します。高価なセンサーは必要ありません。',
+                },
             },
             cta: {
                 title: 'ワークフローを最適化する準備はできましたか？',
                 desc: 'MAViで時間を節約し、効率を向上させている何千ものエンジニアに加わりましょう。',
-                button: '無料トライアルを開始'
+                button: '無料トライアルを開始',
             },
             footer: {
                 product: '製品',
                 company: '会社',
                 resources: 'リソース',
                 legal: '法的情報',
-                rights: '© 2025 Mavi Systems Inc. 全著作権所有。'
-            }
+                rights: '© 2025 Mavi Systems Inc. 全著作権所有。',
+            },
         },
         sensei: {
             welcome: "👋 こんにちは！私は **MAVi Sensei** です。MAViアプリケーションの使い方を学ぶお手伝いをするAIアシスタントです。\n\n以下のことについて質問できます：\n- 特定の機能の使い方\n- TPSツールの説明\n- ヒントとコツ\n- トラブルシューティング\n\n今日は何を学びたいですか？",
@@ -4157,7 +4765,7 @@ export const translations = {
             apiKeyWarning: 'AI機能をフルに使用するには、**設定**でGemini APIキーを設定してください。',
             openSettings: 'AI設定を開く',
             onlineStatus: 'オンライン & 準備完了',
-            errorTechnical: '申し訳ありません、技術的な問題が発生しました。APIキーが正しいか、インターネット接続が安定しているか確認してください。'
+            errorTechnical: '申し訳ありません、技術的な問題が発生しました。APIキーが正しいか、インターネット接続が安定しているか確認してください。',
         },
         ipCamera: {
             title: 'IPカメラ接続',
@@ -4172,14 +4780,14 @@ export const translations = {
                 title: 'ヒント',
                 tip1: 'URLはビデオファイルへの直接リンクである必要があります（Webページではありません）。',
                 tip2: 'RTSPの場合、HTTP/HLSへの変換サーバー（FFmpeg/VLCなど）を使用してください。',
-                tip3: '.m3u8または.mp4で終わるURLを探してください。'
+                tip3: '.m3u8または.mp4で終わるURLを探してください。',
             },
             errors: {
                 missingUrl: 'ストリームURLを入力してください',
                 videoUnavailable: 'ビデオ要素が利用できません',
                 connectionFailed: '接続に失敗しました。URLがWebページではなく、直接ストリーム（例：.m3u8、.mp4、MJPEG）であることを確認してください。',
-                generic: 'ストリームへの接続に失敗しました'
-            }
+                generic: 'ストリームへの接続に失敗しました',
+            },
         },
         allowance: {
             title: '余裕率設定',
@@ -4187,13 +4795,21 @@ export const translations = {
             basicFatigue: '基本疲労余裕 (%)',
             delay: '遅延余裕 (%)',
             total: '合計余裕率:',
-            done: '完了'
+            done: '完了',
         },
         studioModel: {
             title: 'スタジオモデル',
             subtitle: '動作分析モデルの設計と構築',
             createButton: '新規モデル作成',
             helpButton: 'ヘルプ',
+            assistant: {
+                welcome: 'こんにちは！Studio Model専用のアシスタントです。ルールやステートの作成でお困りですか？お気軽にご相談ください！',
+                placeholder: 'ルールやロジックについて質問する...',
+                thinking: 'アシスタントが考えています...',
+                error: '申し訳ありません、接続エラーが発生しました。後でもう一度お試しください。',
+                botName: 'Studio AI アシスタント',
+                expertRole: 'モーションロジックのエキスパート',
+            },
             searchPlaceholder: 'モデルを検索...',
             noModels: 'モデルが見つかりません',
             createFirst: '最初のモデルを作成する',
@@ -4213,27 +4829,27 @@ export const translations = {
                     title: '1. 基本概念 (ロジック)',
                     state: 'State (ステート): オペレーターの現在の状態 (例: 待機中、把持中、組み立て中)。',
                     transition: 'Transition (遷移): あるステートから別のステートへの移動。',
-                    rule: 'Rule (ルール): 遷移が発生するための条件 (例: 右手がテーブルより高い場合、\'把持中\'に移動)。'
+                    rule: 'Rule (ルール): 遷移が発生するための条件 (例: 右手がテーブルより高い場合、\'把持中\'に移動)。',
                 },
                 workflow: {
                     title: '2. モデル作成ワークフロー',
                     step1: '動画アップロード: 標準作業者の動画を入力します。',
                     step2: 'ステート定義: アクティビティ (作業手順) をリストアップします。',
                     step3: '遷移とルールの作成: 自動検出ロジックでステートを接続します。',
-                    step4: '検証: 他の動画でテストして精度を確認します。'
+                    step4: '検証: 他の動画でテストして精度を確認します。',
                 },
                 navigation: {
                     title: '3. エディターナビゲーション',
                     tabStates: 'ステートタブ: 作業手順の追加/編集。',
                     tabRules: 'ルールタブ: 「いつ手順を移動するか」のロジックを作成。',
-                    tabTest: 'テスト/デバッグタブ: リアルタイム検出結果を表示。'
+                    tabTest: 'テスト/デバッグタブ: リアルタイム検出結果を表示。',
                 },
                 aiIntegration: {
                     title: '2. AI統合 (Roboflow)',
                     desc: 'カスタムAIモデルを使用してPPE、部品、またはツールを検出します。',
                     config: '設定: Settingsタブ -> Roboflow Modelsへ移動。APIキーとプロジェクトIDを入力。',
                     demo: 'デモ: 「デモを試す」をクリックして検出をシミュレーション。',
-                    rule: 'ルール: 「Roboflow Detection」ルールタイプを使用し、オブジェクト名（例: helmet）と閾値を入力。'
+                    rule: 'ルール: 「Roboflow Detection」ルールタイプを使用し、オブジェクト名（例: helmet）と閾値を入力。',
                 },
                 testRun: {
                     title: '3. テスト実行',
@@ -4241,15 +4857,124 @@ export const translations = {
                     panel: '左パネル: 可視化（ビデオ、スケルトン、バウンディングボックス）。',
                     console: 'ライブコンソール: リアルタイムログを監視。',
                     timeline: 'ビジュアルタイムライン: 遷移の発生タイミングを表示。',
-                    analytics: 'サイクル分析: VA/NVA比率の計算。'
+                    analytics: 'サイクル分析: VA/NVA比率の計算。',
                 },
                 tips: {
                     title: '4. 精度のヒント',
                     colors: 'カラーインジケータ: 青色は条件が満たされていることを示します。',
                     holding: '保持時間: 遷移がちらつくのを防ぐために時間を追加します。',
-                    refresh: 'リフレッシュ: データが止まった場合は、保存してブラウザを更新してください。'
+                    refresh: 'リフレッシュ: データが止まった場合は、保存してブラウザを更新してください。',
                 },
-                close: 'ガイドを閉じる'
+                ruleTypes: {
+                    title: '4. ルールタイプ (ロジック)',
+                    POSE_ANGLE: {
+                        label: '関節角度 (Joint Angle)',
+                        desc: '関節の角度 (例: 肘 < 90°)',
+                        usage: '用途: 姿勢やエルゴノミクスの確認',
+                    },
+                    POSE_RELATION: {
+                        label: 'ポーズ関係 (Pose Relation)',
+                        desc: '相対的な位置 (例: 手首Y < 鼻Y)',
+                        usage: '用途: 手と体の位置関係の確認',
+                    },
+                    POSE_VELOCITY: {
+                        label: 'ポーズ速度 (Pose Velocity)',
+                        desc: '関節の移動速度',
+                        usage: '用途: 待機（静止）または素早い動きの検出',
+                    },
+                    OBJECT_PROXIMITY: {
+                        label: 'オブジェクト近接',
+                        desc: '手からオブジェクトまでの距離',
+                        usage: '用途: 取り出し/配置動作の検出',
+                    },
+                    OBJECT_IN_ROI: {
+                        label: 'ROI内のオブジェクト',
+                        desc: 'オブジェクトが定義された領域に入る',
+                        usage: '用途: セーフティゾーンまたは材料検出',
+                    },
+                    OPERATOR_PROXIMITY: {
+                        label: 'オペレーター近接',
+                        desc: 'オペレーターからカメラ/地点までの距離',
+                        usage: '用途: オペレーターがワークステーションにいるか確認',
+                    },
+                    POSE_MATCHING: {
+                        label: 'ゴールデンポーズ一致',
+                        desc: '参照写真との類似性',
+                        usage: '用途: 複雑な姿勢の検証 (SOP)',
+                    },
+                    ADVANCED_SCRIPT: {
+                        label: '高度なスクリプト',
+                        desc: 'カスタムロジック (DSL)',
+                        usage: '用途: 複雑なシナリオ (AND/ORロジック)',
+                    },
+                    TEACHABLE_MACHINE: {
+                        label: 'Teachable Machine',
+                        desc: 'カスタムAI分類',
+                        usage: '用途: 複雑なアクティビティの検出 (例: "作業中")',
+                    },
+                },
+                useCases: {
+                    title: '5. 📚 ユースケースの例',
+                    case1: {
+                        title: 'ケース1: 組み立てカウント',
+                        desc: '手がパーツを取った時にサイクルをカウント',
+                        rule: 'ルール: 手の近接 < 10cm (ボックス)',
+                    },
+                    case2: {
+                        title: 'ケース2: セーフティゾーン',
+                        desc: '手が機械に入った場合にアラーム',
+                        rule: 'ルール: ROI内のオブジェクト (手が入っている)',
+                    },
+                    case3: {
+                        title: 'ケース3: エルゴノミクス',
+                        desc: '頭上での作業を防止',
+                        rule: 'スクリプト: right_wrist.y < nose.y',
+                    },
+                    case4: {
+                        title: 'ケース4: 両手作業',
+                        desc: '必ず両手で持ち上げる',
+                        rule: 'スクリプト: dist(L_Hand) < 0.1 && dist(R_Hand) < 0.1',
+                    },
+                },
+                exampleCycle: {
+                    title: '6. 🏭 ステップバイステップの例 (CNCマシン)',
+                    scenario: 'シナリオ: オペレーターが機械を動かし、組み立て、移動する。',
+                    step1: '機械をONにする: ルール: オブジェクト近接 (右手 < 5cm "スタートボタン")',
+                    step2: 'ボルトを取る: ルール: 手の近接 (左手 < 10cm "ボルト箱")',
+                    step3: 'ボルトを取り付ける: ルール: ポーズ関係 (左手 < 胸Y)',
+                    step4: '後ろに下がる: ルール: ポーズ関係 (足首Y > フロアライン)',
+                    step5: '品物を検査する: ルール: 関節角度 (首の角度 < 150°)',
+                    step6: 'RUNを押す: ルール: オブジェクト近接 (右手 < 5cm "実行パネル")',
+                    step7: '機械の停止を待つ: ルール: ポーズ速度 (全関節 < 10)',
+                    step8: '完成品を取る: ルール: 手の近接 (両手 < 10cm "マシンチャック")',
+                    step9: 'テーブルに置く: ルール: オブジェクト近接 (完成品 < 5cm "完成品テーブル")',
+                },
+                aiIntegration: {
+                    title: '7. 🤖 Teachable Machine 統合',
+                    desc: 'Teachable Machine からのカスタム分類モデルを使用します。',
+                    connectTitle: 'A. 接続方法:',
+                    connectStep1: 'Settingsタブへ移動 → Add Modelをクリック。',
+                    connectStep2: 'モデルのURL（オンライン）を入力するか、3つのファイルをアップロード（オフライン）。',
+                    usageTitle: 'B. ルールでの使用方法:',
+                    usageDesc: 'ルールエディターでTeachable Machineタイプを選択 → モデルを選択 → ターゲットクラスを入力。',
+                },
+                accuracyAnalysis: {
+                    title: '8. ⚖️ 精度の分析',
+                    typeLogic: 'ロジックタイプ',
+                    pros: 'メリット (Pros)',
+                    cons: 'デメリット (Cons)',
+                    poseJoint: {
+                        label: 'ポーズ/関節',
+                        pros: '非常に高速、30FPSリアルタイム。',
+                        cons: '体が隠れると失敗します。',
+                    },
+                    objectDetection: {
+                        label: 'オブジェクト検出',
+                        pros: '特定のツールを認識。',
+                        cons: '負荷が高い (FPS低下)。',
+                    },
+                },
+                close: 'ガイドを閉じる',
             },
             modelBuilder: {
                 title: 'モデルビルダー (Model Builder)',
@@ -4258,7 +4983,7 @@ export const translations = {
                     steps: 'ステップ (Steps)',
                     data: 'データ (Data)',
                     test: 'テスト実行 (Test Run)',
-                    settings: '設定 (Settings)'
+                    settings: '設定 (Settings)',
                 },
                 buttons: {
                     save: '保存 (Save)',
@@ -4284,7 +5009,7 @@ export const translations = {
                     onExit: 'ステート退室時 (On Exit State)',
                     delete: '削除 (Delete)',
                     backToVideo: 'ビデオに戻る',
-                    backToCamera: 'カメラに戻る'
+                    backToCamera: 'カメラに戻る',
                 },
                 labels: {
                     motionTimeline: 'モーションタイムライン (MOTION TIMELINE)',
@@ -4321,7 +5046,8 @@ export const translations = {
                     simulator: 'シミュレータ',
                     addState: 'ステート追加',
                     backToList: 'リストに戻る',
-                    definedStates: '定義済みステート'
+                    definedStates: '定義済みステート',
+                    videoSidebar: 'ビデオサイドバー',
                 },
                 measure: {
                     result: '結果',
@@ -4332,18 +5058,18 @@ export const translations = {
                     ruler: '定規',
                     measureDistance: '距離を測定',
                     measureAngle: '角度を測定',
-                    clear: '測定をクリア'
+                    clear: '測定をクリア',
                 },
                 projectPicker: {
                     title: 'プロジェクトビデオを選択',
                     noProjects: 'プロジェクトが見つかりません。',
-                    select: '選択'
+                    select: '選択',
                 },
                 ipCamera: {
                     title: 'IPカメラから録画',
                     streamUrl: 'カメラストリームURL (MJPEG/HTTP)',
                     recording: '録画中',
-                    previewHint: 'プレビューのためにカメラURLを入力するか、シミュレーターに切り替えてください'
+                    previewHint: 'プレビューのためにカメラURLを入力するか、シミュレーターに切り替えてください',
                 },
                 rules: {
                     types: {
@@ -4357,8 +5083,8 @@ export const translations = {
                         SEQUENCE_MATCH: 'モーションシーケンス一致 (Sequence Match)',
                         TEACHABLE_MACHINE: 'Teachable Machine',
                         ROBOFLOW_DETECTION: 'Roboflow Detection',
-                        CVAT_MODEL: 'CVAT / Custom Model',
-                        ADVANCED_SCRIPT: '高度なスクリプト (Advanced Script)'
+                        CVAT_MODEL: 'CVAT / カスタムモデル',
+                        ADVANCED_SCRIPT: '高度なスクリプト (Advanced Script)',
                     },
                     operators: {
                         LESS: '<',
@@ -4367,13 +5093,82 @@ export const translations = {
                         GREATER_EQUAL: '>=',
                         EQUAL: '=',
                         NOT_EQUAL: '!=',
-                        BETWEEN: 'の間 (Between)'
+                        BETWEEN: 'の間 (Between)',
                     },
                     conditionMet: '条件一致 (Condition Met)',
                     noMatch: '不一致 (No Match)',
                     ready: '準備完了 (Ready)',
-                    mustBeIn: 'must be in',
-                    distanceTo: 'distance to'
+                    mustBeIn: '内にある必要がある',
+                    distanceTo: '距離',
+                    rulesEditor: {
+                        addTransition: '状態遷移を追加',
+                        fromState: '遷移元',
+                        toState: '遷移先',
+                        add: '追加',
+                        noTransitions: '遷移がまだ定義されていません',
+                        definePaths: '上記で状態遷移パスを定義してください',
+                        unknownState: '不明な状態',
+                        hysteresis: 'ヒステリシス',
+                        seconds: '秒',
+                        conditions: '条件',
+                        ruleHash: 'ルール #',
+                        invertNOT: '反転 (NOT)',
+                        duplicateRule: 'ルールを複製',
+                        addRuleCondition: 'ルール条件を追加',
+                        aiSuggestRule: 'AIルール提案',
+                        aiThinking: 'AIが考えています...',
+                        targetJoint: 'ターゲット関節',
+                        selectObject: 'オブジェクトを選択',
+                        customNamePlaceholder: 'カスタム名...',
+                        toggleCustomName: 'カスタム名を切り替え',
+                        currentState: '現在の状態ROI',
+                        anyDefault: '任意 (デフォルト)',
+                        units: '単位',
+                        threshold: 'しきい値',
+                        windowSize: 'ウィンドウサイズ',
+                        frames: 'フレーム',
+                        startMarker: '開始マーカー (s)',
+                        finishMarker: '終了マーカー (s)',
+                        setToCurrentVideoTime: '現在のビデオ再生時間に設定',
+                        set: '設定',
+                        templateCaptured: '{{count}} フレームをキャプチャしました',
+                        noTemplateRecorded: 'テンプレートが記録されていません',
+                        readyToMatch: 'ライブモーションとのマッチング準備完了',
+                        selectRangeCapture: '範囲を選択してキャプチャし、テンプレートを作成成',
+                        selectRange: '最初に範囲を選択してください',
+                        captureRange: '範囲をキャプチャ',
+                        motionStorage: 'モーションストレージ',
+                        playVideoBuildMemory: '▶ ビデオを再生してモーションメモリを構築',
+                        referenceStored: 'リファレンスモーションが正常に保存されました',
+                        matchAgainstState: '状態に対してマッチング',
+                        selectState: '状態を選択',
+                        roboflowModel: 'Roboflowモデル',
+                        customModel: 'カスタムモデル',
+                        model: 'モデル',
+                        targetClass: 'ターゲットクラス',
+                        targetClassPlaceholder: '例: person',
+                        advancedScriptPlaceholder: 'カスタムJavaScriptロジックを記述...\n例: pose.keypoints[0].y < 0.5',
+                        aiLogicCheck: 'AIロジックチェック',
+                        advancedScriptTips: 'ヒント: "pose", "objects", "hands" 変数を使用。true/falseを返す。',
+                        predictionTolerance: '予測許容度',
+                        resilient: 'レジリエント',
+                        strict: '厳格',
+                        deg: '度',
+                        value: '値',
+                        point: 'ポイント',
+                        self: '自分自身',
+                        nearestOther: '最も近い他者',
+                        anyOther: '他のすべて',
+                        track: 'トラック',
+                    },
+                    jointSelector: {
+                        title: 'ビジュアルキーポイントセレクター',
+                        subtitle: '全33ポイント (BlazePose + 手の詳細)',
+                        selected: '選択済み',
+                        majorJoint: '主要な関節',
+                        detailPoint: '詳細ポイント (顔/手)',
+                        precicePoseLogic: '正確なポーズロジックのためにポイントをクリック。ボディセントリックモードで最適に機能します。',
+                    },
                 },
                 step: 'ステップ',
                 prompts: {
@@ -4384,7 +5179,43 @@ export const translations = {
                     versionName: 'バージョン名を入力 (例: "V1 初期ドラフト"):',
                     restoreVersion: 'バージョン "{{version}}" を復元しますか？保存されていない変更は失われます。',
                     deleteVersion: 'バージョン "{{version}}" を削除しますか？',
-                    templateLoad: '"{{name}}" を読み込みますか？これにより、現在のモデルが置き換えられます。'
+                    templateLoad: '"{{name}}" を読み込みますか？これにより、現在のモデルが置き換えられます。',
+                },
+                messages: {
+                    minOneState: '少なくとも1つのステートがモデルを決定します。',
+                    loadListError: 'プロジェクトリストの読み込みに失敗しました。',
+                    projectImported: 'プロジェクト「{{name}}」が{{count}}個の要素をベースラインモデルとして正常にインポートされました。',
+                    noVideoData: 'このプロジェクトにはビデオデータがありません。',
+                    selectStateVideo: 'ステートを選択し、ビデオが読み込まれていることを確認してください。',
+                    motionSaved: 'モーションがリファレンスとして正常に保存されました！',
+                    detectBodyError: '体の検出に失敗しました。体がカメラにはっきりと映っていることを確認してください。',
+                    switchTabPlay: '「ルールとロジック」または「テスト実行」タブに切り替えて、ビデオを短時間再生してください。',
+                    noOperator: 'オペレーターが検出されませんでした。システムがオペレーターを識別できるようにビデオを再生してください。',
+                    noBufferData: 'バッファにモーションデータがありません。',
+                    tooFewFrames: '選択された範囲のフレームが少なすぎます（{{count}}フレーム）。ビデオが選択された範囲まで再生されていることを確認してください。',
+                    insufficientData: 'データが不足しています。{{required}}フレーム必要ですが、{{current}}フレームしかありません。',
+                    capturedRecent: '最近のモーションから{{count}}フレームをキャプチャしました。',
+                    capturedRange: '範囲{{start}}s - {{end}}sから{{count}}フレームをキャプチャしました。',
+                    captureFrameError: 'ビデオフレームのキャプチャに失敗しました。',
+                    aiSuggestError: 'AIがルールの提案に失敗しました: {{error}}',
+                    emptyScriptPrompt: 'スクリプトが空です。先にロジックを記述してください。',
+                    aiLogicCheck: 'AIロジックチェック',
+                    aiLogicIssue: '問題: ',
+                    aiLogicNoIssue: '問題は見つかりませんでした。',
+                    aiLogicSuggestion: '提案: ',
+                    aiLogicFoundError: 'AIが潜在的なエラーを見つけました。AIの提案を使用しますか？',
+                    scriptValidateError: 'スクリプトの検証に失敗しました: {{error}}',
+                    duplicateStateInfo: 'ステートを複製しました: {{name}}',
+                    invalidFileFormat: 'モデルファイルの形式が無効です。',
+                    modelImported: 'モデルが正常にインポートされました！',
+                    jsonParseError: 'JSONファイルの解析エラー',
+                    tmFileRequired: '3つの必須ファイル（model.json、weights.bin、metadata.json）をすべてアップロードしてください。',
+                    tmModelLoaded: '✅ ローカルモデルが正常に読み込まれました！',
+                    tmModelLoadError: '❌ ローカルモデルの読み込みに失敗しました: {{error}}',
+                    loadTemplateConfirm: '「{{name}}」を読み込みますか？現在のステートが上書きされます。',
+                    ipCameraRecordingTip: '💡 ヒント: 録画は30秒後に自動的に停止します。カメラのURLがアクセス可能か確認してください。',
+                    ipCameraRecordStart: '録画開始',
+                    ipCameraRecordStop: '録画停止',
                 },
                 settings: {
                     title: 'モデル設定',
@@ -4395,7 +5226,7 @@ export const translations = {
                     coordinateSystem: '座標系',
                     screen: '画面 (絶対値 0-1)',
                     bodyCentric: '身体中心 (腰に対する相対値)',
-                    bodyCentricHint: '精度のために身体中心を推奨します。作業者が移動したりカメラが動いたりしても精度が保たれます。(0,0) は腰の中心です。'
+                    bodyCentricHint: '精度のために身体中心を推奨します。作業者が移動したりカメラが動いたりしても精度が保たれます。(0,0) は腰の中心です。',
                 },
                 teachableMachine: {
                     title: 'Teachable Machine モデル',
@@ -4406,7 +5237,7 @@ export const translations = {
                     pose: 'ポーズ',
                     loading: 'モデルを読み込み中...',
                     offlineMode: 'オフラインモード: ファイルをアップロード',
-                    loadFiles: 'ファイルを読み込む'
+                    loadFiles: 'ファイルを読み込む',
                 },
                 roboflow: {
                     title: 'Roboflow モデル',
@@ -4414,14 +5245,14 @@ export const translations = {
                     apiKey: 'API Key',
                     projectId: 'Project ID',
                     version: 'Ver.',
-                    noModels: 'Roboflowモデルが設定されていません。'
+                    noModels: 'Roboflowモデルが設定されていません。',
                 },
                 portability: {
                     title: '移植性とテンプレート',
                     exportJson: 'JSONをエクスポート',
                     importJson: 'JSONをインポート',
                     loadTemplate: 'テンプレートライブラリから読み込む',
-                    selectTemplate: 'モーションテンプレートを選択'
+                    selectTemplate: 'モーションテンプレートを選択',
                 },
                 extraction: {
                     title: 'ポーズ抽出データ',
@@ -4429,7 +5260,7 @@ export const translations = {
                     trackingLive: '追跡中',
                     noData: 'データなし',
                     keypoint: 'キーポイント',
-                    conf: '信頼度'
+                    conf: '信頼度',
                 },
                 indicators: {
                     referenceCaptured: '✓ 参照ポーズを取得しました',
@@ -4444,14 +5275,15 @@ export const translations = {
                     systemReady: 'システムの準備が完了しました。ビデオの再生ボタンを押してシミュレーションを開始してください。',
                     waiting: '待機中...',
                     noSignals: '信号がアクティブではありません',
-                    completeCycle: '分析を表示するには1サイクル完了してください'
+                    completeCycle: '分析を表示するには1サイクル完了してください',
+                    aiSuggestion: 'AIの提案',
                 },
                 tooltips: {
                     restoreLayout: 'レイアウトを元に戻す',
                     maximizeEditor: 'エディタを最大化',
-                    changeVideo: 'ビデオを変更または新規アップロード'
-                }
-            }
+                    changeVideo: 'ビデオを変更または新規アップロード',
+                },
+            },
         },
         maviClass: {
             title: 'MAViクラス',
@@ -4479,8 +5311,8 @@ export const translations = {
                 wasteElimination: '🗑️ 7つのムダ (Muda):\n- 運搬、在庫、動作、手待ち\n- 加工そのもの、作りすぎ、不良\n\n**ムダ取り**メニュー (/waste-elimination) で特定',
                 therblig: '📍 18のサーブリッグ動作:\n- 空運搬 (TE)、掴む (G)、運搬 (TL)\n- 位置決め (P)、放つ (RL)、使用 (U)、組立 (A) など\n\n詳細は **サーブリッグ分析** (/therblig) を参照',
                 createWorkInstruction: '📘 作業手順書作成:\n1. **マニュアル作成** (/manual-creation) を開く\n2. ビデオからフレームをキャプチャ\n3. AIを使って手順を生成\n4. PDF/Word/PowerPointにエクスポート',
-                fallback: "🤔 うーん、もっと情報が必要です。ビデオアップロードやAI機能について聞いてみてください。"
-            }
+                fallback: "🤔 うーん、もっと情報が必要です。ビデオアップロードやAI機能について聞いてみてください。",
+            },
         },
         videoWorkspace: {
             title: 'ビデオワークスペース',
@@ -4519,7 +5351,7 @@ export const translations = {
             size: 'サイズ',
             clearDrawings: 'すべての描画を消去',
             dragToResize: 'ドラッグしてサイズ変更',
-            aiIntelligence: 'AIビデオインテリジェンス'
+            aiIntelligence: 'AIビデオインテリジェンス',
         },
         elementEditor: {
             title: '要素エディタ',
@@ -4569,7 +5401,7 @@ export const translations = {
             errors: {
                 positiveTimes: '開始時間と終了時間は正の数である必要があります。',
                 startLessFinish: '開始時間は終了時間より前である必要があります。',
-                totalSplitExceeds: '内訳の合計時間は要素の所要時間を超えることはできません。'
+                totalSplitExceeds: '内訳の合計時間は要素の所要時間を超えることはできません。',
             },
             ratingSpeed: 'レイティング速度',
             stopTracking: '{{type}} トラッキング停止',
@@ -4593,7 +5425,7 @@ export const translations = {
             splitTimePrompt: 'スプリット時間を入力（{{start}}s - {{end}}sの間）:',
             invalidSplitTime: 'スプリット時間が無効です！開始時間と終了時間の間である必要があります。',
             toggleRatingSpeed: 'レイティング速度を切り替え',
-            zoomLevelTitle: 'ズームレベル'
+            zoomLevelTitle: 'ズームレベル',
         },
         timeline: {
             title: 'タイムライン統計',
@@ -4609,7 +5441,7 @@ export const translations = {
             grid: 'グリッド',
             standard: '標準',
             vsm: 'VSM',
-            compact: 'コンパクト'
+            compact: 'コンパクト',
         },
         yamazumi: {
             title: '山積み表',
@@ -4624,7 +5456,7 @@ export const translations = {
             importData: 'データをインポート',
             exportChart: 'チャート出力',
             showTaktLine: 'タクトラインを表示',
-            noData: '表示するデータがありません'
+            noData: '表示するデータがありません',
         },
         swcs: {
             title: '標準作業組合せ票',
@@ -4649,7 +5481,7 @@ export const translations = {
             legend: {
                 manual: '手作業 (実線)',
                 auto: '自動 (破線)',
-                walk: '歩行 (波線)'
+                walk: '歩行 (波線)',
             },
             table: {
                 no: 'No',
@@ -4665,7 +5497,7 @@ export const translations = {
                 quality: '品質',
                 safety: '安全',
                 kaizen: '改善',
-                add: '要素を追加'
+                add: '要素を追加',
             },
             emptyTitle: 'データなし',
             emptyProject: 'データのあるプロジェクトを選択するか、マニュアルモードに切り替えてください。',
@@ -4678,7 +5510,7 @@ export const translations = {
                 taktTime: 'タクトタイム',
                 stdWip: '標準仕掛',
                 date: '日付',
-                revision: '版'
+                revision: '版',
             },
             table: {
                 no: 'No',
@@ -4694,13 +5526,13 @@ export const translations = {
                 quality: '品質',
                 safety: '安全',
                 kaizen: '改善',
-                add: '要素を追加'
+                add: '要素を追加',
             },
             legend: {
                 manual: '手作業 (実線)',
                 auto: '自動 (破線)',
-                walk: '歩行 (波線)'
-            }
+                walk: '歩行 (波線)',
+            },
         },
         therblig: {
             title: 'サーブリッグ分析',
@@ -4719,7 +5551,7 @@ export const translations = {
             release: '放つ (RL)',
             use: '使用 (U)',
             assemble: '組立 (A)',
-            disassemble: '分解 (DA)'
+            disassemble: '分解 (DA)',
         },
         waste: {
             title: 'ムダ取り',
@@ -4735,7 +5567,7 @@ export const translations = {
             analyze: '分析',
             eliminate: '排除',
             noWaste: 'ムダは特定されませんでした',
-            wasteFound: 'ムダが見つかりました'
+            wasteFound: 'ムダが見つかりました',
         },
         statistics: {
             title: '統計分析',
@@ -4750,7 +5582,7 @@ export const translations = {
             confidence: '信頼区間',
             histogram: 'ヒストグラム',
             boxPlot: '箱ひげ図',
-            calculate: '計算'
+            calculate: '計算',
         },
         manual: {
             title: 'マニュアル作成',
@@ -4772,14 +5604,14 @@ export const translations = {
                 proposed: '提案中',
                 review: 'レビュー中',
                 approved: '承認済み',
-                released: 'リリース済み'
+                released: 'リリース済み',
             },
             difficulties: {
                 veryEasy: '非常に簡単',
                 easy: '簡単',
                 moderate: '普通',
                 difficult: '難しい',
-                veryDifficult: '非常に難しい'
+                veryDifficult: '非常に難しい',
             },
             creator: 'マニュアルクリエイター',
             workInstructions: '作業手順書',
@@ -4790,7 +5622,7 @@ export const translations = {
             documentInfo: 'ドキュメント情報',
             stepTitle: 'ステップタイトル',
             pointsAlerts: 'ポイントとアラート',
-            instructions: '指示内容'
+            instructions: '指示内容',
         },
         workspace: {
             title: 'プロジェクト管理',
@@ -4801,7 +5633,7 @@ export const translations = {
             projectName: 'プロジェクト名',
             lastModified: '最終更新',
             noProjects: '保存されたプロジェクトはありません',
-            confirmDelete: 'このプロジェクトを削除しますか？'
+            confirmDelete: 'このプロジェクトを削除しますか？',
         },
         fileExplorer: {
             title: 'ファイルエクスプローラー',
@@ -4845,7 +5677,7 @@ export const translations = {
             createFolderFailed: 'フォルダ作成に失敗しました',
             open: '開く',
             used: '使用量',
-            total: '合計'
+            total: '合計',
         },
         settings: {
             title: 'グローバル設定',
@@ -4861,7 +5693,9 @@ export const translations = {
             cancel: 'キャンセル',
             openRouterHeaders: 'OpenRouterヘッダー (自動)',
             testSuccess: '接続成功！',
-            testFailed: '失敗'
+            testFailed: '失敗',
+            system: 'システム',
+            editManual: '手動入力',
         },
         rearrangement: {
             title: '要素入れ替え',
@@ -4883,7 +5717,7 @@ export const translations = {
             selectProjectSub: '計測データのあるプロジェクトを選択してください',
             noReadyVideo: 'ビデオが準備できていません',
             loadInstruction: 'メニューからプロジェクトを選択してシミュレーションビデオを読み込んでください',
-            noProjects: '計測データのあるプロジェクトが見つかりません'
+            noProjects: '計測データのあるプロジェクトが見つかりません',
         },
         analysisDashboard: {
             title: '分析サマリー',
@@ -4904,7 +5738,7 @@ export const translations = {
             topElements: 'トップ10要素 (時間)',
             categoryBreakdown: 'カテゴリー別詳細',
             elementsCount: '要素',
-            swcs: '標準作業組合せ票'
+            swcs: '標準作業組合せ票',
         },
         senseiKnowledge: {
             intro: 'MAVi (Motion Analysis Video Intelligence) は、産業工学向けビデオ分析アプリケーションです。',
@@ -4933,7 +5767,7 @@ export const translations = {
                 '- /action-recognition: AI行動認識',
                 '- /files: ファイルエクスプローラー',
                 '- /diagnostics: システム診断',
-                '- /help: ヘルプ＆ドキュメント'
+                '- /help: ヘルプ＆ドキュメント',
             ],
             tipsHeader: '使用上のヒント:',
             tips: [
@@ -4947,7 +5781,7 @@ export const translations = {
                 '8. 高度な分析のためにデータをExcelにエクスポートします',
                 '9. 人間工学的な姿勢評価のためのREBA評価',
                 '10. 再生/一時停止にはスペースキー、測定開始にはSキーを使用します'
-            ]
+            ],
         },
         maviClassData: {
             glossary: {
@@ -4970,7 +5804,7 @@ export const translations = {
                 allowance: { term: '余裕時間', def: '個人的なニーズや遅延のための追加要素。' },
                 normalTime: { term: '正味時間', def: 'レイティング係数で調整された観測時間。' },
                 ratingFactor: { term: 'レイティング係数', def: '作業者の速度と標準速度の比較。' },
-                workSampling: { term: 'ワークサンプリング', def: 'ランダムな観測を使用して作業を測定する手法。' }
+                workSampling: { term: 'ワークサンプリング', def: 'ランダムな観測を使用して作業を測定する手法。' },
             },
             badges: {
                 firstLesson: { name: '第一歩', desc: '最初のレッスンを完了' },
@@ -4984,7 +5818,7 @@ export const translations = {
                 consistent: { name: '継続は力なり', desc: '3日連続で学習' },
                 weekWarrior: { name: '週間戦士', desc: '7日連続で学習' },
                 noteTaker: { name: 'メモ魔', desc: '5つのメモを作成' },
-                explorer: { name: '冒険家', desc: '全タブにアクセス' }
+                explorer: { name: '冒険家', desc: '全タブにアクセス' },
             },
             syllabus: {
                 title: 'MAViクラス - 産業工学ビデオ分析',
@@ -4998,21 +5832,21 @@ export const translations = {
                 outcome2: 'ムダの特定と排除',
                 outcome3: 'ビデオからの作業手順書とSOPの作成',
                 outcome5: '自動分析のためのAI活用',
-                outcome6: 'リアルタイム・コンプライアンス監視の設定'
+                outcome6: 'リアルタイム・コンプライアンス監視の設定',
             },
             actions: {
                 tryIt: 'この機能を試す',
                 watchVideo: 'チュートリアル動画を見る',
                 markComplete: '完了としてマーク',
                 completed: '学習済み',
-                keyPoints: 'キーポイント'
+                keyPoints: 'キーポイント',
             },
             levels: {
                 beginner: 'ビギナー',
                 apprentice: '見習い',
                 practitioner: '実践者',
                 expert: 'エキスパート',
-                master: 'マスター'
+                master: 'マスター',
             },
             modules: {
                 'getting-started': {
@@ -5027,7 +5861,7 @@ export const translations = {
                                 'TPS (トヨタ生産方式) メソドロジーとの統合',
                                 'SOPと作業手順書の自動作成をサポート',
                                 'リアルタイムのコラボレーションとナレッジ共有'
-                            ]
+                            ],
                         },
                         'gs-2': {
                             title: 'アプリのナビゲーション',
@@ -5037,7 +5871,7 @@ export const translations = {
                                 'アイコンをクリックして機能切り替え',
                                 'ホバーで機能名ツールチップを表示',
                                 '矢印ボタンでサイドバーの開閉'
-                            ]
+                            ],
                         },
                         'gs-3': {
                             title: '最初のビデオアップロード',
@@ -5047,7 +5881,7 @@ export const translations = {
                                 '対応フォーマット: MP4, WebM, AVI',
                                 '左側のビデオパネルに映像を表示',
                                 '再生コントロールでビデオを操作'
-                            ]
+                            ],
                         },
                         'gs-4': {
                             title: '新規プロジェクト作成',
@@ -5057,8 +5891,8 @@ export const translations = {
                                 '分かりやすいプロジェクト名を入力',
                                 '分析するビデオを選択',
                                 'プロジェクトはローカルデータベースに自動保存'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'ミッション 1: グラウンドゼロ 🚀',
@@ -5068,8 +5902,8 @@ export const translations = {
                             '「練習 MAVi 1」という名前で新規プロジェクトを作成',
                             'サイドバーメニューを開いて最低3つの機能を探索'
                         ],
-                        actionLabel: '今すぐ練習を開始'
-                    }
+                        actionLabel: '今すぐ練習を開始',
+                    },
                 },
                 'time-measurement': {
                     title: '⏱️ 時間研究 & 動作分析',
@@ -5083,7 +5917,7 @@ export const translations = {
                                 '「計測終了」でストップ',
                                 '具体的で明確な要素名を入力',
                                 '適切なサーブリッグタイプを選択'
-                            ]
+                            ],
                         },
                         'tm-2': {
                             title: 'キーボードショートカット',
@@ -5092,8 +5926,8 @@ export const translations = {
                                 'Space: ビデオの再生/一時停止',
                                 '矢印キー(左右): フレーム送り/戻し',
                                 'Sキー: 計測開始 (Start)',
-                                'Eキー: 計測終了 (End)'
-                            ]
+                                'Eキー: 計測終了 (End)',
+                            ],
                         },
                         'tm-4': {
                             title: '付加価値分析 (VA/NVA)',
@@ -5103,7 +5937,7 @@ export const translations = {
                                 'NVA (非付加価値): 排除すべきムダ',
                                 'NNVA (必要だが非付加価値): 必要だが価値は生まない',
                                 '各要素に適切な分類をタグ付け'
-                            ]
+                            ],
                         },
                         'tm-5': {
                             title: 'サイクルタイム分析',
@@ -5113,7 +5947,7 @@ export const translations = {
                                 '作業者間のサイクルタイムを比較',
                                 'ばらつきの原因を特定',
                                 '最良/最悪サイクルを使って比較分析'
-                            ]
+                            ],
                         },
                         'tm-6': {
                             title: '再配置 (Rearrangement)',
@@ -5123,8 +5957,8 @@ export const translations = {
                                 '総リードタイムへの影響を確認',
                                 'ラインバランスに最適な順序を特定',
                                 '新しいSOPの参照として結果をエクスポート'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'ミッション 2: タイムマスター ⏱️',
@@ -5134,8 +5968,8 @@ export const translations = {
                             '各要素をVA (付加価値) またはNVA (ムダ) としてマーク',
                             'キーボードショートカット S と E を使用してみる'
                         ],
-                        actionLabel: 'ビデオワークスペースを開く'
-                    }
+                        actionLabel: 'ビデオワークスペースを開く',
+                    },
                 },
                 'ai-features': {
                     title: '🧠 AI機能',
@@ -5149,7 +5983,7 @@ export const translations = {
                                 '検証のための条件と閾値を設定',
                                 'サンプルビデオでモデルをテスト',
                                 'コンプライアンス監視用にモデルをエクスポート'
-                            ]
+                            ],
                         },
                         'ai-2': {
                             title: '行動認識 (Action Recognition)',
@@ -5159,7 +5993,7 @@ export const translations = {
                                 'AIがアクションの種類を自動検知',
                                 '検知結果のレビューと修正',
                                 '詳細分析のために結果をエクスポート'
-                            ]
+                            ],
                         },
                         'ai-3': {
                             title: 'リアルタイム・コンプライアンス',
@@ -5169,7 +6003,7 @@ export const translations = {
                                 'AIが標準手順と比較監視',
                                 '逸脱があれば自動アラート',
                                 'レビュー用に全異常をログ記録'
-                            ]
+                            ],
                         },
                         'ai-4': {
                             title: 'ビデオ・インテリジェンス',
@@ -5179,7 +6013,7 @@ export const translations = {
                                 '自然言語で質問を送信',
                                 'AIによる分析と回答',
                                 '深いインサイトの獲得に活用'
-                            ]
+                            ],
                         },
                         'ai-5': {
                             title: 'AI精度とキャリブレーション',
@@ -5189,7 +6023,7 @@ export const translations = {
                                 'ヒューリスティック精度: リーチ(95%), 把握(85%)',
                                 'ビデオ品質の重要性: 固定カメラと十分な照明',
                                 '33の身体関節ポイント(ポーズ推定)の仕組み'
-                            ]
+                            ],
                         },
                         'ai-6': {
                             title: 'エンドツーエンドAI実装',
@@ -5199,8 +6033,8 @@ export const translations = {
                                 'Step 2: モデルトレーニング (Studio Model または Teachable Machine)',
                                 'Step 3: モデルのロードとシステムへの組み込み',
                                 'Step 4: カメラ接続とリアルタイム検知開始',
-                                'Step 5: ダッシュボードでの自動モニタリング'
-                            ]
+                                'Step 5: ダッシュボードでの自動モニタリング',
+                            ],
                         },
                         'ai-7': {
                             title: 'スタジオモデル・マスタークラス',
@@ -5211,9 +6045,9 @@ export const translations = {
                                 '3. ロジックビルダー: ノーコードでのIF-THENルール作成',
                                 '4. ルールタイプ: 関節角度、位置座標、速度',
                                 '5. Teachable連携: TMのクラスをルールに統合',
-                                '6. テスト & デバッグ: 基準ビデオでの検証'
-                            ]
-                        }
+                                '6. テスト & デバッグ: 基準ビデオでの検証',
+                            ],
+                        },
                     },
                     practice: {
                         title: 'ミッション 3: AIコマンダー 🧠',
@@ -5224,8 +6058,8 @@ export const translations = {
                             'Studio Modelで最低3つのステートと3つのルールを持つモデルを1つ作成',
                             'ライブカメラを接続し、リアルタイムコンプライアンス監視を有効化'
                         ],
-                        actionLabel: 'スタジオモデルを開く'
-                    }
+                        actionLabel: 'スタジオモデルを開く',
+                    },
                 },
                 'tps-tools': {
                     title: '📊 TPSツール',
@@ -5239,7 +6073,7 @@ export const translations = {
                                 '各プロセスのムダを特定',
                                 'リードタイムとサイクルタイムを計算',
                                 'より効率的な将来マップ (Future State) を設計'
-                            ]
+                            ],
                         },
                         'tps-2': {
                             title: '山積み表 (Yamazumi)',
@@ -5249,7 +6083,7 @@ export const translations = {
                                 '作業者/ステーションごとの積み上げグラフ表示',
                                 'タクトタイムとの比較',
                                 'ボトルネックとアイドル時間の特定'
-                            ]
+                            ],
                         },
                         'tps-3': {
                             title: '標準作業組合せ票 (SWCS)',
@@ -5259,7 +6093,7 @@ export const translations = {
                                 '歩行時間の可視化',
                                 '基準としてのタクトタイム設定',
                                 'SOP文書としてエクスポート'
-                            ]
+                            ],
                         },
                         'tps-4': {
                             title: 'ムダ取り (Waste Elimination)',
@@ -5272,7 +6106,7 @@ export const translations = {
                                 '加工そのもののムダ (Over-processing)',
                                 '作りすぎのムダ (Over-production)',
                                 '不良をつくるムダ (Defects)'
-                            ]
+                            ],
                         },
                         'tps-5': {
                             title: '統計分析',
@@ -5282,8 +6116,8 @@ export const translations = {
                                 'プロセス監視のための管理図',
                                 '工程能力分析',
                                 '外れ値とその原因の特定'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'ミッション 4: リーンアーキテクト 📊',
@@ -5293,8 +6127,8 @@ export const translations = {
                             '最も忙しい作業者 (ボトルネック) を特定',
                             '標準作業組合せ票 (SWCS) のドラフトを1つ作成してみる'
                         ],
-                        actionLabel: '山積み表を開く'
-                    }
+                        actionLabel: '山積み表を開く',
+                    },
                 },
                 'documentation': {
                     title: '📘 ドキュメンテーション',
@@ -5308,7 +6142,7 @@ export const translations = {
                                 '説明と注釈を追加',
                                 'AIを使って説明文を生成',
                                 'PDF, Word, PowerPointへエクスポート'
-                            ]
+                            ],
                         },
                         'doc-2': {
                             title: 'AI生成インストラクション',
@@ -5318,7 +6152,7 @@ export const translations = {
                                 'AIが画像を分析',
                                 '作業手順の説明文を生成',
                                 '必要に応じて編集・調整'
-                            ]
+                            ],
                         },
                         'doc-3': {
                             title: 'ナレッジベース',
@@ -5328,8 +6162,8 @@ export const translations = {
                                 '検索用タグの追加',
                                 '他のユーザーによる評価とレビュー',
                                 '新規プロジェクト用テンプレートのダウンロード'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'ミッション 5: SOPディレクター 📘',
@@ -5339,8 +6173,8 @@ export const translations = {
                             'AI生成を使用してステップの説明を作成',
                             'SOPの結果をPDFまたはWordファイルとしてエクスポート'
                         ],
-                        actionLabel: 'マニュアル作成を開く'
-                    }
+                        actionLabel: 'マニュアル作成を開く',
+                    },
                 },
                 'advanced': {
                     title: '⚡ 高度な機能',
@@ -5354,7 +6188,7 @@ export const translations = {
                                 '練習モード: リスクのない環境でのスキル習得',
                                 '評価モード: パフォーマンスとエラーの計測',
                                 '訓練生の進捗トラッキングとデータ化'
-                            ]
+                            ],
                         },
                         'adv-3': {
                             title: 'ブロードキャスト & コラボレーション',
@@ -5364,7 +6198,7 @@ export const translations = {
                                 'リアルタイムでのカーソル共有と指示',
                                 'チャットツールによる即時フィードバック',
                                 'リモートトレーニングと作業レビューの効率化'
-                            ]
+                            ],
                         },
                         'adv-4': {
                             title: '多軸分析',
@@ -5374,8 +6208,8 @@ export const translations = {
                                 'サイクル間または作業者間のパフォーマンス比較',
                                 '大規模スケールでのばらつき (Variation) 特定',
                                 '複数プロセスの一括監査 (Audit)'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'ミッション 7: フューチャーエンジニア ⚡',
@@ -5385,8 +6219,8 @@ export const translations = {
                             'ビデオワークスペースを開き、視聴者とコラボレーションを試す',
                             'デバイスがあればVRトレーニングモードを探索'
                         ],
-                        actionLabel: 'ビデオワークスペースを開く'
-                    }
+                        actionLabel: 'ビデオワークスペースを開く',
+                    },
                 },
                 'study-cases': {
                     title: '📂 ケーススタディ',
@@ -5400,7 +6234,7 @@ export const translations = {
                                 '作業要素の再配分によるバランス改善',
                                 'スループット (生産量) の15%向上',
                                 '重要ステーションでの手待ち時間の排除'
-                            ]
+                            ],
                         },
                         'sc-2': {
                             title: '繊維: ムダ取り',
@@ -5410,7 +6244,7 @@ export const translations = {
                                 '材料配置 (レイアウト) の改善',
                                 'サイクルタイムの20%削減',
                                 '作業者の疲労軽減とエルゴノミクス改善'
-                            ]
+                            ],
                         },
                         'sc-3': {
                             title: '物流: VSM最適化',
@@ -5420,7 +6254,7 @@ export const translations = {
                                 '情報の断絶と滞留の特定',
                                 'リードタイムを2日から4時間に短縮',
                                 '補充のためのカンバンシステムの導入'
-                            ]
+                            ],
                         },
                         'sc-4': {
                             title: '電子機器: AIコンプライアンス',
@@ -5430,8 +6264,8 @@ export const translations = {
                                 'リアルタイムでの異常検知とアラート',
                                 '欠陥率 (手直し) の90%削減',
                                 '生産を止めない自動監査の実現'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'ミッション 8: ケースソルバー 📂',
@@ -5441,8 +6275,8 @@ export const translations = {
                             'ビデオワークスペースで分析を再現してみる',
                             'そのケースに対する3つの改善案を書き出す'
                         ],
-                        actionLabel: 'ワークスペースを開く'
-                    }
+                        actionLabel: 'ワークスペースを開く',
+                    },
                 },
                 'line-balancing': {
                     title: '⚖️ ラインバランシング & デジタルツイン',
@@ -5455,8 +6289,8 @@ export const translations = {
                                 'タクトタイム: 顧客需要に基づく生産ペース',
                                 'サイクルタイム: 実際の作業時間',
                                 'ボトルネック: 全体の流れを制約する工程',
-                                '編成効率: ライン全体のバランス指標'
-                            ]
+                                '編成効率: ライン全体のバランス指標',
+                            ],
                         },
                         'lb-2': {
                             title: 'デジタルツイン・シミュレーション',
@@ -5466,7 +6300,7 @@ export const translations = {
                                 'モンテカルロ法による1000回以上の反復シミュレーション',
                                 '信頼性 (%) による故障リスクの予測',
                                 '事前のリスク評価によるダウンタイム削減'
-                            ]
+                            ],
                         },
                         'dt-1': {
                             title: 'レイアウト最適化',
@@ -5476,8 +6310,8 @@ export const translations = {
                                 'ステーション状態の監視 (Busy, Blocked, Starved)',
                                 '仕掛品 (WIP) の滞留を視覚的に確認',
                                 '時間加速シミュレーションで長期的な影響を分析'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'ミッション 10: デジタルファクトリー 🏭',
@@ -5488,8 +6322,8 @@ export const translations = {
                             '「デジタルツイン」を実行し、頻繁に「Blocked」になるステーションを特定',
                             '流れがスムーズになるまでタスクを移動 (赤色をなくす)'
                         ],
-                        actionLabel: 'デジタルツインを開く'
-                    }
+                        actionLabel: 'デジタルツインを開く',
+                    },
                 },
                 'studio-model': {
                     title: '🎬 スタジオモデル & コンプライアンス',
@@ -5503,7 +6337,7 @@ export const translations = {
                                 '検出したい状態 (State) の定義',
                                 '状態遷移のためのルール (Rule) 設定',
                                 'リアルタイムコンプライアンス監視への応用'
-                            ]
+                            ],
                         },
                         'sm-2': {
                             title: '新しいモデルの作成',
@@ -5513,7 +6347,7 @@ export const translations = {
                                 '分かりやすいモデル名を設定 (例: 組立工程)',
                                 '座標系の選択: Body-Centric または Screen-Based',
                                 'ドキュメント用の説明を追加'
-                            ]
+                            ],
                         },
                         'sm-3': {
                             title: '状態 (State) の定義',
@@ -5523,7 +6357,7 @@ export const translations = {
                                 'ビデオから各Stateの参照ポーズをキャプチャ',
                                 '必要に応じて関心領域 (ROI) を定義',
                                 '検出安定性のための最小持続時間を設定'
-                            ]
+                            ],
                         },
                         'sm-4': {
                             title: 'ルール設定',
@@ -5534,8 +6368,8 @@ export const translations = {
                                 'ポーズ速度: 動きの速さ (例: 急な動作検知)',
                                 'オブジェクト近接: AIオブジェクトとの距離',
                                 'ゴールデンポーズ: 理想的なポーズとの一致度',
-                                '論理演算子: AND/ORを使った複数ルールの組み合わせ'
-                            ]
+                                '論理演算子: AND/ORを使った複数ルールの組み合わせ',
+                            ],
                         },
                         'sm-5': {
                             title: 'Teachable Machine スタジオ',
@@ -5546,7 +6380,7 @@ export const translations = {
                                 '学習済み条件を使って検出ルールをトレーニング',
                                 'グローバルモデルURLを使ってステーション間で同期',
                                 'プロセス変更時はいつでもモデル更新可能'
-                            ]
+                            ],
                         },
                         'sm-6': {
                             title: 'テストモードと検証',
@@ -5556,7 +6390,7 @@ export const translations = {
                                 'タイムラインイベントでの遷移確認',
                                 '状態遷移が正しく行われているかチェック',
                                 '誤検知がある場合はルールを微調整'
-                            ]
+                            ],
                         },
                         'sm-7': {
                             title: 'リアルタイム監視セットアップ',
@@ -5566,7 +6400,7 @@ export const translations = {
                                 '「カメラ追加」で新しいステーションを設定',
                                 '作成したStudio Modelを選択',
                                 'ウェブカメラまたはIPカメラを選択して監視開始'
-                            ]
+                            ],
                         },
                         'sm-8': {
                             title: 'タイムラインイベント分析',
@@ -5577,8 +6411,8 @@ export const translations = {
                                 '緑色=速い(<5秒), 赤色=遅い(>5秒)などの色分け',
                                 '長時間滞留している状態からボトルネックを特定',
                                 '詳細分析のためのデータエクスポート'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'ミッション 9: モデルマスター 🎬',
@@ -5588,8 +6422,8 @@ export const translations = {
                             '最低2つのステート (例: 作業 vs 休憩) を定義',
                             'テストモードでビデオを使ってモデルをテスト'
                         ],
-                        actionLabel: 'スタジオモデルを開く'
-                    }
+                        actionLabel: 'スタジオモデルを開く',
+                    },
                 },
                 'ai-settings': {
                     title: '⚙️ AI設定 & 構成',
@@ -5604,7 +6438,7 @@ export const translations = {
                                 '「Get API Key」からキーを作成',
                                 'キーをコピーしてMAVi設定に貼り付け',
                                 '標準利用は無料 (60リクエスト/分)'
-                            ]
+                            ],
                         },
                         'ais-2': {
                             title: 'MAViでのAPIキー設定',
@@ -5615,7 +6449,7 @@ export const translations = {
                                 '「接続テスト」で有効性を確認',
                                 '緑色のステータスで接続成功',
                                 'キーはブラウザに安全に保存されます'
-                            ]
+                            ],
                         },
                         'ais-3': {
                             title: 'ポーズ検出設定',
@@ -5625,8 +6459,8 @@ export const translations = {
                                 '検出信頼度: ポーズ検出の閾値 (0.5-0.9)',
                                 '追跡信頼度: トラッキングの滑らかさ (0.5-0.9)',
                                 '信頼度が高いほど正確だが処理は重くなる',
-                                '推奨: 0.7 (速度と精度のバランス)'
-                            ]
+                                '推奨: 0.7 (速度と精度のバランス)',
+                            ],
                         },
                         'ais-4': {
                             title: 'Teachable Machineモデルのセットアップ',
@@ -5637,7 +6471,7 @@ export const translations = {
                                 '学習済み条件を使って検出ルールをトレーニング',
                                 'グローバルモデルURLを使ってステーション間で同期',
                                 'プロセス変更時はいつでもモデル更新可能'
-                            ]
+                            ],
                         },
                         'ais-5': {
                             title: 'AIエラートラブルシューティング',
@@ -5648,8 +6482,8 @@ export const translations = {
                                 'ポーズ未検出: 照明を明るくする',
                                 'モデルが遅い: モデル複雑度を下げる',
                                 'システム診断で全体ステータスを確認'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'ミッション 10: SysAdmin AI ⚙️',
@@ -5659,8 +6493,8 @@ export const translations = {
                             'ポーズ検知の信頼度 (Confidence) を0.8に変更してみる',
                             'システム診断を実行'
                         ],
-                        actionLabel: '設定を開く'
-                    }
+                        actionLabel: '設定を開く',
+                    },
                 },
                 'ui-tutorial': {
                     title: '🖥️ ユーザーインターフェース詳細',
@@ -5675,7 +6509,7 @@ export const translations = {
                                 'タイムライン(下): ビデオナビゲーションとマーカー',
                                 'サイドバー(最右): 機能ナビゲーション',
                                 'dividerをドラッグしてパネルサイズ調整可能'
-                            ]
+                            ],
                         },
                         'ui-2': {
                             title: 'キーボードショートカット',
@@ -5686,8 +6520,8 @@ export const translations = {
                                 'S: 計測開始',
                                 'E: 計測終了',
                                 'Ctrl+S: プロジェクト保存',
-                                'F: フルスクリーン切り替え'
-                            ]
+                                'F: フルスクリーン切り替え',
+                            ],
                         },
                         'ui-3': {
                             title: 'テーマ & 表示設定',
@@ -5698,7 +6532,7 @@ export const translations = {
                                 'フォントサイズ: 読みやすさを調整',
                                 'スケルトンオーバーレイ: ポーズ表示の切り替え',
                                 '設定は自動保存されます'
-                            ]
+                            ],
                         },
                         'ui-4': {
                             title: 'パネルのカスタマイズ',
@@ -5709,7 +6543,7 @@ export const translations = {
                                 '要素パネルの開閉',
                                 'タイムラインの高さ調整',
                                 'レイアウト設定の保持'
-                            ]
+                            ],
                         },
                         'ui-5': {
                             title: 'ビデオコントロール',
@@ -5719,9 +6553,9 @@ export const translations = {
                                 'フレームカウンター: 現在のフレーム位置表示',
                                 'ズーム制御: 特定エリアの拡大',
                                 'ループ区間: 特定範囲の繰り返し再生',
-                                'シークバー: 任意の位置へジャンプ'
-                            ]
-                        }
+                                'シークバー: 任意の位置へジャンプ',
+                            ],
+                        },
                     },
                     practice: {
                         title: 'ミッション 11: UIプロ 🖥️',
@@ -5731,8 +6565,8 @@ export const translations = {
                             'アプリの言語を英語または日本語に変更してみる',
                             'ビデオパネルと要素パネルのサイズを変更'
                         ],
-                        actionLabel: 'ワークスペースを開く'
-                    }
+                        actionLabel: 'ワークスペースを開く',
+                    },
                 },
                 'export-integration': {
                     title: '📤 データエクスポート & 統合',
@@ -5747,7 +6581,7 @@ export const translations = {
                                 'データ内容: 要素名、時間、タイプ、タイムスタンプ',
                                 '追加列: サーブリッグ分類、VA/NVA',
                                 'ダウンロードフォルダに自動保存'
-                            ]
+                            ],
                         },
                         'exp-2': {
                             title: '作業手順書のエクスポート',
@@ -5758,7 +6592,7 @@ export const translations = {
                                 'PowerPoint: トレーニングプレゼン用',
                                 '画像、手順、メモを含めることが可能',
                                 '会社ロゴ付きのカスタムヘッダー'
-                            ]
+                            ],
                         },
                         'exp-4': {
                             title: 'プロジェクトのバックアップと復元',
@@ -5769,8 +6603,8 @@ export const translations = {
                                 'プロジェクトのインポート: バックアップから復元',
                                 'PC間のデータ移行に利用',
                                 '定期的なバックアップを推奨'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'ミッション 12: データサイエンティスト 📤',
@@ -5780,8 +6614,8 @@ export const translations = {
                             'プロジェクトをJSONファイルとしてエクスポート (バックアップ)',
                             'エクスポートしたExcelファイルをPCで開いてみる'
                         ],
-                        actionLabel: 'ファイルエクスプローラーを開く'
-                    }
+                        actionLabel: 'ファイルエクスプローラーを開く',
+                    },
                 },
                 'pose-ergonomics': {
                     title: '🔍 ポーズ検出 & エルゴノミクス',
@@ -5796,7 +6630,7 @@ export const translations = {
                                 '各点のx, y, z座標を取得',
                                 '可視性スコアによる検出信頼度',
                                 'ブラウザ上(WebGL)でリアルタイム処理'
-                            ]
+                            ],
                         },
                         'pe-2': {
                             title: '関節角度分析',
@@ -5807,7 +6641,7 @@ export const translations = {
                                 '肩角度: 腕の挙上検知',
                                 '背中角度: 前屈姿勢の評価',
                                 '角度データはStudio Modelのルールに使用'
-                            ]
+                            ],
                         },
                         'pe-3': {
                             title: 'REBA評価',
@@ -5817,8 +6651,8 @@ export const translations = {
                                 'スコア1-3: 低リスク (許容範囲)',
                                 'スコア4-7: 中リスク (要調査)',
                                 'スコア8-10: 高リスク (早期対応必要)',
-                                'スコア11+: 超高リスク (即時改善必要)'
-                            ]
+                                'スコア11+: 超高リスク (即時改善必要)',
+                            ],
                         },
                         'pe-4': {
                             title: '疲労分析',
@@ -5829,7 +6663,7 @@ export const translations = {
                                 '疲労パターンが検出された場合にアラート',
                                 '最適な休憩時間の推奨',
                                 'コンプライアンス監視との統合'
-                            ]
+                            ],
                         },
                         'pe-5': {
                             title: '人間工学的改善',
@@ -5840,8 +6674,8 @@ export const translations = {
                                 'ワークステーション変更の文書化',
                                 '改善スコアの推移トラッキング',
                                 '管理者向けレポートの生成'
-                            ]
-                        }
+                            ],
+                        },
                     },
                     practice: {
                         title: 'ミッション 6: エルゴガーディアン 🔍',
@@ -5851,10 +6685,10 @@ export const translations = {
                             '肘または背中の角度グラフを確認',
                             'REBAスコアが高い (>7) 瞬間を特定'
                         ],
-                        actionLabel: 'ビデオワークスペースを開く'
-                    }
-                }
-            }
+                        actionLabel: 'ビデオワークスペースを開く',
+                    },
+                },
+            },
         },
         machineLearning: {
             title: 'ティーチャブルマシン・スタジオ',
@@ -5877,7 +6711,7 @@ export const translations = {
             useTeachableMachine: 'Teachable Machineを使用',
             startAnalysis: '分析開始',
             stopAnalysis: '分析停止',
-            consistencyTrend: 'コンシステンシー・トレンド'
+            consistencyTrend: 'コンシステンシー・トレンド',
         },
         bestWorst: {
             title: '最高・最低サイクル分析',
@@ -5903,7 +6737,7 @@ export const translations = {
             selectLeft: '左のプロジェクトを選択...',
             selectRight: '右のプロジェクトを選択...',
             best: 'ベスト',
-            worst: 'ワースト'
+            worst: 'ワースト',
         },
         vsm: {
             title: 'バリューストリームマップ',
@@ -5933,7 +6767,7 @@ export const translations = {
                 replace: '入れ替え（置換）',
                 replaceDesc: 'すべてをクリアして新しく読み込む',
                 merge: '統合（マージ）',
-                mergeDesc: '現在のキャンバスに追加する'
+                mergeDesc: '現在のキャンバスに追加する',
             },
             currentState: '現状マップ',
             futureState: '将来マップ',
@@ -5987,7 +6821,7 @@ export const translations = {
                 paramTime: 'Time: 在庫日数 = 在庫 / 1日の需要。',
                 customerTitle: '顧客 / サプライヤー (工場)',
                 paramDemand: 'Demand: 1日あたりの顧客注文。',
-                paramTakt: 'Takt Time: 必要ペース = 稼働時間 / 需要。'
+                paramTakt: 'Takt Time: 必要ペース = 稼働時間 / 需要。',
             },
             simulation: {
                 start: 'シミュレーション開始',
@@ -5996,7 +6830,7 @@ export const translations = {
                 shortage: '欠品!',
                 demandMet: '需要達成',
                 delivering: '配送中...',
-                title: 'フローシミュレーション'
+                title: 'フローシミュレーション',
             },
             toolbox: {
                 title: 'VSMツールボックス',
@@ -6039,7 +6873,7 @@ export const translations = {
                 generalNotes: '一般 / メモ',
                 stickyNote: '付箋 / テキスト',
                 customIcons: 'マイアイコン',
-                uploadIcon: 'アイコンをアップロード'
+                uploadIcon: 'アイコンをアップロード',
             },
             wizard: {
                 title: 'マジックウィザード',
@@ -6085,7 +6919,7 @@ export const translations = {
                 generate: 'VSMを生成',
                 rawMatWh: '原材料倉庫',
                 fgWh: '完成品倉庫',
-                shipping: '出荷'
+                shipping: '出荷',
             },
             ai: {
                 title: '説明からVSMを生成',
@@ -6103,7 +6937,7 @@ export const translations = {
                 cancelButton: 'キャンセル',
                 charCount: '文字',
                 tip: 'サイクルタイム、作業者、在庫、および情報の流れ（管理、かんばん、予測）を含めると、より完全なVSMになります。',
-                loadConfirm: '{{nodes}}個のノードと{{edges}}個の接続が見つかりました。\n\nOK = {{replace}}\nキャンセル = {{merge}}'
+                loadConfirm: '{{nodes}}個のノードと{{edges}}個の接続が見つかりました。\n\nOK = {{replace}}\nキャンセル = {{merge}}',
             },
             analysis: {
                 taktTime: 'タクトタイム',
@@ -6187,7 +7021,7 @@ export const translations = {
                 availTime: '稼働時間',
                 dailyDemand: '1日需要',
                 spareCapacity: '予備能力',
-                totalCO: '合計段取時間'
+                totalCO: '合計段取時間',
             },
             nodeDetails: {
                 title: 'ノード詳細',
@@ -6204,7 +7038,7 @@ export const translations = {
                 customerName: '顧客名',
                 dailyDemand: '1日の需要',
                 truckFrequency: '頻度/シフト',
-                leadTime: 'リードタイム'
+                leadTime: 'リードタイム',
             },
             nodes: {
                 bottleneck: 'ボトルネック',
@@ -6220,7 +7054,7 @@ export const translations = {
                 vehicleCount: '車輛数',
                 ritase: '運送回数',
                 loadPerTrip: '1回積載量',
-                pcsPerHour: '個/時'
+                pcsPerHour: '個/時',
             },
             scenarios: {
                 title: 'シナリオ',
@@ -6242,7 +7076,7 @@ export const translations = {
                 nameRequired: 'シナリオ名を入力してください！',
                 noSimToSave: '保存するシミュレーションがありません！',
                 fulfilledQty: '充足数',
-                demand: '需要'
+                demand: '需要',
             },
             logs: {
                 title: 'ログ',
@@ -6260,8 +7094,8 @@ export const translations = {
                 secondsAgo: '{{count}}秒前',
                 minutesAgo: '{{count}}分前',
                 level: 'レベル：',
-                time: '時間：'
-            }
+                time: '時間：',
+            },
         },
         landing: {
             nav: {
@@ -6270,7 +7104,7 @@ export const translations = {
                 login: 'ログイン',
                 startDemo: 'デモ開始',
                 admin: '管理者',
-                activate: 'キー有効化'
+                activate: 'キー有効化',
             },
             hero: {
                 newBadge: '✨ 新機能: AIマニュアル作成',
@@ -6281,7 +7115,7 @@ export const translations = {
                 ctaSecondary: '詳細を見る',
                 ctaDownload: 'デスクトップ版 (.exe) をダウンロード',
                 ctaCloud: 'クラウドアクセス',
-                ctaTrial: '30分トライアル開始'
+                ctaTrial: '30分トライアル開始',
             },
             solutions: {
                 title: 'Maviを選ぶ理由',
@@ -6290,103 +7124,103 @@ export const translations = {
                 old: {
                     stopwatch: {
                         title: '手動ストップウォッチ',
-                        desc: '人間の反応速度に依存するため、時間の測定が不正確になります。'
+                        desc: '人間の反応速度に依存するため、時間の測定が不正確になります。',
                     },
                     paper: {
                         title: '紙とクリップボード',
-                        desc: 'データが紙に閉じ込められ、後でExcelへの手動入力が必要になります。'
+                        desc: 'データが紙に閉じ込められ、後でExcelへの手動入力が必要になります。',
                     },
                     subjective: {
                         title: '主観的な分析',
-                        desc: '同じタスクでも、エンジニアによって結果が異なります。'
-                    }
+                        desc: '同じタスクでも、エンジニアによって結果が異なります。',
+                    },
                 },
                 mavi: {
                     video: {
                         title: 'AIビデオ分析',
-                        desc: 'ビデオ録画から自動的に非常に正確な時間を取得します。'
+                        desc: 'ビデオ録画から自動的に非常に正確な時間を取得します。',
                     },
                     digital: {
                         title: 'デジタル＆インスタント',
-                        desc: 'データは即座にデジタル化されます。ワンクリックでレポートとマニュアルを作成します。'
+                        desc: 'データは即座にデジタル化されます。ワンクリックでレポートとマニュアルを作成します。',
                     },
                     standardized: {
                         title: '標準化と正確性',
-                        desc: '常に一貫した分析を行い、人的ミスや偏りを排除します。'
-                    }
-                }
+                        desc: '常に一貫した分析を行い、人的ミスや偏りを排除します。',
+                    },
+                },
             },
             features: {
                 title: 'より強力な機能',
                 manual: {
                     title: 'マニュアル作成',
-                    desc: '分析をトレーニングマニュアルに変換します。Excel/Wordからインポートするか、ビデオステップから作成します。'
+                    desc: '分析をトレーニングマニュアルに変換します。Excel/Wordからインポートするか、ビデオステップから作成します。',
                 },
                 workflow: {
                     title: 'ドラッグ＆ドロップワークフロー',
-                    desc: 'プロセス要素を視覚的に並べ替えて、ラインを止めることなく新しいレイアウトを試すことができます。'
+                    desc: 'プロセス要素を視覚的に並べ替えて、ラインを止めることなく新しいレイアウトを試すことができます。',
                 },
                 cloud: {
                     title: 'クラウド同期',
-                    desc: 'チームとリアルタイムでコラボレーション。すべてのデバイスでプロジェクトとマニュアルを安全に同期します。'
-                }
+                    desc: 'チームとリアルタイムでコラボレーション。すべてのデバイスでプロジェクトとマニュアルを安全に同期します。',
+                },
             },
             how: {
                 title: 'Maviの仕組み',
                 capture: {
                     title: '録画',
-                    desc: '生産ラインを録画するか、既存のビデオファイルをプラットフォームに直接アップロードします。'
+                    desc: '生産ラインを録画するか、既存のビデオファイルをプラットフォームに直接アップロードします。',
                 },
                 analyze: {
                     title: '分析',
-                    desc: 'コンピュータビジョンエンジンがサイクルを検出し、時間を計算し、無駄を自動的に特定します。'
+                    desc: 'コンピュータビジョンエンジンがサイクルを検出し、時間を計算し、無駄を自動的に特定します。',
                 },
                 improve: {
                     title: '改善',
-                    desc: 'データに基づく洞察を使用して、ラインのバランスを取り、ボトルネックを解消し、生産性を向上させます。'
-                }
+                    desc: 'データに基づく洞察を使用して、ラインのバランスを取り、ボトルネックを解消し、生産性を向上させます。',
+                },
             },
             audience: {
                 title: 'プロフェッショナルのために',
                 ie: {
                     title: '生産技術エンジニア',
-                    desc: '手動のデータ入力に時間を費やすのをやめましょう。サイクルを自動的にキャプチャし、標準作業チャートを数分で作成します。'
+                    desc: '手動のデータ入力に時間を費やすのをやめましょう。サイクルを自動的にキャプチャし、標準作業チャートを数分で作成します。',
                 },
                 pm: {
                     title: '工場長',
-                    desc: '生産ラインを完全に可視化します。ボトルネックを即座に特定し、時間の経過とともに効率の改善を追跡します。'
+                    desc: '生産ラインを完全に可視化します。ボトルネックを即座に特定し、時間の経過とともに効率の改善を追跡します。',
                 },
                 lc: {
                     title: 'リーンコンサルタント',
-                    desc: 'クライアントにより早く価値を提供します。Maviを使用して、データに基づく推奨事項と印象的な「改善前/改善後」の視覚的証拠を提供します。'
-                }
+                    desc: 'クライアントにより早く価値を提供します。Maviを使用して、データに基づく推奨事項と印象的な「改善前/改善後」の視覚的証拠を提供します。',
+                },
             },
             faq: {
                 title: 'よくある質問',
                 q1: {
                     q: 'ビデオデータは安全ですか？',
-                    a: 'はい。Maviはエンタープライズグレードの暗号化を使用しています。Proプランでは、データはクラウドに安全に保存されます。Starterプランでは、データはローカルデバイスから出ることはありません。'
+                    a: 'はい。Maviはエンタープライズグレードの暗号化を使用しています。Proプランでは、データはクラウドに安全に保存されます。Starterプランでは、データはローカルデバイスから出ることはありません。',
                 },
                 q2: {
                     q: 'レポートをExcelにエクスポートできますか？',
-                    a: 'もちろんです。すべての分析データ、チャート、標準作業シートをExcel、PDF、またはWord形式に直接エクスポートできます。'
+                    a: 'もちろんです。すべての分析データ、チャート、標準作業シートをExcel、PDF、またはWord形式に直接エクスポートできます。',
                 },
                 q3: {
                     q: '特別なハードウェアが必要ですか？',
-                    a: 'いいえ。Maviは標準的なビデオファイル（MP4、WEBM）またはIPカメラインプットで動作します。高価なセンサーは必要ありません。'
-                }
+                    a: 'いいえ。Maviは標準的なビデオファイル（MP4、WEBM）またはIPカメラインプットで動作します。高価なセンサーは必要ありません。',
+                },
             },
             cta: {
                 title: 'ワークフローを最適化する準備はできましたか？',
                 desc: 'Maviで時間を節約し、効率を向上させている何千ものエンジニアに参加しましょう。',
-                button: '無料トライアルを開始'
+                button: '無料トライアルを開始',
             },
             footer: {
                 product: '製品',
                 company: '会社',
                 resources: 'リソース',
                 legal: '法的情報',
-                rights: '© 2025 Mavi Systems Inc. All rights reserved.'
+                rights: '© 2025 Mavi Systems Inc. All rights reserved.',
             },
             request: {
                 title: 'ライセンスキーのリクエスト',
@@ -6403,15 +7237,15 @@ export const translations = {
                 successDesc: 'チームがリクエストを確認し、メールでライセンスキーをお送りします。',
                 offlineTitle: 'リクエスト保存完了！',
                 offlineDesc: '接続に失敗しました。リクエストはこのコンピュータにローカル保存されました。管理者に手動で連絡するか、別のブラウザで再試行してください。',
-                back: '戻る'
+                back: '戻る',
             },
             workspace: {
                 saveAsProject: 'プロジェクトとして保存',
                 openInWorkspace: 'ワークスペースで開く',
                 newProjectPrompt: 'プロジェクト名を入力してください:',
                 saveClipAsProject: 'クリップをプロジェクトとして保存',
-                cuttingVideo: 'ビデオセグメントを切り出し中...'
-            }
+                cuttingVideo: 'ビデオセグメントを切り出し中...',
+            },
         },
         yamazumi: {
             title: '作業負荷バランス可視化',
@@ -6450,12 +7284,12 @@ export const translations = {
             balanced: 'バランス良',
             loadingProjects: 'プロジェクトを読み込み中...',
             aiEngineer: 'AI産業エンジニア',
-            aiSubtitle: 'この山積みチャートを分析'
+            aiSubtitle: 'この山積みチャートを分析',
         },
         categories: {
             valueAdded: '正味時間 (VA)',
             nonValueAdded: '付随作業 (NVA)',
-            waste: 'ムダ (Waste)'
+            waste: 'ムダ (Waste)',
         },
         project: {
             newProject: '新規プロジェクト',
@@ -6470,7 +7304,7 @@ export const translations = {
             createProject: 'プロジェクト作成',
             cancel: 'キャンセル',
             errProjectName: 'プロジェクト名は必須です',
-            errVideo: 'ビデオファイルは必須です'
+            errVideo: 'ビデオファイルは必須です',
         },
         allowance: {
             title: '余裕率設定',
@@ -6492,73 +7326,9 @@ export const translations = {
             variableFatigue: '変動疲労余裕',
             results: '結果',
             standardTime: '標準時間',
-            formula: '計算式'
+            formula: '計算式',
         },
-        elementEditor: {
-            title: '要素エディタ',
-            addElement: '要素を追加',
-            editElement: '要素を編集',
-            deleteElement: '要素を削除',
-            elementName: '要素名',
-            startTime: '開始時間',
-            endTime: '終了時間',
-            duration: '所要時間',
-            category: 'カテゴリ',
-            therbligType: 'サーブリッグタイプ',
-            notes: 'メモ',
-            startMeasurement: '計測開始',
-            endMeasurement: '計測終了',
-            cancelMeasurement: '計測キャンセル',
-            measuring: '計測中...',
-            noElements: '要素がありません',
-            confirmDelete: 'この要素を削除しますか？',
-            saveToDb: 'データベースに保存',
-            quickMode: 'クイックモード',
-            autoCounter: '自動カウンター',
-            showDashboard: 'ダッシュボード表示',
-            hideDashboard: 'ダッシュボード非表示',
-            selectAnElement: '要素を選択してください',
-            nextCycle: '次サイクル',
-            prevCycle: '前サイクル',
-            zoomLevel: 'ズームレベル',
-            playbackSpeed: '再生速度',
-            actions: '操作',
-            cycle: 'サイクル',
-            process: 'プロセス',
-            manual: '手作業',
-            auto: '自動',
-            walk: '歩行',
-            loss: 'ロス',
-            rating: 'レイティング %',
-            normalTime: '正味時間 (s)',
-            standardTime: '標準時間 (s)',
-            emptyElements: '要素がありません。計測を開始して要素を追加してください。',
-            noFilterMatch: 'フィルターに一致する要素がありません。',
-            exporting: 'エクスポート中...',
-            exportSuccess: 'エクスポート完了！',
-            exportFailed: 'エクスポート失敗',
-            preparingExcel: 'Excelファイルを準備中...',
-            showingElements: '{{total}} 件中 {{filtered}} 件を表示',
-            errors: {
-                positiveTimes: '開始時間と終了時間は正の数である必要があります。',
-                startLessFinish: '開始時間は終了時間より前である必要があります。',
-                totalSplitExceeds: '内訳時間の合計は要素の所要時間を超えてはいけません。'
-            },
-            toggleColumns: '列の表示/非表示',
-            searchPlaceholder: '要素を検索...',
-            sortBy: '並び替え',
-            sortOriginal: '元の順序',
-            sortCycle: 'サイクル',
-            sortDuration: '所要時間',
-            sortName: '名前',
-            selectOption: '-- 選択 --',
-            total: '合計',
-            splitTimePrompt: '分割時間を入力 ({{start}}s - {{end}}s の間):',
-            invalidSplitTime: '無効な分割時間です！開始時間と終了時間の間である必要があります。',
-            toggleRatingSpeed: 'レイティング速度切替',
-            allowanceSettings: '余裕率設定',
-            fullscreenEditor: 'フルスクリーンエディタ',
-            exitFullscreen: 'フルスクリーン終了'
-        }
+
     }
+
 };

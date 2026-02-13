@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, ChevronRight, ChevronLeft, Plus, Trash2, Layout, User, Package, Truck, Info, CheckCircle2, Factory, Monitor, Settings2, ArrowRight, Wand2, Building2 } from 'lucide-react';
 import { VSMSymbols } from './vsm-constants';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const VSMWizard = ({ isOpen, onClose, onGenerate, currentLanguage }) => {
     const { t } = useLanguage();

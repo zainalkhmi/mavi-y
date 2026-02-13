@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Sparkles, MessageSquare, List, HelpCircle, AlertCircle, Save, Trash2, FolderOpen, Play, Info, Wand2, Lightbulb } from 'lucide-react';
 import { VSMSymbols } from './vsm-constants';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useDialog } from '../../contexts/DialogContext';
 
 const AIVSMGeneratorModal = ({ isOpen, onClose, onGenerate, currentLanguage, existingNodesCount }) => {

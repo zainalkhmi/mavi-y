@@ -2,7 +2,7 @@ import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ComposedChart, Line, ReferenceLine } from 'recharts';
 import { CheckCircle, AlertCircle, TrendingUp, Package, Clock, AlertTriangle, FileDown, Download, Factory, Truck, Warehouse, Box, Users } from 'lucide-react';
 import { exportToPDF, exportToExcel, exportToCSV } from '../../utils/exportReports';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const ResultsVisualization = ({ result, nodes, viewMode = 'results' }) => {
     const { t, currentLanguage } = useLanguage();

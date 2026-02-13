@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, RefreshCcw, GitMerge, AlertTriangle } from 'lucide-react';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const TemplateActionModal = ({ isOpen, onClose, onAction, templateName }) => {
     const { t } = useLanguage();

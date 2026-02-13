@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import GlobalSettingsDialog from './GlobalSettingsDialog';
 import { checkDBStatus } from '../utils/database';
 import {

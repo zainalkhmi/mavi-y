@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Layout, Package, Truck, Network, FileText } from 'lucide-react';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const TemplateSelectionModal = ({ isOpen, onClose, onSelect, templates }) => {
     const { t } = useLanguage();

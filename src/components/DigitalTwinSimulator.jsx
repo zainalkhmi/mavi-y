@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, Settings } from 'lucide-react';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const DigitalTwinSimulator = ({ stationsData, isRunning, onStop }) => {
     const { t } = useLanguage();

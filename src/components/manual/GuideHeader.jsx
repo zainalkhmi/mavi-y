@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, X, Plus, ChevronRight, ChevronDown, FileText, Settings2, CheckCircle2 } from 'lucide-react';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const SortableItem = ({ id, children, isEditing, onRemove, onLabelChange, label }) => {
     const {

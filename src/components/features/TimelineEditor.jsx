@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useDialog } from '../../contexts/DialogContext';
 import { THERBLIGS } from '../../constants/therbligs';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 function TimelineEditor({ videoState, measurements = [], onSeek, onSelectMeasurement, onAddMeasurement, onUpdateMeasurements, currentCycle, onNextCycle }) {
     const { showAlert } = useDialog();

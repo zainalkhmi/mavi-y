@@ -11,8 +11,8 @@ i18n
             id: { translation: translations.id },
             ja: { translation: translations.ja }
         },
-        lng: localStorage.getItem('appLanguage') || 'ja',
-        fallbackLng: 'ja',
+        lng: localStorage.getItem('appLanguage') || 'en',
+        fallbackLng: 'en',
         interpolation: {
             escapeValue: false
         }

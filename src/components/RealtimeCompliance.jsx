@@ -9,7 +9,7 @@ import { ProjectActionMatcher } from '../utils/projectActionMatcher';
 import { ComplianceEngine } from '../utils/complianceEngine';
 import { getProjectByName, getAllProjects, getAllCameras, saveCamera, deleteCamera, getAllStudioModels } from '../utils/database'; // Added getAllStudioModels
 import InferenceEngine from '../utils/studio/InferenceEngine'; // Import Studio Engine
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 // --- Audio Feedback Utility ---
 const playFeedback = (type) => {

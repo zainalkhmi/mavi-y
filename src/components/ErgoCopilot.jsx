@@ -13,7 +13,7 @@ import REBACalculator from '../utils/rebaCalculator';
 import NIOSHCalculator from '../utils/nioshCalculator';
 import { exportErgoReportToExcel } from '../utils/excelExport';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const ErgoCopilot = () => {
     const { showAlert } = useDialog();

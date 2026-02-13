@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import HelpButton from './HelpButton';
 import { helpContent } from '../utils/helpContent.jsx';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 function AllowanceCalculator() {
     const { t } = useLanguage();

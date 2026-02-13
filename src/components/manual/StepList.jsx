@@ -1,6 +1,6 @@
 import React from 'react';
 import { Plus, Trash2, List } from 'lucide-react';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const StepList = ({ steps, activeStepId, onSelectStep, onAddStep, onDeleteStep, onReorderStep }) => {
     const { t } = useLanguage();

@@ -14,7 +14,7 @@ import {
 import { loadModelFromURL, loadModelFromFiles, predict } from '../utils/teachableMachine';
 import { THERBLIG_ACTIONS } from '../utils/actionClassifier';
 import { extractFramesToZip } from '../utils/videoToImages';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { saveDataset } from '../utils/database';
 import { cutVideo } from '../utils/videoEditor';
 import { useProject } from '../contexts/ProjectContext';

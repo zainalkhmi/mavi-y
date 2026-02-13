@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { VSMSymbols } from './vsm-constants';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const TimelineLadder = ({ nodes, metrics }) => {
     const { t } = useLanguage();

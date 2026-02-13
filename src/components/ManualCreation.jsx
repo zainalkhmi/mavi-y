@@ -30,7 +30,7 @@ import {
     ChevronDown, Trash2, Plus, Info, Video, CheckCircle,
     Activity, Shield, Play, VideoOff, X
 } from 'lucide-react';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useDialog } from '../contexts/DialogContext';
 

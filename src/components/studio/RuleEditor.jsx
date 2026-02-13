@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, ArrowRight, Check, Activity, MousePointer2, Copy, Video, Target, Info } from 'lucide-react';
 import { RULE_TYPES, JOINTS } from '../../utils/studio/ModelBuilderEngine';
 import { getDetectableClasses } from '../../utils/objectDetector';
@@ -6,14 +7,14 @@ import JointSelector from './JointSelector';
 import ScriptAutoComplete from './ScriptAutoComplete';
 import { Sparkles, Loader2 } from 'lucide-react';
 
-const OPERATORS = [
+const getOperators = (t) => [
     { value: '<', label: '<' },
     { value: '>', label: '>' },
     { value: '<=', label: '<=' },
     { value: '>=', label: '>=' },
     { value: '=', label: '=' },
     { value: '!=', label: '!=' },
-    { value: 'BETWEEN', label: 'Between' }
+    { value: 'BETWEEN', label: t('studioModel.modelBuilder.rules.operators.BETWEEN') }
 ];
 
 const evaluateComparison = (val, operator, target, target2 = null) => {
@@ -31,6 +32,8 @@ const evaluateComparison = (val, operator, target, target2 = null) => {
 };
 
 const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, onUpdateTransition, activePose, onAiSuggest, onAiValidateScript, tmModels = [], rfModels = [], selectedStateId, onSelectState, onCaptureSequence, captureBufferStatus }) => {
+    const { t } = useTranslation();
+    const OPERATORS = useMemo(() => getOperators(t), [t]);
     const [fromState, setFromState] = useState('');
     const [toState, setToState] = useState('');
     const [showSelector, setShowSelector] = useState(false);
@@ -227,7 +230,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
             if (!val) return null;
             if (rule.type === 'ROBOFLOW_DETECTION') {
                 const best = Array.isArray(val) ? val.find(d => d.class === rule.params.targetClass) : null;
-                displayVal = best ? `${best.class} (${(best.confidence * 100).toFixed(0)}%)` : 'No Match';
+                displayVal = best ? `${best.class} (${(best.confidence * 100).toFixed(0)}%)` : t('studioModel.modelBuilder.rules.noMatch');
             } else {
                 displayVal = `${val.className} (${(val.probability * 100).toFixed(0)}%)`;
             }
@@ -244,7 +247,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                 marginLeft: '8px',
                 whiteSpace: 'nowrap'
             }}>
-                Current: {displayVal}{suffix}
+                {t('studioModel.modelBuilder.rulesEditor.currentValue')} {displayVal}{suffix}
             </div>
         );
     };
@@ -417,23 +420,23 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                         value={rule.type}
                         onChange={(e) => handleUpdateRule(transitionId, rule.id, { type: e.target.value })}
                     >
-                        <option value="POSE_ANGLE">Joint Angle</option>
-                        <option value="POSE_RELATION">Pose Relation (XYZ)</option>
-                        <option value="POSE_VELOCITY">Pose Velocity (Speed)</option>
-                        <option value="OBJECT_PROXIMITY">Object Proximity</option>
-                        <option value="OBJECT_IN_ROI">Object in ROI</option>
-                        <option value="OPERATOR_PROXIMITY">Operator Proximity</option>
-                        <option value="POSE_MATCHING">Golden Pose Match</option>
-                        <option value="SEQUENCE_MATCH">Motion Sequence Match (DTW)</option>
-                        <option value="TEACHABLE_MACHINE">Teachable Machine</option>
-                        <option value="ROBOFLOW_DETECTION">Roboflow Detection</option>
-                        <option value="CVAT_MODEL">CVAT / Custom Model</option>
-                        <option value="ADVANCED_SCRIPT">Advanced Script (DSL)</option>
+                        <option value="POSE_ANGLE">{t('studioModel.modelBuilder.rules.types.POSE_ANGLE')}</option>
+                        <option value="POSE_RELATION">{t('studioModel.modelBuilder.rules.types.POSE_RELATION')}</option>
+                        <option value="POSE_VELOCITY">{t('studioModel.modelBuilder.rules.types.POSE_VELOCITY')}</option>
+                        <option value="OBJECT_PROXIMITY">{t('studioModel.modelBuilder.rules.types.OBJECT_PROXIMITY')}</option>
+                        <option value="OBJECT_IN_ROI">{t('studioModel.modelBuilder.rules.types.OBJECT_IN_ROI')}</option>
+                        <option value="OPERATOR_PROXIMITY">{t('studioModel.modelBuilder.rules.types.OPERATOR_PROXIMITY')}</option>
+                        <option value="POSE_MATCHING">{t('studioModel.modelBuilder.rules.types.POSE_MATCHING')}</option>
+                        <option value="SEQUENCE_MATCH">{t('studioModel.modelBuilder.rules.types.SEQUENCE_MATCH')}</option>
+                        <option value="TEACHABLE_MACHINE">{t('studioModel.modelBuilder.rules.types.TEACHABLE_MACHINE')}</option>
+                        <option value="ROBOFLOW_DETECTION">{t('studioModel.modelBuilder.rules.types.ROBOFLOW_DETECTION')}</option>
+                        <option value="CVAT_MODEL">{t('studioModel.modelBuilder.rules.types.CVAT_MODEL')}</option>
+                        <option value="ADVANCED_SCRIPT">{t('studioModel.modelBuilder.rules.types.ADVANCED_SCRIPT')}</option>
                     </select>
 
                     <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                            {isMet === true ? 'Condition Met' : (isMet === false ? 'No Match' : 'Ready')}
+                            {isMet === true ? t('studioModel.modelBuilder.rules.conditionMet') : (isMet === false ? t('studioModel.modelBuilder.rules.noMatch') : t('studioModel.modelBuilder.rules.ready'))}
                         </span>
                         <div style={styles.statusIndicator(isMet)} title="Real-time Status" />
                     </div>
@@ -507,7 +510,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                             )}
                             {renderLiveValue(rule)}
                         </div>
-                        <span style={{ color: '#9ca3af', fontSize: '0.8rem' }}>deg</span>
+                        <span style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{t('studioModel.modelBuilder.rulesEditor.deg')}</span>
                     </div>
                 )}
 
@@ -549,8 +552,8 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                             value={rule.params.targetType || 'VALUE'}
                             onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, targetType: e.target.value, value: 0, jointB: '' } })}
                         >
-                            <option value="VALUE">Value</option>
-                            <option value="POINT">Point</option>
+                            <option value="VALUE">{t('studioModel.modelBuilder.rulesEditor.value')}</option>
+                            <option value="POINT">{t('studioModel.modelBuilder.rulesEditor.point')}</option>
                         </select>
 
                         {rule.params.targetType === 'POINT' ? (
@@ -560,17 +563,17 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                     value={rule.params.targetTrackId || 'self'}
                                     onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, targetTrackId: e.target.value } })}
                                 >
-                                    <option value="self">Self</option>
-                                    <option value="nearest">Nearest Other</option>
-                                    <option value="any">Any Other</option>
-                                    {[1, 2, 3, 4].map(id => <option key={id} value={id}>Track {id}</option>)}
+                                    <option value="self">{t('studioModel.modelBuilder.rulesEditor.self')}</option>
+                                    <option value="nearest">{t('studioModel.modelBuilder.rulesEditor.nearestOther')}</option>
+                                    <option value="any">{t('studioModel.modelBuilder.rulesEditor.anyOther')}</option>
+                                    {[1, 2, 3, 4].map(id => <option key={id} value={id}>{t('studioModel.modelBuilder.rulesEditor.track')} {id}</option>)}
                                 </select>
                                 <select
                                     style={styles.paramSelect}
                                     value={rule.params.jointB || ''}
                                     onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, jointB: e.target.value } })}
                                 >
-                                    <option value="">Target Joint...</option>
+                                    <option value="">{t('studioModel.modelBuilder.rulesEditor.targetJoint')}</option>
                                     {JOINTS.map(j => <option key={j} value={j}>{j}</option>)}
                                 </select>
                                 <button style={styles.skeletonBtn} onClick={() => openJointSelector(transitionId, rule.id, 'jointB')}>
@@ -655,7 +658,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                             <option value={4}>Thumb Tip</option>
                             <option value={0}>Wrist</option>
                         </select>
-                        <span style={{ color: '#4b5563' }}>distance to</span>
+                        <span style={{ color: '#4b5563' }}>{t('studioModel.modelBuilder.rules.distanceTo')}</span>
                         <select
                             style={styles.paramSelect}
                             value={rule.params.bodyPart}
@@ -702,7 +705,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                             value={rule.params.objectClass}
                             onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, objectClass: e.target.value } })}
                         >
-                            <option value="">Select Object...</option>
+                            <option value="">{t('studioModel.modelBuilder.rulesEditor.selectObject')}</option>
                             {objectClasses.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                         <select
@@ -750,7 +753,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                             <input
                                 style={{ ...styles.paramSelect, width: '140px', backgroundColor: '#374151', border: '1px solid #60a5fa' }}
                                 value={rule.params.objectClass || ''}
-                                placeholder="Custom Name..."
+                                placeholder={t('studioModel.modelBuilder.rulesEditor.customNamePlaceholder')}
                                 onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, objectClass: e.target.value } })}
                             />
                         ) : (
@@ -759,7 +762,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                 value={rule.params.objectClass}
                                 onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, objectClass: e.target.value } })}
                             >
-                                <option value="">Select Object...</option>
+                                <option value="">{t('studioModel.modelBuilder.rulesEditor.selectObject')}</option>
                                 {objectClasses.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         )}
@@ -783,18 +786,18 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                 cursor: 'pointer',
                                 marginLeft: '8px'
                             }}
-                            title="Toggle Custom Name"
+                            title={t('studioModel.modelBuilder.rulesEditor.toggleCustomName')}
                         >
                             <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>✎</span>
                         </button>
 
-                        <div style={{ fontSize: '0.85rem', color: '#9ca3af', marginLeft: '8px' }}>must be in</div>
+                        <div style={{ fontSize: '0.85rem', color: '#9ca3af', marginLeft: '8px' }}>{t('studioModel.modelBuilder.rules.mustBeIn')}</div>
                         <select
                             style={styles.paramSelect}
                             value={rule.params.roiSource || 'STATE_ROI'}
                             onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, roiSource: e.target.value } })}
                         >
-                            <option value="STATE_ROI">Current State ROI</option>
+                            <option value="STATE_ROI">{t('studioModel.modelBuilder.rulesEditor.currentState')}</option>
                         </select>
                     </div>
                 )}
@@ -813,14 +816,14 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                 <MousePointer2 size={14} />
                             </button>
                         </div>
-                        <span style={{ color: '#4b5563' }}>distance to</span>
+                        <span style={{ color: '#4b5563' }}>{t('studioModel.modelBuilder.rules.distanceTo')}</span>
                         <select
                             style={{ ...styles.paramSelect, width: '120px', color: '#a855f7' }}
                             value={rule.params.targetTrackId || 'nearest'}
                             onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, targetTrackId: e.target.value } })}
                         >
-                            <option value="nearest">Nearest Other</option>
-                            <option value="any">Any Other</option>
+                            <option value="nearest">{t('studioModel.modelBuilder.rulesEditor.anyDefault')}</option>
+                            <option value="any">{t('studioModel.modelBuilder.rulesEditor.anyDefault')}</option>
                             {[1, 2, 3, 4].map(id => <option key={id} value={id}>Track {id}</option>)}
                         </select>
                         <select
@@ -852,7 +855,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                             )}
                             {renderLiveValue(rule)}
                         </div>
-                        <span style={{ color: '#9ca3af', fontSize: '0.8rem' }}>units</span>
+                        <span style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{t('studioModel.modelBuilder.rulesEditor.units')}</span>
                     </div>
                 )}
 
@@ -860,7 +863,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                     <div style={{ ...styles.paramRow, flexDirection: 'column', alignItems: 'flex-start', gap: '10px', width: '100%' }}>
                         <div style={{ ...styles.paramRow, width: '100%' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>Threshold:</span>
+                                <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>{t('studioModel.modelBuilder.rulesEditor.threshold')}</span>
                                 <input
                                     type="number"
                                     step="0.05"
@@ -872,7 +875,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                 />
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>Window Size:</span>
+                                <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>{t('studioModel.modelBuilder.rulesEditor.windowSize')}</span>
                                 <input
                                     type="number"
                                     step="10"
@@ -882,7 +885,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                     value={rule.params.bufferSize || 60}
                                     onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, bufferSize: parseInt(e.target.value) } })}
                                 />
-                                <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>frames</span>
+                                <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>{t('studioModel.modelBuilder.rulesEditor.frames')}</span>
                             </div>
                         </div>
 
@@ -899,7 +902,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                             {/* Range Selection UI */}
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', backgroundColor: '#111827', padding: '10px', borderRadius: '8px', border: '1px solid #374151' }}>
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: '4px' }}>Start Marker:</div>
+                                    <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: '4px' }}>{t('studioModel.modelBuilder.rulesEditor.startMarker')}</div>
                                     <div style={{ display: 'flex', gap: '4px' }}>
                                         <input
                                             type="number"
@@ -912,15 +915,15 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                         <button
                                             onClick={() => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, startTime: captureBufferStatus?.videoTime || 0 } })}
                                             style={{ padding: '4px 8px', backgroundColor: '#374151', border: '1px solid #4b5563', color: '#60a5fa', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}
-                                            title="Set to Current Video Time"
+                                            title={t('studioModel.modelBuilder.rulesEditor.setToCurrentVideoTime')}
                                         >
-                                            Set
+                                            {t('studioModel.modelBuilder.rulesEditor.set')}
                                         </button>
                                     </div>
                                 </div>
                                 <div style={{ color: '#4b5563', paddingBottom: '16px' }}>&rarr;</div>
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: '4px' }}>Finish Marker:</div>
+                                    <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: '4px' }}>{t('studioModel.modelBuilder.rulesEditor.finishMarker')}</div>
                                     <div style={{ display: 'flex', gap: '4px' }}>
                                         <input
                                             type="number"
@@ -933,9 +936,9 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                         <button
                                             onClick={() => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, endTime: captureBufferStatus?.videoTime || 0 } })}
                                             style={{ padding: '4px 8px', backgroundColor: '#374151', border: '1px solid #4b5563', color: '#60a5fa', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}
-                                            title="Set to Current Video Time"
+                                            title={t('studioModel.modelBuilder.rulesEditor.setToCurrentVideoTime')}
                                         >
-                                            Set
+                                            {t('studioModel.modelBuilder.rulesEditor.set')}
                                         </button>
                                     </div>
                                 </div>
@@ -945,10 +948,10 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                 <div>
                                     <div style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <Target size={14} color="#60a5fa" />
-                                        {rule.params.targetSequence ? `Template captured (${rule.params.targetSequence.length || 0} frames)` : 'No Template Recorded'}
+                                        {rule.params.targetSequence ? t('studioModel.modelBuilder.rulesEditor.templateCaptured', { count: rule.params.targetSequence.length || 0 }) : t('studioModel.modelBuilder.rulesEditor.noTemplateRecorded')}
                                     </div>
                                     <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '4px' }}>
-                                        {rule.params.targetSequence ? 'Ready to match.' : 'Select range & capture motion.'}
+                                        {rule.params.targetSequence ? t('studioModel.modelBuilder.rulesEditor.readyToMatch') : t('studioModel.modelBuilder.rulesEditor.selectRangeCapture')}
                                     </div>
                                 </div>
                                 <button
@@ -975,15 +978,15 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                     }}
                                 >
                                     <Video size={14} />
-                                    {(rule.params.startTime === undefined || rule.params.endTime === undefined || rule.params.startTime >= rule.params.endTime) ? 'Select Range' : 'Capture Range'}
+                                    {(rule.params.startTime === undefined || rule.params.endTime === undefined || rule.params.startTime >= rule.params.endTime) ? t('studioModel.modelBuilder.rulesEditor.selectRange') : t('studioModel.modelBuilder.rulesEditor.captureRange')}
                                 </button>
                             </div>
 
                             {/* Progress Bar for Motion Buffer */}
                             <div style={{ width: '100%' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#6b7280', marginBottom: '4px' }}>
-                                    <span>Motion Storage (last 60s):</span>
-                                    <span>{captureBufferStatus?.current || 0} / 1800 frames</span>
+                                    <span>{t('studioModel.modelBuilder.rulesEditor.motionStorage')}</span>
+                                    <span>{captureBufferStatus?.current || 0} / 1800 {t('studioModel.modelBuilder.rulesEditor.frames')}</span>
                                 </div>
                                 <div style={{ width: '100%', height: '6px', backgroundColor: '#1f2937', borderRadius: '3px', overflow: 'hidden', border: '1px solid #374151' }}>
                                     <div style={{
@@ -995,7 +998,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                 </div>
                                 {(!captureBufferStatus || captureBufferStatus.current < 10) && (
                                     <div style={{ fontSize: '0.65rem', color: '#60a5fa', marginTop: '4px', fontStyle: 'italic' }}>
-                                        Play video to build motion memory...
+                                        {t('studioModel.modelBuilder.rulesEditor.playVideoBuildMemory')}
                                     </div>
                                 )}
                             </div>
@@ -1003,7 +1006,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
 
                         {rule.params.targetSequence && (
                             <div style={{ fontSize: '0.7rem', color: '#10b981', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <Check size={12} /> Reference sequence successfully stored in model.
+                                <Check size={12} /> {t('studioModel.modelBuilder.rulesEditor.referenceStored')}
                             </div>
                         )}
                     </div>
@@ -1011,16 +1014,16 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
 
                 {rule.type === 'POSE_MATCHING' && (
                     <div style={styles.paramRow}>
-                        <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>Match against state:</span>
+                        <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>{t('studioModel.modelBuilder.rulesEditor.matchAgainstState')}</span>
                         <select
                             style={styles.paramSelect}
                             value={rule.params.targetStateId}
                             onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, targetStateId: e.target.value } })}
                         >
-                            <option value="">Select State...</option>
+                            <option value="">{t('studioModel.modelBuilder.rulesEditor.selectState')}</option>
                             {states.filter(s => s.id !== 's_start').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
-                        <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>Threshold:</span>
+                        <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>{t('studioModel.modelBuilder.rulesEditor.threshold')}</span>
                         <input
                             type="number"
                             step="0.01"
@@ -1035,14 +1038,14 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                     <div style={{ ...styles.paramRow, flexWrap: 'wrap', gap: '8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>
-                                {rule.type === 'ROBOFLOW_DETECTION' ? 'Roboflow Model:' : (rule.type === 'CVAT_MODEL' ? 'Custom Model:' : 'Model:')}
+                                {rule.type === 'ROBOFLOW_DETECTION' ? t('studioModel.modelBuilder.rulesEditor.roboflowModel') : (rule.type === 'CVAT_MODEL' ? t('studioModel.modelBuilder.rulesEditor.customModel') : t('studioModel.modelBuilder.rulesEditor.model'))}
                             </span>
                             <select
                                 style={styles.paramSelect}
                                 value={rule.params.modelId || ''}
                                 onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, modelId: e.target.value } })}
                             >
-                                <option value="">Any (Default)</option>
+                                <option value="">{t('studioModel.modelBuilder.rulesEditor.anyDefault')}</option>
                                 {rule.type === 'ROBOFLOW_DETECTION' ?
                                     (rfModels || []).map(m => <option key={m.id} value={m.id}>{m.name}</option>) :
                                     (tmModels || []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)
@@ -1050,17 +1053,17 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                             </select>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>Target Class:</span>
+                            <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>{t('studioModel.modelBuilder.rulesEditor.targetClass')}</span>
                             <input
                                 type="text"
                                 style={{ ...styles.input, width: '120px' }}
-                                placeholder="e.g. Working"
+                                placeholder={t('studioModel.modelBuilder.rulesEditor.targetClassPlaceholder')}
                                 value={rule.params.targetClass || ''}
                                 onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, targetClass: e.target.value } })}
                             />
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>Threshold:</span>
+                            <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>{t('studioModel.modelBuilder.rulesEditor.threshold')}</span>
                             <input
                                 type="number"
                                 step="0.01"
@@ -1090,7 +1093,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                     outline: 'none',
                                     resize: 'vertical'
                                 }}
-                                placeholder="Example: right_wrist.y < nose.y AND dist(right_wrist, left_wrist) > 0.3"
+                                placeholder={t('studioModel.modelBuilder.rulesEditor.advancedScriptPlaceholder')}
                                 value={rule.params.script || ''}
                                 onChange={(val) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, script: val } })}
                             />
@@ -1115,11 +1118,11 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                 }}
                             >
                                 {aiLoading[transitionId] ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                                AI Logic Check
+                                {t('studioModel.modelBuilder.rulesEditor.aiLogicCheck')}
                             </button>
                         </div>
                         <div style={{ fontSize: '0.7rem', color: '#6b7280', fontStyle: 'italic' }}>
-                            Tips: Use joint.x/y/z, dist(A, B), or angle(A, B, C). Logical: AND, OR, NOT.
+                            {t('studioModel.modelBuilder.rulesEditor.advancedScriptTips')}
                         </div>
                     </div>
                 )}
@@ -1135,7 +1138,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                 }}>
                     <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Sparkles size={14} color={rule.params.trustPersistent !== false ? '#eab308' : '#6b7280'} />
-                        Prediction Tolerance (Kinematic)
+                        {t('studioModel.modelBuilder.rulesEditor.predictionTolerance')}
                     </label>
                     <button
                         onClick={() => handleUpdateRule(transitionId, rule.id, {
@@ -1151,7 +1154,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                             cursor: 'pointer'
                         }}
                     >
-                        {rule.params.trustPersistent !== false ? 'Resilient (Trust Prediction)' : 'Strict (Live Only)'}
+                        {rule.params.trustPersistent !== false ? t('studioModel.modelBuilder.rulesEditor.resilient') : t('studioModel.modelBuilder.rulesEditor.strict')}
                     </button>
                 </div>
             </div>
@@ -1171,7 +1174,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
             {/* Create Transition */}
             <div style={styles.createSection}>
                 <h3 style={styles.sectionTitle}>
-                    <Activity size={18} /> Add State Transition (Roboflow Enabled)
+                    <Activity size={18} /> {t('studioModel.modelBuilder.rulesEditor.addTransition')}
                 </h3>
                 <div style={styles.controls}>
                     <select
@@ -1179,7 +1182,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                         value={fromState}
                         onChange={(e) => setFromState(e.target.value)}
                     >
-                        <option value="">From State...</option>
+                        <option value="">{t('studioModel.modelBuilder.rulesEditor.fromState')}</option>
                         {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                     <ArrowRight size={20} color="#4b5563" />
@@ -1188,7 +1191,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                         value={toState}
                         onChange={(e) => setToState(e.target.value)}
                     >
-                        <option value="">To State...</option>
+                        <option value="">{t('studioModel.modelBuilder.rulesEditor.toState')}</option>
                         {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                     <button
@@ -1196,7 +1199,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                         onClick={handleCreateTransition}
                         disabled={!fromState || !toState}
                     >
-                        <Plus size={18} /> Add
+                        <Plus size={18} /> {t('studioModel.modelBuilder.rulesEditor.add')}
                     </button>
                 </div>
             </div>
@@ -1206,14 +1209,14 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                 {transitions.length === 0 && (
                     <div style={{ textAlign: 'center', padding: '60px', color: '#4b5563' }}>
                         <MousePointer2 size={40} style={{ marginBottom: '16px', opacity: 0.3 }} />
-                        <p>No transitions defined yet.</p>
-                        <p style={{ fontSize: '0.8rem' }}>Define paths for your model to move between states.</p>
+                        <p>{t('studioModel.modelBuilder.rulesEditor.noTransitions')}</p>
+                        <p style={{ fontSize: '0.8rem' }}>{t('studioModel.modelBuilder.rulesEditor.definePaths')}</p>
                     </div>
                 )}
 
                 {transitions.map(transition => {
-                    const fromName = states.find(s => s.id === transition.from)?.name || 'Unknown';
-                    const toName = states.find(s => s.id === transition.to)?.name || 'Unknown';
+                    const fromName = states.find(s => s.id === transition.from)?.name || t('studioModel.modelBuilder.rulesEditor.unknownState');
+                    const toName = states.find(s => s.id === transition.to)?.name || t('studioModel.modelBuilder.rulesEditor.unknownState');
                     const isSelected = selectedStateId === transition.from;
 
                     return (
@@ -1242,7 +1245,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                             <div style={styles.rulesContainer} className="custom-scrollbar">
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid #374151', borderStyle: 'none none dashed none' }}>
                                     <span style={{ fontSize: '0.85rem', color: '#eab308', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        <Activity size={14} /> Hysteresis (Hold Time):
+                                        <Activity size={14} /> {t('studioModel.modelBuilder.rulesEditor.hysteresis')}
                                     </span>
                                     <input
                                         type="number"
@@ -1254,12 +1257,12 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                             condition: { ...transition.condition, holdTime: parseFloat(e.target.value) }
                                         })}
                                     />
-                                    <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>seconds</span>
+                                    <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>{t('studioModel.modelBuilder.rulesEditor.seconds')}</span>
                                 </div>
 
                                 <div style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                        <h4 style={{ margin: 0, color: '#9ca3af', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Conditions</h4>
+                                        <h4 style={{ margin: 0, color: '#9ca3af', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('studioModel.modelBuilder.rulesEditor.conditions')}</h4>
                                     </div>
 
                                     {transition.condition.rules.map((rule, idx) => (
@@ -1267,7 +1270,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid #374151', paddingBottom: '8px' }}>
                                                 <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: rule.aiGenerated ? '#a855f7' : '#60a5fa', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                     {rule.aiGenerated ? <Sparkles size={14} /> : null}
-                                                    Rule #{idx + 1} {rule.aiGenerated ? '(AI)' : ''}
+                                                    {t('studioModel.modelBuilder.rulesEditor.ruleHash')}{idx + 1} {rule.aiGenerated ? '(AI)' : ''}
                                                 </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                     {rule.aiReasoning && (
@@ -1282,12 +1285,12 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                                             onChange={(e) => handleUpdateRule(transition.id, rule.id, { invert: e.target.checked })}
                                                             style={{ cursor: 'pointer', accentColor: '#2563eb' }}
                                                         />
-                                                        Invert (NOT)
+                                                        {t('studioModel.modelBuilder.rulesEditor.invertNOT')}
                                                     </label>
                                                     <button
                                                         style={{ background: 'transparent', border: 'none', color: '#60a5fa', cursor: 'pointer' }}
                                                         onClick={() => handleDuplicateRule(transition.id, rule.id)}
-                                                        title="Duplicate Rule"
+                                                        title={t('studioModel.modelBuilder.rulesEditor.duplicateRule')}
                                                     >
                                                         <Copy size={14} />
                                                     </button>
@@ -1322,7 +1325,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                             transition: 'all 0.2s'
                                         }}
                                     >
-                                        <Plus size={16} /> Add Rule Condition
+                                        <Plus size={16} /> {t('studioModel.modelBuilder.rulesEditor.addRuleCondition')}
                                     </button>
 
                                     <button
@@ -1351,7 +1354,7 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                         ) : (
                                             <Sparkles size={16} />
                                         )}
-                                        {aiLoading[transition.id] ? 'AI Berpikir...' : 'AI Suggest Rule'}
+                                        {aiLoading[transition.id] ? t('studioModel.modelBuilder.rulesEditor.aiThinking') : t('studioModel.modelBuilder.rulesEditor.aiSuggestRule')}
                                     </button>
                                 </div>
                             </div>

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const RichTextEditor = ({ value, onChange, placeholder }) => {
     const { t } = useLanguage();

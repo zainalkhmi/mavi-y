@@ -9,7 +9,7 @@ import { getAllProjects, getProjectByName, updateProject } from '../utils/databa
 import LineBalancingBoard from './LineBalancingBoard';
 import AIChatOverlay from './features/AIChatOverlay';
 import { useProject } from '../contexts/ProjectContext';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 function YamazumiChart({ measurements: propMeasurements = [] }) {
     const { t } = useLanguage();

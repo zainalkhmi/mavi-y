@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { VSMSymbols } from '../vsm-constants';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 const GenericNode = ({ data, selected, showDetails: propShowDetails }) => {
     const { t } = useLanguage();

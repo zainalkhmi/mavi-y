@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useDialog } from '../contexts/DialogContext';
 import { getAllProjects, saveSWCSData, getSWCSData, updateProject as updateProjectDb } from '../utils/database';
 import { useProject } from '../contexts/ProjectContext';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import * as XLSX from 'xlsx';
 import { saveWorkbook } from '../utils/excelExport';
 import { exportSWCSToPDF } from '../utils/swcsExport';

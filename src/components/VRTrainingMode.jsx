@@ -7,7 +7,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import VideoAnnotation from './features/VideoAnnotation';
 import { useProject } from '../contexts/ProjectContext';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 function VRTrainingMode() {
     const {

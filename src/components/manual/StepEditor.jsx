@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import ImageMarkupDialog from './ImageMarkupDialog';
 import RichTextEditor from './RichTextEditor';
 import {

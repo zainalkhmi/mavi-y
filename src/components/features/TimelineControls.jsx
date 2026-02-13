@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { BarChart3, ZoomIn, ZoomOut, Maximize2, Filter, Download, Eye, Grid3x3, TrendingUp } from 'lucide-react';
 
 function TimelineControls({

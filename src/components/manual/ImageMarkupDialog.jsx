@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const ImageMarkupDialog = ({ isOpen, onClose, imageSrc, onSave }) => {
     const { t } = useLanguage();

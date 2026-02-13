@@ -27,9 +27,9 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
 
     const [currentModel, setCurrentModel, undoModel, redoModel, canUndoModel, canRedoModel] = useHistory({
         ...model,
-        states: model.statesList || [{ id: 's_start', name: 'Start' }],
+        states: model.statesList || [{ id: 's_start', name: t('studioModel.modelBuilder.labels.none') }],
         transitions: model.transitions || [],
-        tmModels: model.tmModels || (model.tmModelUrl ? [{ id: 'default', name: 'Main Model', url: model.tmModelUrl, type: model.tmModelType || 'image' }] : [])
+        tmModels: model.tmModels || (model.tmModelUrl ? [{ id: 'default', name: t('studioModel.modelBuilder.labels.defined'), url: model.tmModelUrl, type: model.tmModelType || 'image' }] : [])
     });
     const [showHelp, setShowHelp] = useState(false);
 
@@ -226,7 +226,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                 const fromName = currentModel.states.find(s => s.id === defaultFrom)?.name || 'State 1';
                 const toName = currentModel.states.find(s => s.id === defaultTo)?.name || 'State 2';
 
-                if (await showConfirm(t('studioModel.modelBuilder.measure.noTransition'), `No transition found ${targetStateId ? 'starting from ' + fromName : 'yet'}. \n\nCreate a new transition from '${fromName}' to '${toName}' and add this rule?`)) {
+                if (await showConfirm(t('studioModel.modelBuilder.measure.noTransition'), t('studioModel.modelBuilder.messages.noTransitionFound', { startFrom: targetStateId ? fromName : t('studioModel.modelBuilder.labels.none'), from: fromName, to: toName }))) {
                     targetStateId = defaultFrom;
                     setSelectedStateId(targetStateId);
 
@@ -262,15 +262,14 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                         transitions: [...prev.transitions, newTransition]
                     }));
 
-                    await showAlert(t('common.success'), "Successfully created transition and added rule.");
+                    await showAlert(t('common.success'), t('studioModel.modelBuilder.messages.transitionCreated'));
                     return;
                 }
             }
-
             if (!targetStateId) {
-                await showAlert(t('common.info'), "No state selected. Please select a transition/state in 'Rules & Logic' tab first.");
+                await showAlert(t('common.info'), t('studioModel.modelBuilder.messages.noStateSelected'));
             } else {
-                await showAlert(t('common.info'), "No transition found starting from the selected state. Please add a transition in 'Rules & Logic' tab first.");
+                await showAlert(t('common.info'), t('studioModel.modelBuilder.messages.noTransitionForState'));
             }
             return;
         }
@@ -380,7 +379,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
             }, 1000);
         } catch (error) {
             console.error('Recording error:', error);
-            await showAlert(t('common.error'), 'Failed to start recording: ' + error.message);
+            await showAlert(t('common.error'), t('studioModel.modelBuilder.messages.recordError', { error: error.message }));
         }
     };
 
@@ -522,7 +521,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                             engineRef.current.onStateChange = handleStateChange;
 
                             if (activeTab === 'test') {
-                                engineRef.current.addLog(0, videoRef.current.currentTime, "System", "Test Mode Active - Waiting for operator...");
+                                engineRef.current.addLog(0, videoRef.current.currentTime, "System", t('studioModel.modelBuilder.indicators.waiting'));
                                 setTestLogs([...engineRef.current.getLogs()]);
                             }
                             console.log("Inference Engine Started in Background:", currentModel.name);
@@ -834,7 +833,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                         setTestLogs([...logs]);
                     }
                 } else if (activeTab === 'test') {
-                    engineRef.current.addLog(0, 0, "System", "Test Mode Active - Ready for detection...");
+                    engineRef.current.addLog(0, 0, "System", t('studioModel.modelBuilder.indicators.waiting'));
                     setTestLogs([...engineRef.current.getLogs()]);
                 }
             }
@@ -857,7 +856,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
     const handleAddState = () => {
         const newState = {
             id: `s_${Date.now()}`,
-            name: `State ${currentModel.states.length + 1}`,
+            name: `${t('studioModel.modelBuilder.labels.stepCount')} ${currentModel.states.length + 1}`,
             minDuration: 1.0,
             roi: null,
             referencePose: null
@@ -870,7 +869,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
 
     const handleDeleteState = async (stateId) => {
         if (currentModel.states.length <= 1) {
-            await showAlert(t('common.warning'), "At least one state determines the model.");
+            await showAlert(t('common.warning'), t('studioModel.modelBuilder.messages.minOneState'));
             return;
         }
         setCurrentModel(prev => ({
@@ -891,7 +890,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
             setShowProjectPicker(true);
         } catch (error) {
             console.error("Failed to load projects:", error);
-            await showAlert(t('common.error'), "Gagal memuat daftar project.");
+            await showAlert(t('common.error'), t('studioModel.modelBuilder.messages.loadListError'));
         }
     };
 
@@ -946,10 +945,10 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
             setShowProjectPicker(false);
 
             if (importedStates.length > 0) {
-                await showAlert(t('common.success'), `Project "${project.projectName}" berhasil diimpor dengan ${importedStates.length} elemen sebagai baseline model.`);
+                await showAlert(t('common.success'), t('studioModel.modelBuilder.messages.projectImported', { name: project.projectName, count: importedStates.length }));
             }
         } else {
-            await showAlert(t('common.error'), "Project ini tidak memiliki data video.");
+            await showAlert(t('common.error'), t('studioModel.modelBuilder.messages.noVideoData'));
         }
     };
 
@@ -970,7 +969,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
     // Capture Logic
     const handleCaptureReference = async () => {
         if (!videoRef.current || !selectedStateId) {
-            await showAlert(t('common.warning'), "Please select a state and ensure video is loaded.");
+            await showAlert(t('common.warning'), t('studioModel.modelBuilder.messages.selectStateVideo'));
             return;
         }
 
@@ -993,9 +992,9 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
             handleUpdateState(selectedStateId, 'referencePose', pose.keypoints);
             handleUpdateState(selectedStateId, 'referenceImage', videoRef.current.currentTime);
             handleUpdateState(selectedStateId, 'thumbnail', thumbnail);
-            await showAlert(t('common.success'), "Gerakan berhasil disimpan sebagai referensi!");
+            await showAlert(t('common.success'), t('studioModel.modelBuilder.messages.motionSaved'));
         } else {
-            await showAlert(t('common.warning'), "Gagal mendeteksi tubuh. Pastikan tubuh terlihat jelas di kamera.");
+            await showAlert(t('common.warning'), t('studioModel.modelBuilder.messages.detectBodyError'));
         }
     };
 
@@ -1007,7 +1006,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                 engineRef.current = new InferenceEngine();
                 engineRef.current.loadModel(currentModel);
             } else {
-                await showAlert(t('common.info'), "Please switch to 'Rules & Logic' or 'Test Run' tab and play the video briefly.");
+                await showAlert(t('common.info'), t('studioModel.modelBuilder.messages.switchTabPlay'));
                 return;
             }
         }
@@ -1027,13 +1026,13 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
         }
 
         if (tracks.size === 0) {
-            await showAlert(t('common.warning'), "No operator detected. Please play the video so the system can identify the operator.");
+            await showAlert(t('common.warning'), t('studioModel.modelBuilder.messages.noOperator'));
             return;
         }
 
         const activeTrack = Array.from(tracks.values())[0];
         if (!activeTrack.poseBuffer || activeTrack.poseBuffer.length === 0) {
-            await showAlert(t('common.warning'), "No motion data available in buffer.");
+            await showAlert(t('common.warning'), t('studioModel.modelBuilder.messages.noBufferData'));
             return;
         }
 
@@ -1045,14 +1044,14 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                 .map(item => item.pose);
 
             if (sequence.length < 5) {
-                await showAlert(t('common.warning'), `Too few frames in selected range (${sequence.length} frames). Please ensure the video was played through the selected range.`);
+                await showAlert(t('common.warning'), t('studioModel.modelBuilder.messages.tooFewFrames', { count: sequence.length }));
                 return;
             }
         } else {
             // Traditional tail-based capture
             sequence = activeTrack.poseBuffer.slice(-bufferSize).map(item => item.pose);
             if (sequence.length < bufferSize) {
-                await showAlert(t('common.warning'), `Insufficient data. Need ${bufferSize} frames, but only have ${sequence.length}.`);
+                await showAlert(t('common.warning'), t('studioModel.modelBuilder.messages.insufficientData', { required: bufferSize, current: sequence.length }));
                 return;
             }
         }
@@ -1075,7 +1074,9 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
             handleUpdateTransition(transitionId, {
                 condition: { ...transition.condition, rules: updatedRules }
             });
-            await showAlert(t('common.success'), `Captured ${sequence.length} frames from ${startTime !== undefined ? `range ${startTime.toFixed(1)}s - ${endTime.toFixed(1)}s` : 'recent motion'}.`);
+            await showAlert(t('common.success'), startTime !== undefined
+                ? t('studioModel.modelBuilder.messages.capturedRange', { count: sequence.length, start: startTime.toFixed(1), end: endTime.toFixed(1) })
+                : t('studioModel.modelBuilder.messages.capturedRecent', { count: sequence.length }));
         }
     };
 
@@ -1113,7 +1114,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
     const handleAiSuggestRule = async (transitionId) => {
         const imageData = captureCurrentFrame();
         if (!imageData) {
-            await showAlert(t('common.error'), "Gagal menangkap frame video.");
+            await showAlert(t('common.error'), t('studioModel.modelBuilder.messages.captureFrameError'));
             return;
         }
 
@@ -1142,13 +1143,13 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
             }
         } catch (error) {
             console.error("AI Suggestion Error:", error);
-            await showAlert(t('common.error'), "AI gagal memberikan saran rule: " + error.message);
+            await showAlert(t('common.error'), t('studioModel.modelBuilder.messages.aiSuggestError', { error: error.message }));
         }
     };
 
     const handleAiValidateScript = async (transitionId, ruleId, script) => {
         if (!script) {
-            await showAlert(t('common.info'), "Script kosong. Silakan tulis logika terlebih dahulu.");
+            await showAlert(t('common.info'), t('studioModel.modelBuilder.messages.emptyScriptPrompt'));
             return;
         }
 
@@ -1156,17 +1157,20 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
         try {
             const result = await validateAiRuleScript(script);
             if (result) {
-                await showAlert("AI Logic Check", `${result.explanation}\n\n${result.issues.length > 0 ? "Isu: " + result.issues.join(", ") : "Tidak ada isu ditemukan."}\n\nSaran: ${result.suggestion}`);
+                await showAlert(t('studioModel.modelBuilder.messages.aiLogicCheck'),
+                    `${result.explanation}\n\n` +
+                    `${t('studioModel.modelBuilder.messages.aiLogicIssue')}${result.issues.length > 0 ? result.issues.join(", ") : t('studioModel.modelBuilder.messages.aiLogicNoIssue')}\n\n` +
+                    `${t('studioModel.modelBuilder.messages.aiLogicSuggestion')}${result.suggestion}`);
 
                 if (result.isValid === false && result.suggestion) {
-                    if (await showConfirm(t('common.warning'), "AI menemukan potensi kesalahan. Gunakan saran AI?")) {
+                    if (await showConfirm(t('common.warning'), t('studioModel.modelBuilder.messages.aiLogicFoundError'))) {
                         handleUpdateRule(transitionId, ruleId, { params: { script: result.suggestion } });
                     }
                 }
             }
         } catch (error) {
             console.error("AI Validation Error:", error);
-            await showAlert(t('common.error'), "Gagal memvalidasi script: " + error.message);
+            await showAlert(t('common.error'), t('studioModel.modelBuilder.messages.scriptValidateError', { error: error.message }));
         } finally {
             // setAiLoading(prev => ({ ...prev, [transitionId]: false })); // aiLoading state is not defined
         }
@@ -1684,13 +1688,13 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
         const newState = {
             ...originalState,
             id: `s_${Date.now()}`,
-            name: `${originalState.name} (Copy)`,
+            name: `${originalState.name} (${t('common.copy')})`,
             position: originalState.position ? { x: originalState.position.x + 20, y: originalState.position.y + 20 } : null
         };
 
         const updatedStates = [...currentModel.states, newState];
         setCurrentModel({ ...currentModel, states: updatedStates });
-        await showAlert(t('common.success'), `Duplicated state: ${newState.name}`);
+        await showAlert(t('common.success'), t('studioModel.modelBuilder.messages.duplicateStateInfo', { name: newState.name }));
     };
 
     const handleUpdateStatePosition = (stateId, position) => {
@@ -1719,14 +1723,14 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                 const jsonObj = JSON.parse(event.target.result);
                 // Simple validation
                 if (!jsonObj.states || !jsonObj.transitions) {
-                    await showAlert(t('common.error'), "Invalid model file format.");
+                    await showAlert(t('common.error'), t('studioModel.modelBuilder.messages.invalidFileFormat'));
                     return;
                 }
                 setCurrentModel({ ...jsonObj, id: model.id }); // Keep original ID to avoid db mismatch
-                await showAlert(t('common.success'), "Model imported successfully!");
+                await showAlert(t('common.success'), t('studioModel.modelBuilder.messages.modelImported'));
             } catch (err) {
                 console.error(err);
-                await showAlert(t('common.error'), "Error parsing JSON file");
+                await showAlert(t('common.error'), t('studioModel.modelBuilder.messages.jsonParseError'));
             }
         };
         reader.readAsText(file);
@@ -1745,7 +1749,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
     const handleLoadTmFromFiles = async (modelId) => {
         const files = tmFiles[modelId];
         if (!files || !files.model || !files.weights || !files.metadata) {
-            await showAlert(t('common.warning'), "Please upload all 3 required files: model.json, weights.bin, and metadata.json");
+            await showAlert(t('common.warning'), t('studioModel.modelBuilder.messages.tmFileRequired'));
             return;
         }
 
@@ -1755,10 +1759,10 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
         setTmLoadingStates(prev => ({ ...prev, [modelId]: true }));
         try {
             await tmDetector.loadModel(modelId, files, modelItem.type || 'image');
-            await showAlert(t('common.success'), "✅ Local Model Loaded Successfully!");
+            await showAlert(t('common.success'), t('studioModel.modelBuilder.messages.tmModelLoaded'));
         } catch (e) {
             console.error("Failed to load local TM model:", e);
-            await showAlert(t('common.error'), "❌ Failed to load local model: " + e.message);
+            await showAlert(t('common.error'), t('studioModel.modelBuilder.messages.tmModelLoadError', { error: e.message }));
         } finally {
             setTmLoadingStates(prev => ({ ...prev, [modelId]: false }));
         }
@@ -1767,7 +1771,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
     const handleAddTmModel = () => {
         const newModel = {
             id: `tm_${Date.now()}`,
-            name: `New TM Model ${currentModel.tmModels.length + 1}`,
+            name: `${t('studioModel.modelBuilder.labels.newTmModel')} ${currentModel.tmModels.length + 1}`,
             url: '',
             type: 'image'
         };
@@ -1797,7 +1801,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
         const template = MODEL_TEMPLATES.find(t => t.id === templateId);
         if (!template) return;
 
-        if (await showConfirm(t('common.confirm'), `Load "${template.name}"? This will REPLACE your current states.`)) {
+        if (await showConfirm(t('common.confirm'), t('studioModel.modelBuilder.messages.loadTemplateConfirm', { name: template.name }))) {
             setCurrentModel({
                 ...currentModel,
                 states: template.states,
@@ -2343,7 +2347,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                                 textAlign: 'center',
                                                 borderBottom: '1px solid #374151',
                                                 marginBottom: '4px'
-                                            }}>RULER</div>
+                                            }}>{t('studioModel.modelBuilder.labels.ruler')}</div>
 
                                             <button
                                                 onClick={() => setMeasurementMode(measurementMode === 'distance' ? null : 'distance')}
@@ -2630,7 +2634,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                                         width: '12px', height: '12px', borderRadius: '50%',
                                                         backgroundColor: 'white', animation: 'pulse 1s infinite'
                                                     }} />
-                                                    {t('studioModel.modelBuilder.ipCamera.recording')} {recordingDuration}s / 30s
+                                                    {t('studioModel.modelBuilder.ipCamera.recording')} {recordingDuration}{t('studioModel.modelBuilder.labels.secondsShort')} / 30{t('studioModel.modelBuilder.labels.secondsShort')}
                                                 </div>
                                             )}
                                         </>
@@ -2655,7 +2659,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
                                             }}
                                         >
-                                            <Play size={18} /> Start Recording
+                                            <Play size={18} /> {t('studioModel.modelBuilder.ipCamera.startRecord')}
                                         </button>
                                     ) : (
                                         <button
@@ -2667,13 +2671,13 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
                                             }}
                                         >
-                                            <Square size={18} /> Stop Recording
+                                            <Square size={18} /> {t('studioModel.modelBuilder.ipCamera.stopRecord')}
                                         </button>
                                     )}
                                 </div>
 
                                 <p style={{ color: '#6b7280', fontSize: '0.8rem', marginTop: '12px', marginBottom: 0 }}>
-                                    💡 Tip: Recording will automatically stop after 30 seconds. Make sure the camera URL is accessible.
+                                    {t('studioModel.modelBuilder.messages.ipCameraRecordingTip')}
                                 </p>
                             </div>
                         </div>
@@ -2720,9 +2724,9 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.7rem', color: '#9ca3af', fontWeight: 'bold' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     <Activity size={12} color="#3b82f6" />
-                                    <span>MOTION TIMELINE</span>
+                                    <span>{t('studioModel.modelBuilder.labels.motionTimeline')}</span>
                                 </div>
-                                {videoRef.current && <span>{videoRef.current.currentTime.toFixed(2)}s / {videoRef.current.duration?.toFixed(2)}s</span>}
+                                {videoRef.current && <span>{videoRef.current.currentTime.toFixed(2)}{t('studioModel.modelBuilder.labels.secondsShort')} / {videoRef.current.duration?.toFixed(2)}{t('studioModel.modelBuilder.labels.secondsShort')}</span>}
                             </div>
                             <div style={{
                                 height: '28px',
@@ -2771,7 +2775,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                                 lineHeight: '28px',
                                                 fontWeight: '600'
                                             }}
-                                            title={`${event.state}: ${event.startTime.toFixed(2)}s - ${event.endTime.toFixed(2)}s`}
+                                            title={`${event.state}: ${event.startTime.toFixed(2)}${t('studioModel.modelBuilder.labels.secondsShort')} - ${event.endTime.toFixed(2)}${t('studioModel.modelBuilder.labels.secondsShort')}`}
                                         >
                                             {width > 8 && event.state}
                                         </div>
@@ -2859,7 +2863,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                                 transition: 'all 0.2s'
                                             }}
                                         >
-                                            <Video size={16} /> Reference Video
+                                            <Video size={16} /> {t('studioModel.modelBuilder.buttons.referenceVideo')}
                                         </button>
                                     )}
                                     <button
@@ -2880,7 +2884,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                             transition: 'all 0.2s'
                                         }}
                                     >
-                                        <Camera size={16} /> Live Camera
+                                        <Camera size={16} /> {t('studioModel.modelBuilder.buttons.liveCamera')}
                                     </button>
                                     <button
                                         onClick={() => setTestModeInput('simulator')}
@@ -2900,7 +2904,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                             transition: 'all 0.2s'
                                         }}
                                     >
-                                        <Activity size={16} /> Simulator
+                                        <Activity size={16} /> {t('studioModel.modelBuilder.labels.simulator')}
                                     </button>
                                 </div>
                                 <div style={{
@@ -2925,7 +2929,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                     {/* Console Logs */}
                                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                            <h3 style={{ margin: 0, fontSize: '1rem' }}>Live Console</h3>
+                                            <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('studioModel.modelBuilder.labels.liveConsole')}</h3>
                                             <button
                                                 onClick={() => setTestLogs([])}
                                                 style={{ background: 'transparent', border: '1px solid #4b5563', color: '#9ca3af', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer' }}
@@ -2962,11 +2966,11 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                     {/* Cycle Statistics Panel */}
                                     <div style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <h3 style={{ margin: 0, fontSize: '1rem' }}>Cycle Analytics</h3>
+                                            <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('studioModel.modelBuilder.labels.cycleAnalytics')}</h3>
                                             <button
                                                 onClick={() => generatePDFReport(currentModel, cycleStats, 'cycle-chart-container')}
                                                 disabled={!cycleStats}
-                                                title="Export PDF Report"
+                                                title={t('studioModel.modelBuilder.tooltips.exportPdf')}
                                                 style={{ background: 'transparent', border: 'none', color: '#60a5fa', cursor: 'pointer', opacity: cycleStats ? 1 : 0.5 }}
                                             >
                                                 <FileJson size={18} />
@@ -3028,11 +3032,11 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                                     <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: '8px' }}>{t('studioModel.modelBuilder.labels.avgStats')}</div>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                                         <span style={{ fontSize: '0.85rem' }}>{t('studioModel.modelBuilder.labels.cycleTime')}</span>
-                                                        <span style={{ fontWeight: 'bold' }}>{cycleStats.avgCycleTime}s</span>
+                                                        <span style={{ fontWeight: 'bold' }}>{cycleStats.avgCycleTime}{t('studioModel.modelBuilder.labels.secondsShort')}</span>
                                                     </div>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                         <span style={{ fontSize: '0.85rem' }}>{t('studioModel.modelBuilder.labels.vaTime')}</span>
-                                                        <span style={{ fontWeight: 'bold', color: '#10b981' }}>{cycleStats.avgVaTime}s</span>
+                                                        <span style={{ fontWeight: 'bold', color: '#10b981' }}>{cycleStats.avgVaTime}{t('studioModel.modelBuilder.labels.secondsShort')}</span>
                                                     </div>
                                                 </div>
 
@@ -3042,7 +3046,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                                         {cycleStats.history.slice().reverse().map((c, idx) => (
                                                             <div key={idx} style={{ padding: '8px', backgroundColor: '#111827', borderRadius: '4px', fontSize: '0.8rem', border: '1px solid #2d3748', display: 'flex', justifyContent: 'space-between' }}>
                                                                 <span style={{ color: '#9ca3af' }}>Cycle #{cycleStats.totalCycles - idx}</span>
-                                                                <span>{c.duration.toFixed(2)}s <span style={{ color: '#10b981', marginLeft: '4px' }}>({((c.vaDuration / c.duration) * 100).toFixed(0)}% VA)</span></span>
+                                                                <span>{c.duration.toFixed(2)}{t('studioModel.modelBuilder.labels.secondsShort')} <span style={{ color: '#10b981', marginLeft: '4px' }}>({((c.vaDuration / c.duration) * 100).toFixed(0)}% VA)</span></span>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -3407,7 +3411,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
 
                         {activeTab === 'settings' && (
                             <div>
-                                <h3 style={{ marginBottom: '16px' }}>Model Settings</h3>
+                                <h3 style={{ marginBottom: '16px' }}>{t('studioModel.modelBuilder.tabs.settings')}</h3>
 
                                 {/* VERSION HISTORY */}
                                 <div style={{ marginBottom: '24px', padding: '16px', background: '#111827', borderRadius: '8px', border: '1px solid #374151' }}>
@@ -3510,7 +3514,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                 <div style={{ marginBottom: '24px', padding: '16px', background: '#111827', borderRadius: '8px', border: '1px solid #374151' }}>
                                     <h4 style={{ margin: '0 0 16px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <Layers size={18} color="#10b981" /> Teachable Machine Models
+                                            <Layers size={18} color="#10b981" /> {t('studioModel.modelBuilder.labels.tmModels')}
                                         </div>
                                         <div style={{ display: 'flex', gap: '8px' }}>
                                             <button
@@ -3520,13 +3524,13 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                                 }}
                                                 style={{ padding: '6px 12px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3b82f6', color: '#60a5fa', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', zIndex: 10, position: 'relative' }}
                                             >
-                                                <ExternalLink size={14} /> Go to Site
+                                                <ExternalLink size={14} /> {t('studioModel.modelBuilder.buttons.goToSite')}
                                             </button>
                                             <button
                                                 onClick={handleAddTmModel}
                                                 style={{ padding: '6px 12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', color: '#10b981', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
                                             >
-                                                <Plus size={14} /> Add Model
+                                                <Plus size={14} /> {t('studioModel.modelBuilder.buttons.addModel')}
                                             </button>
                                         </div>
                                     </h4>
@@ -3593,7 +3597,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                             )}
 
                                             <div style={{ padding: '10px', background: '#111827', borderRadius: '6px', border: '1px dashed #374151' }}>
-                                                <p style={{ margin: '0 0 8px', fontSize: '0.75rem', color: '#6b7280' }}>Offline Mode: Upload Files</p>
+                                                <p style={{ margin: '0 0 8px', fontSize: '0.75rem', color: '#6b7280' }}>{t('studioModel.modelBuilder.labels.offlineMode')}</p>
                                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
                                                     <input type="file" accept=".json" onChange={(e) => handleTmFileUpload(e, m.id, 'model')} style={{ fontSize: '0.65rem' }} />
                                                     <input type="file" accept=".bin" onChange={(e) => handleTmFileUpload(e, m.id, 'weights')} style={{ fontSize: '0.65rem' }} />
@@ -3603,7 +3607,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                                     onClick={() => handleLoadTmFromFiles(m.id)}
                                                     style={{ marginTop: '8px', width: '100%', padding: '4px', fontSize: '0.75rem', background: '#374151', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'white' }}
                                                 >
-                                                    Load Files
+                                                    {t('studioModel.modelBuilder.buttons.loadFiles')}
                                                 </button>
                                             </div>
 
@@ -3634,7 +3638,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                                 }}
                                                 style={{ padding: '6px 12px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3b82f6', color: '#60a5fa', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', zIndex: 10, position: 'relative' }}
                                             >
-                                                <ExternalLink size={14} /> Go to Site
+                                                <ExternalLink size={14} /> {t('studioModel.modelBuilder.buttons.goToSite')}
                                             </button>
                                             <button
                                                 onClick={() => {
@@ -3649,7 +3653,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                                 }}
                                                 style={{ padding: '6px 12px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3b82f6', color: '#60a5fa', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
                                             >
-                                                <Sparkles size={14} /> Try Demo
+                                                <Sparkles size={14} /> {t('studioModel.modelBuilder.buttons.tryDemo')}
                                             </button>
                                             <button
                                                 onClick={() => {
@@ -3658,7 +3662,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                                 }}
                                                 style={{ padding: '6px 12px', background: 'rgba(168, 85, 247, 0.1)', border: '1px solid #a855f7', color: '#a855f7', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
                                             >
-                                                <Plus size={14} /> Add Model
+                                                <Plus size={14} /> {t('studioModel.modelBuilder.buttons.addModel')}
                                             </button>
                                         </div>
                                     </h4>
@@ -3730,7 +3734,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
 
                                     {(!currentModel.rfModels || currentModel.rfModels.length === 0) && (
                                         <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280', fontSize: '0.85rem' }}>
-                                            No Roboflow models configured.
+                                            {t('studioModel.modelBuilder.indicators.noRoboflowModels')}
                                         </div>
                                     )}
                                 </div>
@@ -3792,13 +3796,13 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
 
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                    <h3 style={{ margin: 0 }}>Pose Extraction Data</h3>
+                                    <h3 style={{ margin: 0 }}>{t('studioModel.modelBuilder.labels.poseExtraction')}</h3>
                                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                         <span style={{ fontSize: '0.8rem', color: '#9ca3af', border: '1px solid #374151', padding: '2px 6px', borderRadius: '4px' }}>
                                             Mode: {currentModel.coordinateSystem === 'screen' ? 'Screen' : 'Body-Relative'}
                                         </span>
                                         <span style={{ fontSize: '0.8rem', color: activePose ? '#10b981' : '#6b7280' }}>
-                                            {activePose ? '● Tracking Live' : '○ No Data'}
+                                            {activePose ? `● ${t('studioModel.modelBuilder.indicators.trackingLive')}` : `○ ${t('studioModel.modelBuilder.indicators.noData')}`}
                                         </span>
                                     </div>
                                 </div>
@@ -3814,7 +3818,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                     borderBottom: '1px solid #374151'
                                 }}>
                                     <span>#</span>
-                                    <span>Keypoint</span>
+                                    <span>{t('studioModel.modelBuilder.labels.keypoint')}</span>
                                     <span>X</span>
                                     <span>Y</span>
                                     <span>Conf</span>
@@ -3885,7 +3889,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                 border: '1px solid #374151'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                    <h3 style={{ color: 'white', margin: 0 }}>Select Motion Template</h3>
+                                    <h3 style={{ color: 'white', margin: 0 }}>{t('studioModel.modelBuilder.labels.selectMotionTemplate')}</h3>
                                     <button onClick={() => setShowTemplateModal(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}>✕</button>
                                 </div>
 
@@ -3908,7 +3912,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                             <div style={{ fontWeight: 'bold', color: 'white', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
                                                 {tpl.name}
                                                 <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#9ca3af', backgroundColor: '#1f2937', padding: '2px 8px', borderRadius: '4px' }}>
-                                                    {tpl.states.length} Steps
+                                                    {tpl.states.length} {t('studioModel.modelBuilder.settings.states')}
                                                 </span>
                                             </div>
                                             <div style={{ fontSize: '0.85rem', color: '#d1d5db' }}>{tpl.description}</div>
@@ -3993,7 +3997,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                     onClose();
                                 }}
                             >
-                                Submit Solution <Trophy size={16} />
+                                {t('studioModel.modelBuilder.buttons.submitSolution')} <Trophy size={16} />
                             </button>
                         </div>
                     )}

@@ -10,11 +10,12 @@ export const getStoredApiKey = (providedKey) => {
 /**
  * Generates content for a work instruction manual step using Google Gemini API.
  * @param {string} taskName - The name of the task/step.
- * @param {string} apiKey - The Google Gemini API Key.
  * @param {string} model - The specific model to use (optional).
+ * @param {string} imageData - Base64 image data (optional).
+ * @param {string} language - The target language (default: 'English').
  * @returns {Promise<{description: string, keyPoints: string, safety: string}>}
  */
-export const generateManualContent = async (taskName, apiKey, model = null, imageData = null, language = 'English') => {
+export const generateManualContent = async (taskName, apiKey = null, model = null, imageData = null, language = 'English') => {
     const keyToUse = getStoredApiKey(apiKey);
     if (!keyToUse) {
         throw new Error("API Key is missing. Please configure it in AI Settings.");
@@ -523,7 +524,8 @@ ${inventoryDetails || 'None'}
             return aiResponse;
         } else {
             // OpenAI Compatible Chat
-            return await callOpenAICompatible(prompt, keyToUse, model, baseUrl);
+            const modelToUse = model || (provider === 'openai' ? 'gpt-3.5-turbo' : localStorage.getItem(`${provider}_model`)) || localStorage.getItem('gemini_model') || 'gpt-3.5-turbo';
+            return await callOpenAICompatible(prompt, keyToUse, modelToUse, baseUrl);
         }
 
 
@@ -544,7 +546,11 @@ const callAIProvider = async (prompt, apiKey, specificModel = null, expectJson =
     // Default models if not specified
     let model = specificModel;
     if (!model) {
-        model = localStorage.getItem('gemini_model') || (provider === 'gemini' ? 'gemini-1.5-flash-002' : 'gpt-3.5-turbo');
+        if (provider === 'gemini') {
+            model = localStorage.getItem('gemini_model') || 'gemini-1.5-flash-002';
+        } else {
+            model = localStorage.getItem(`${provider}_model`) || localStorage.getItem('gemini_model') || 'gpt-3.5-turbo';
+        }
     }
 
     if (provider === 'gemini') {
@@ -552,6 +558,38 @@ const callAIProvider = async (prompt, apiKey, specificModel = null, expectJson =
     } else {
         // OpenAI compatible currently doesn't support image in this helper, could be added later
         return await callOpenAICompatible(prompt, keyToUse, model, baseUrl, expectJson);
+    }
+}
+
+/**
+ * Validates the API Key and returns the list of available models for non-Gemini providers.
+ */
+export const validateOpenAICompatibleKey = async (apiKey, baseUrl) => {
+    const url = baseUrl ? `${baseUrl}/models` : 'https://api.openai.com/v1/models';
+    const keyToUse = (apiKey || localStorage.getItem('openai_api_key') || '').trim();
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${keyToUse}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error?.message || response.statusText);
+        }
+
+        const data = await response.json();
+        if (data.data) {
+            return data.data.map(m => m.id);
+        }
+        return [];
+    } catch (error) {
+        console.error("OpenAI Models Fetch Error:", error);
+        throw error;
     }
 };
 

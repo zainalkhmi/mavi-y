@@ -14,7 +14,7 @@ import {
     Activity,
     ClipboardList
 } from 'lucide-react';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 
 function WasteElimination() {

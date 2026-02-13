@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const TourGuide = () => {
     const { t, currentLanguage } = useLanguage();

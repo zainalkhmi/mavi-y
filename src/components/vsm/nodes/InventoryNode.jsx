@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 const InventoryNode = ({ data, selected, showDetails: propShowDetails }) => {
     const { t } = useLanguage();

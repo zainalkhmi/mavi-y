@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useDialog } from '../contexts/DialogContext';
 import { useProject } from '../contexts/ProjectContext';
 import { getAllProjects } from '../utils/database';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import {
     Folder,
     Save,

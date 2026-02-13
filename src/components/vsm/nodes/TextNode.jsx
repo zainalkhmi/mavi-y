@@ -1,6 +1,6 @@
 import React, { memo, useState, useEffect } from 'react';
 import { Handle, Position, NodeResizer } from 'reactflow';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 const TextNode = ({ data, selected }) => {
     const { t } = useLanguage();

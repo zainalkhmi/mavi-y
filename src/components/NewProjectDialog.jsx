@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getProjectByName, getFolders } from '../utils/database';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 function NewProjectDialog({ isOpen, onClose, onSubmit }) {
     const { t } = useLanguage();

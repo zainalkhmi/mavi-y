@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDialog } from '../contexts/DialogContext';
 import { getAllProjects, deleteProject } from '../utils/database';
 import { exportProject } from '../utils/projectExport';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 function OpenProjectDialog({ isOpen, onClose, onOpenProject }) {
     const { showAlert, showConfirm } = useDialog();

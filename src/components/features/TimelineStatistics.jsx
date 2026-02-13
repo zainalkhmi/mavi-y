@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { PieChart, BarChart2, Clock, TrendingUp, AlertTriangle, ChevronUp } from 'lucide-react';
 
 function TimelineStatistics({ measurements = [], currentCycle, onHide }) {

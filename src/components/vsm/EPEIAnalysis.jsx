@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { X, Repeat, Settings2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { VSMSymbols } from './vsm-constants';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const EPEIAnalysis = ({ isOpen, onClose, nodes, currentLanguage }) => {
     const { t } = useLanguage();

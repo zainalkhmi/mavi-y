@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import StreamHandler from '../../utils/streamHandler';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 function IPCameraConnect({ onStreamConnected, onStreamDisconnected, videoRef }) {
     const { t } = useLanguage();

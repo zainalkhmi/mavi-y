@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { PROCESS_TYPES } from '../vsm-constants';
 
 const ProcessNode = ({ data, selected, showDetails: propShowDetails }) => {

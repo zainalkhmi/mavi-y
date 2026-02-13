@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, BarChart3, Table } from 'lucide-react';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const YamazumiChart = ({ isOpen, onClose, nodes, taktTime, currentLanguage }) => {
     const { t } = useLanguage();

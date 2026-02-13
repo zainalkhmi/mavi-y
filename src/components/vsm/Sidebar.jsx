@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { VSMSymbols } from './vsm-constants';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import {
     Factory, User, Zap, TrendingUp, Building2, Package,
     ShoppingCart, Repeat, Shield, Truck, Box, CheckCircle,

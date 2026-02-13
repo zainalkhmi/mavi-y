@@ -45,7 +45,7 @@ import {
     Network,
     Trophy
 } from 'lucide-react';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useDialog } from '../contexts/DialogContext';
 

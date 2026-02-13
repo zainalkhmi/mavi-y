@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Filter, Download, ChevronDown, ChevronRight, Info, AlertTriangle, AlertCircle, CheckCircle } from 'lucide-react';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const LogViewer = ({ logs }) => {
     const { t } = useLanguage();

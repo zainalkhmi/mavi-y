@@ -13,7 +13,7 @@ import { captureScreenshot, exportAnalysisData } from '../utils/screenshotCaptur
 import PoseVisualizer from './features/PoseVisualizer';
 import PoseVisualizer3D from './features/PoseVisualizer3D';
 import VideoIntelligence from './VideoIntelligence';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { useDialog } from '../contexts/DialogContext';
 import {
     FolderRoot,

@@ -35,7 +35,7 @@ import { saveVSM, getVSMById } from '../../utils/vsmDB';
 import ReactMarkdown from 'react-markdown';
 import AIChatOverlay from '../features/AIChatOverlay';
 import { Brain, Sparkles, X, Wand2, HelpCircle, MessageSquare, ImagePlus, PanelRightClose, PanelRightOpen, Eye, EyeOff, BarChart3, Repeat, Undo, Redo, ArrowLeft, ArrowUp, Save, Folder, Layout, Network, ChevronDown, ChevronUp } from 'lucide-react';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { SupplyChainEngine } from '../../utils/supplyChainEngine';
 import TemplateSelectionModal from './TemplateSelectionModal';
 

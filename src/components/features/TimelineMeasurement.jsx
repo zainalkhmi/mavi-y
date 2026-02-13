@@ -5,7 +5,7 @@ import {
     validateMeasurement,
     detectDuplicates
 } from '../../utils/smartSuggestions';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useDialog } from "../../contexts/DialogContext";
 import TimelineControls from './TimelineControls.jsx';
 import TimelineStatistics from './TimelineStatistics.jsx';

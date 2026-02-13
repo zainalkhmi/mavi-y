@@ -15,7 +15,7 @@ import {
     AlertTriangle, Zap, Layout, ArrowRightCircle,
     Factory, Truck, Box, User, ShoppingCart, Ship, Plane, Warehouse, HelpCircle
 } from 'lucide-react';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 // Icon mapping helper
 const getNodeIcon = (symbolType) => {

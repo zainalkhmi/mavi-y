@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit3, Trash2, Video, Activity, Box, X } from 'lucide-react';
 import ModelBuilder from './ModelBuilder';
 
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useDialog } from '../../contexts/DialogContext';
 
 // Mock data for initial testing
@@ -136,160 +136,106 @@ const StudioModel = () => {
                         <div style={{ marginTop: '20px' }}>
                             <h4 style={{ color: '#60a5fa', marginBottom: '8px' }}>{t('studioModel.helpModal.concepts.title')}</h4>
                             <ul style={{ paddingLeft: '20px', color: '#d1d5db' }}>
-                                <li><strong>State (Status):</strong> {t('studioModel.helpModal.concepts.state').replace('State (Status): ', '')}</li>
-                                <li><strong>Transition:</strong> {t('studioModel.helpModal.concepts.transition').replace('Transition: ', '')}</li>
-                                <li><strong>Rule (Aturan):</strong> {t('studioModel.helpModal.concepts.rule').replace('Rule (Aturan): ', '')}</li>
+                                <li><strong>State (Status):</strong> {t('studioModel.helpModal.concepts.state').replace('State (Status): ', '').replace('State (Status):', '')}</li>
+                                <li><strong>Transition:</strong> {t('studioModel.helpModal.concepts.transition').replace('Transition: ', '').replace('Transition:', '')}</li>
+                                <li><strong>Rule (Aturan):</strong> {t('studioModel.helpModal.concepts.rule').replace('Rule (Aturan): ', '').replace('Rule (Aturan):', '')}</li>
                             </ul>
 
                             <h4 style={{ color: '#60a5fa', marginBottom: '8px', marginTop: '16px' }}>{t('studioModel.helpModal.workflow.title')}</h4>
                             <ol style={{ paddingLeft: '20px', color: '#d1d5db' }}>
-                                <li><strong>Upload Video:</strong> {t('studioModel.helpModal.workflow.step1').replace('Upload Video: ', '')}</li>
-                                <li><strong>Definisikan States:</strong> {t('studioModel.helpModal.workflow.step2').replace('Definisikan States: ', '')}</li>
-                                <li><strong>Buat Transisi & Rule:</strong> {t('studioModel.helpModal.workflow.step3').replace('Buat Transisi & Rule: ', '')}</li>
-                                <li><strong>Validasi:</strong> {t('studioModel.helpModal.workflow.step4').replace('Validasi: ', '')}</li>
+                                <li><strong>Upload Video:</strong> {t('studioModel.helpModal.workflow.step1').replace('Upload Video: ', '').replace('Upload Video:', '')}</li>
+                                <li><strong>Define States:</strong> {t('studioModel.helpModal.workflow.step2').replace('Define States: ', '').replace('Define States:', '').replace('Definisikan States: ', '').replace('Definisikan States:', '')}</li>
+                                <li><strong>Create Transitions & Rules:</strong> {t('studioModel.helpModal.workflow.step3').replace('Create Transitions & Rules: ', '').replace('Create Transitions & Rules:', '').replace('Buat Transisi & Rule: ', '').replace('Buat Transisi & Rule:', '')}</li>
+                                <li><strong>Validation:</strong> {t('studioModel.helpModal.workflow.step4').replace('Validation: ', '').replace('Validation:', '').replace('Validasi: ', '').replace('Validasi:', '')}</li>
                             </ol>
 
                             <h4 style={{ color: '#60a5fa', marginBottom: '8px', marginTop: '16px' }}>{t('studioModel.helpModal.navigation.title')}</h4>
                             <ul style={{ paddingLeft: '20px', color: '#d1d5db' }}>
-                                <li><strong>Tab States:</strong> {t('studioModel.helpModal.navigation.tabStates').replace('Tab States: ', '')}</li>
-                                <li><strong>Tab Rules:</strong> {t('studioModel.helpModal.navigation.tabRules').replace('Tab Rules: ', '')}</li>
-                                <li><strong>Tab Test/Debug:</strong> {t('studioModel.helpModal.navigation.tabTest').replace('Tab Test/Debug: ', '')}</li>
+                                <li><strong>Tab States:</strong> {t('studioModel.helpModal.navigation.tabStates').replace('Tab States: ', '').replace('Tab States:', '').replace('Tab States: ', '').replace('Tab States:', '')}</li>
+                                <li><strong>Tab Rules:</strong> {t('studioModel.helpModal.navigation.tabRules').replace('Tab Rules: ', '').replace('Tab Rules:', '').replace('Tab Rules: ', '').replace('Tab Rules:', '')}</li>
+                                <li><strong>Tab Test/Debug:</strong> {t('studioModel.helpModal.navigation.tabTest').replace('Tab Test/Debug: ', '').replace('Tab Test/Debug:', '').replace('Tab Test/Debug: ', '').replace('Tab Test/Debug:', '')}</li>
                             </ul>
 
-                            <h4 style={{ color: '#60a5fa', marginBottom: '8px', marginTop: '16px' }}>4. Tipe Rule (Aturan)</h4>
+                            <h4 style={{ color: '#60a5fa', marginBottom: '8px', marginTop: '16px' }}>{t('studioModel.helpModal.ruleTypes.title')}</h4>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                <div style={{ padding: '8px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '6px' }}>
-                                    <strong style={{ color: '#60a5fa' }}>Joint Angle</strong>
-                                    <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#d1d5db' }}>Sudut sendi (Siku &lt; 90°).</p>
-                                    <p style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '2px' }}>*Guna: Cek postur tubuh/ergonomi.</p>
-                                </div>
-                                <div style={{ padding: '8px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '6px' }}>
-                                    <strong style={{ color: '#10b981' }}>Pose Relation (XYZ)</strong>
-                                    <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#d1d5db' }}>Posisi relatif (Wrist Y &lt; Nose Y).</p>
-                                    <p style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '2px' }}>*Guna: Cek posisi tangan vs badan.</p>
-                                </div>
-                                <div style={{ padding: '8px', background: 'rgba(236, 72, 153, 0.1)', borderRadius: '6px' }}>
-                                    <strong style={{ color: '#ec4899' }}>Pose Velocity</strong>
-                                    <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#d1d5db' }}>Kecepatan gerak sendi.</p>
-                                    <p style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '2px' }}>*Guna: Deteksi diam (tunggu) atau gerakan cepat.</p>
-                                </div>
-                                <div style={{ padding: '8px', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '6px' }}>
-                                    <strong style={{ color: '#f59e0b' }}>Object Proximity</strong>
-                                    <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#d1d5db' }}>Jarak tangan ke objek.</p>
-                                    <p style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '2px' }}>*Guna: Deteksi ambil/taruh barang.</p>
-                                </div>
-                                <div style={{ padding: '8px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '6px' }}>
-                                    <strong style={{ color: '#ef4444' }}>Object in ROI</strong>
-                                    <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#d1d5db' }}>Objek masuk area.</p>
-                                    <p style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '2px' }}>*Guna: Safety zone atau deteksi material masuk.</p>
-                                </div>
-                                <div style={{ padding: '8px', background: 'rgba(14, 165, 233, 0.1)', borderRadius: '6px' }}>
-                                    <strong style={{ color: '#0ea5e9' }}>Operator Proximity</strong>
-                                    <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#d1d5db' }}>Jarak operator ke kamera/titik.</p>
-                                    <p style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '2px' }}>*Guna: Cek apakah operator di stasiun kerja.</p>
-                                </div>
-                                <div style={{ padding: '8px', background: 'rgba(124, 58, 237, 0.1)', borderRadius: '6px' }}>
-                                    <strong style={{ color: '#7c3aed' }}>Golden Pose Match</strong>
-                                    <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#d1d5db' }}>Kemiripan dengan foto referensi.</p>
-                                    <p style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '2px' }}>*Guna: Validasi postur kompleks (contoh: SOP).</p>
-                                </div>
-                                <div style={{ padding: '8px', background: 'rgba(139, 92, 246, 0.1)', borderRadius: '6px' }}>
-                                    <strong style={{ color: '#8b5cf6' }}>Advanced Script</strong>
-                                    <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#d1d5db' }}>Logika custom (DSL).</p>
-                                    <p style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '2px' }}>*Guna: Skenario rumit (Logika AND/OR).</p>
-                                </div>
-                                <div style={{ padding: '8px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '6px' }}>
-                                    <strong style={{ color: '#10b981' }}>Teachable Machine</strong>
-                                    <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#d1d5db' }}>Klasifikasi AI kustom.</p>
-                                    <p style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '2px' }}>*Guna: Deteksi aktivitas kompleks (e.g. "Working", "Phone Use").</p>
-                                </div>
+                                {Object.keys(t('studioModel.helpModal.ruleTypes', { returnObjects: true })).filter(k => k !== 'title').map((key, idx) => {
+                                    const rule = t(`studioModel.helpModal.ruleTypes.${key}`, { returnObjects: true });
+                                    const colors = ['#60a5fa', '#10b981', '#ec4899', '#f59e0b', '#ef4444', '#0ea5e9', '#7c3aed', '#8b5cf6', '#10b981'];
+                                    const bgColors = colors.map(c => `${c}1A`); // 10% opacity
+                                    return (
+                                        <div key={key} style={{ padding: '8px', background: bgColors[idx % bgColors.length], borderRadius: '6px' }}>
+                                            <strong style={{ color: colors[idx % colors.length] }}>{rule.label}</strong>
+                                            <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#d1d5db' }}>{rule.desc}</p>
+                                            <p style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '2px' }}>*{rule.usage}</p>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
 
-                        <h4 style={{ color: '#60a5fa', marginBottom: '8px', marginTop: '20px' }}>5. 📚 Contoh Kasus Penggunaan (Use Cases)</h4>
+                        <h4 style={{ color: '#60a5fa', marginBottom: '8px', marginTop: '20px' }}>{t('studioModel.helpModal.useCases.title')}</h4>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '10px' }}>
-                            <div style={{ backgroundColor: '#1f2937', padding: '12px', borderRadius: '8px', border: '1px solid #374151' }}>
-                                <strong style={{ color: '#eab308' }}>Case 1: Hitung Rakitan</strong>
-                                <p style={{ margin: '6px 0', fontSize: '0.8rem', color: '#9ca3af' }}>Hitung cycle saat tangan ambil part.</p>
-                                <ul style={{ paddingLeft: '16px', fontSize: '0.75rem', color: '#d1d5db', margin: 0 }}>
-                                    <li><strong>Rule:</strong> <code>Hand Proximity</code> &lt; 10cm ke Box.</li>
-                                </ul>
-                            </div>
-                            <div style={{ backgroundColor: '#1f2937', padding: '12px', borderRadius: '8px', border: '1px solid #374151' }}>
-                                <strong style={{ color: '#ef4444' }}>Case 2: Safety Zone</strong>
-                                <p style={{ margin: '6px 0', fontSize: '0.8rem', color: '#9ca3af' }}>Alarm jika tangan masuk mesin.</p>
-                                <ul style={{ paddingLeft: '16px', fontSize: '0.75rem', color: '#d1d5db', margin: 0 }}>
-                                    <li><strong>Rule:</strong> <code>Object in ROI</code> (Hand in Danger Zone).</li>
-                                </ul>
-                            </div>
-                            <div style={{ backgroundColor: '#1f2937', padding: '12px', borderRadius: '8px', border: '1px solid #374151' }}>
-                                <strong style={{ color: '#10b981' }}>Case 3: Ergonomi</strong>
-                                <p style={{ margin: '6px 0', fontSize: '0.8rem', color: '#9ca3af' }}>Cegah kerja tangan di atas kepala.</p>
-                                <ul style={{ paddingLeft: '16px', fontSize: '0.75rem', color: '#d1d5db', margin: 0 }}>
-                                    <li><strong>Script:</strong> <code>right_wrist.y &lt; nose.y</code></li>
-                                </ul>
-                            </div>
-                            <div style={{ backgroundColor: '#1f2937', padding: '12px', borderRadius: '8px', border: '1px solid #374151' }}>
-                                <strong style={{ color: '#8b5cf6' }}>Case 4: Dua Tangan</strong>
-                                <p style={{ margin: '6px 0', fontSize: '0.8rem', color: '#9ca3af' }}>Wajib angkat dengan 2 tangan.</p>
-                                <ul style={{ paddingLeft: '16px', fontSize: '0.75rem', color: '#d1d5db', margin: 0 }}>
-                                    <li><strong>Script:</strong> <code>dist(L_Hand) &lt; 0.1 && dist(R_Hand) &lt; 0.1</code></li>
-                                </ul>
-                            </div>
+                            {['case1', 'case2', 'case3', 'case4'].map(key => {
+                                const uc = t(`studioModel.helpModal.useCases.${key}`, { returnObjects: true });
+                                const colors = { case1: '#eab308', case2: '#ef4444', case3: '#10b981', case4: '#8b5cf6' };
+                                return (
+                                    <div key={key} style={{ backgroundColor: '#1f2937', padding: '12px', borderRadius: '8px', border: '1px solid #374151' }}>
+                                        <strong style={{ color: colors[key] }}>{uc.title}</strong>
+                                        <p style={{ margin: '6px 0', fontSize: '0.8rem', color: '#9ca3af' }}>{uc.desc}</p>
+                                        <ul style={{ paddingLeft: '16px', fontSize: '0.75rem', color: '#d1d5db', margin: 0 }}>
+                                            <li>{uc.rule}</li>
+                                        </ul>
+                                    </div>
+                                );
+                            })}
                         </div>
 
-                        <h4 style={{ color: '#60a5fa', marginBottom: '8px', marginTop: '20px' }}>6. 🏭 Contoh Step-by-Step (Siklus Mesin CNC)</h4>
+                        <h4 style={{ color: '#60a5fa', marginBottom: '8px', marginTop: '20px' }}>{t('studioModel.helpModal.exampleCycle.title')}</h4>
                         <div style={{ backgroundColor: '#1f2937', padding: '15px', borderRadius: '8px', border: '1px solid #374151', fontSize: '0.85rem', color: '#d1d5db' }}>
-                            <p style={{ margin: '0 0 10px 0', fontStyle: 'italic', color: '#9ca3af' }}>Skenario: Operator menjalankan mesin, merakit, dan memindahkan barang.</p>
+                            <p style={{ margin: '0 0 10px 0', fontStyle: 'italic', color: '#9ca3af' }}>{t('studioModel.helpModal.exampleCycle.scenario')}</p>
                             <ol style={{ paddingLeft: '20px', margin: 0, lineHeight: '1.8' }}>
-                                <li><strong>Tekan Tombol MSIN ON:</strong><ul style={{ paddingLeft: '15px', margin: '4px 0', color: '#9ca3af', listStyleType: 'circle' }}><li>Rule: <code>Object Proximity</code> (Kanan &lt; 5cm ke "Start Button").</li></ul></li>
-                                <li><strong>Ambil Baut:</strong><ul style={{ paddingLeft: '15px', margin: '4px 0', color: '#9ca3af', listStyleType: 'circle' }}><li>Rule: <code>Hand Proximity</code> (Kiri &lt; 10cm ke "Box Baut").</li></ul></li>
-                                <li><strong>Pasang Baut:</strong><ul style={{ paddingLeft: '15px', margin: '4px 0', color: '#9ca3af', listStyleType: 'circle' }}><li>Rule: <code>Pose Relation</code> (Kiri &lt; Dada Y).</li></ul></li>
-                                <li><strong>Pindah Belakang (Mundur):</strong><ul style={{ paddingLeft: '15px', margin: '4px 0', color: '#9ca3af', listStyleType: 'circle' }}><li>Rule: <code>Pose Relation</code> (Ankle Y &gt; Line Batas Lantai).</li></ul></li>
-                                <li><strong>Periksa Barang (Inspeksi):</strong><ul style={{ paddingLeft: '15px', margin: '4px 0', color: '#9ca3af', listStyleType: 'circle' }}><li>Rule: <code>Pose Angle</code> (Leher Angle &lt; 150°).</li></ul></li>
-                                <li><strong>Tekan Tombol RUN:</strong><ul style={{ paddingLeft: '15px', margin: '4px 0', color: '#9ca3af', listStyleType: 'circle' }}><li>Rule: <code>Object Proximity</code> (Kanan &lt; 5cm ke "Panel Run").</li></ul></li>
-                                <li><strong>Tunggu Mesin Berhenti:</strong><ul style={{ paddingLeft: '15px', margin: '4px 0', color: '#9ca3af', listStyleType: 'circle' }}><li>Rule: <code>Pose Velocity</code> (Semua Sendi &lt; 10).</li></ul></li>
-                                <li><strong>Ambil Barang Jadi:</strong><ul style={{ paddingLeft: '15px', margin: '4px 0', color: '#9ca3af', listStyleType: 'circle' }}><li>Rule: <code>Hand Proximity</code> (Kedua Tangan &lt; 10cm ke "Machine Chuck").</li></ul></li>
-                                <li><strong>Taruh di Meja:</strong><ul style={{ paddingLeft: '15px', margin: '4px 0', color: '#9ca3af', listStyleType: 'circle' }}><li>Rule: <code>Object Proximity</code> (Object &lt; 5cm ke "Meja Finish").</li></ul></li>
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                                    <li key={num}>{t(`studioModel.helpModal.exampleCycle.step${num}`)}</li>
+                                ))}
                             </ol>
                         </div>
 
-                        <h4 style={{ color: '#10b981', marginBottom: '8px', marginTop: '20px' }}>7. 🤖 Integrasi Teachable Machine (AI Kustom)</h4>
+                        <h4 style={{ color: '#10b981', marginBottom: '8px', marginTop: '20px' }}>{t('studioModel.helpModal.aiIntegration.title')}</h4>
                         <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.05)', padding: '15px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '0.85rem' }}>
-                            <p style={{ margin: '0 0 10px 0' }}>Gunakan model klasifikasi kustom dari <a href="https://teachablemachine.withgoogle.com/train/pose" target="_blank" rel="noreferrer" style={{ color: '#10b981' }}>Teachable Machine</a>.</p>
+                            <p style={{ margin: '0 0 10px 0' }}>{t('studioModel.helpModal.aiIntegration.desc')} <a href="https://teachablemachine.withgoogle.com/train/pose" target="_blank" rel="noreferrer" style={{ color: '#10b981' }}>Teachable Machine</a>.</p>
                             <div style={{ marginBottom: '12px' }}>
-                                <strong style={{ color: 'white' }}>A. Cara Menghubungkan:</strong>
+                                <strong style={{ color: 'white' }}>{t('studioModel.helpModal.aiIntegration.connectTitle')}</strong>
                                 <ol style={{ paddingLeft: '20px', color: '#d1d5db', marginTop: '4px' }}>
-                                    <li>Buka tab <strong>Settings</strong> → Klik <strong>Add Model</strong>.</li>
-                                    <li>Masukkan <strong>URL</strong> model (Online) atau upload 3 file (Offline).</li>
+                                    <li>{t('studioModel.helpModal.aiIntegration.connectStep1')}</li>
+                                    <li>{t('studioModel.helpModal.aiIntegration.connectStep2')}</li>
                                 </ol>
                             </div>
                             <div>
-                                <strong style={{ color: 'white' }}>B. Cara Menggunakan di Rule:</strong>
-                                <p style={{ color: '#d1d5db', margin: '4px 0 0' }}>Di Rule Editor, pilih tipe <strong>Teachable Machine</strong> → Pilih <strong>Model</strong> → Masukkan <strong>Target Class</strong>.</p>
+                                <strong style={{ color: 'white' }}>{t('studioModel.helpModal.aiIntegration.usageTitle')}</strong>
+                                <p style={{ color: '#d1d5db', margin: '4px 0 0' }}>{t('studioModel.helpModal.aiIntegration.usageDesc')}</p>
                             </div>
                         </div>
 
-                        <h4 style={{ color: '#60a5fa', marginBottom: '8px', marginTop: '20px' }}>8. ⚖️ Analisa Akurasi</h4>
+                        <h4 style={{ color: '#60a5fa', marginBottom: '8px', marginTop: '20px' }}>{t('studioModel.helpModal.accuracyAnalysis.title')}</h4>
                         <div style={{ overflowX: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', color: '#d1d5db' }}>
                                 <thead>
                                     <tr style={{ borderBottom: '1px solid #4b5563', color: '#9ca3af', textAlign: 'left' }}>
-                                        <th style={{ padding: '8px' }}>Tipe Logic</th>
-                                        <th style={{ padding: '8px' }}>Kelebihan (Pros)</th>
-                                        <th style={{ padding: '8px' }}>Kekurangan (Cons)</th>
+                                        <th style={{ padding: '8px' }}>{t('studioModel.helpModal.accuracyAnalysis.typeLogic')}</th>
+                                        <th style={{ padding: '8px' }}>{t('studioModel.helpModal.accuracyAnalysis.pros')}</th>
+                                        <th style={{ padding: '8px' }}>{t('studioModel.helpModal.accuracyAnalysis.cons')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr style={{ borderBottom: '1px solid #374151' }}>
-                                        <td style={{ padding: '8px', color: '#60a5fa' }}>Pose/Joint</td>
-                                        <td style={{ padding: '8px' }}>Sangat cepat, real-time 30FPS.</td>
-                                        <td style={{ padding: '8px', color: '#f87171' }}>Gagal jika badan tertutup.</td>
+                                        <td style={{ padding: '8px', color: '#60a5fa' }}>{t('studioModel.helpModal.accuracyAnalysis.poseJoint.label')}</td>
+                                        <td style={{ padding: '8px' }}>{t('studioModel.helpModal.accuracyAnalysis.poseJoint.pros')}</td>
+                                        <td style={{ padding: '8px', color: '#f87171' }}>{t('studioModel.helpModal.accuracyAnalysis.poseJoint.cons')}</td>
                                     </tr>
                                     <tr style={{ borderBottom: '1px solid #374151' }}>
-                                        <td style={{ padding: '8px', color: '#f59e0b' }}>Object Detection</td>
-                                        <td style={{ padding: '8px' }}>Mengenali alat spesifik.</td>
-                                        <td style={{ padding: '8px', color: '#f87171' }}>Lebih berat (FPS turun).</td>
+                                        <td style={{ padding: '8px', color: '#f59e0b' }}>{t('studioModel.helpModal.accuracyAnalysis.objectDetection.label')}</td>
+                                        <td style={{ padding: '8px' }}>{t('studioModel.helpModal.accuracyAnalysis.objectDetection.pros')}</td>
+                                        <td style={{ padding: '8px', color: '#f87171' }}>{t('studioModel.helpModal.accuracyAnalysis.objectDetection.cons')}</td>
                                     </tr>
                                 </tbody>
                             </table>

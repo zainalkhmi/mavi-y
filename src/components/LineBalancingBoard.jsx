@@ -19,7 +19,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Trash2, Plus, Layout, Activity, Save, PlayCircle, StopCircle, RefreshCcw } from 'lucide-react'; // Icons
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 // Sortable Task Item
 function SortableTask({ id, task, isStochastic, onUpdate }) {

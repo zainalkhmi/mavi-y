@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import i18n, { loadDynamicTranslations } from './i18n';
+import i18n, { loadDynamicTranslations } from '../i18n/i18n';
 import { useTranslation } from 'react-i18next';
 import { getDynamicTranslations } from '../utils/database';
 
@@ -15,7 +15,7 @@ export const useLanguage = () => {
 
 export const LanguageProvider = ({ children }) => {
     const { t } = useTranslation();
-    const [currentLanguage, setCurrentLanguageState] = useState(i18n.language || 'ja');
+    const [currentLanguage, setCurrentLanguageState] = useState(i18n.language || 'en');
 
     useEffect(() => {
         const initDynamicTranslations = async () => {

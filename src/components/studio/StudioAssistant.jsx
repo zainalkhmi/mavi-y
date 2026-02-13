@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, MessageSquare, X, Bot, Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { chatWithAI } from '../../utils/aiGenerator';
 
 const StudioAssistant = ({ model }) => {
+    const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
-        { role: 'assistant', content: 'Halo! Saya asisten khusus Studio Model. Bingung cara bikin Rule atau State? Tanya saya saja!' }
+        { role: 'assistant', content: t('studioModel.assistant.welcome') }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -48,10 +50,10 @@ const StudioAssistant = ({ model }) => {
             CRITICAL CONTEXT BOUNDARIES:
             1. **DO NOT** mention "Teachable Machine", "Golden Cycle", "Standard Detection", or "Therblig Analysis". Those are external modules.
             2. **ONLY** discuss:
-                - Creating States (Langkah Kerja).
-                - Creating Transitions and Rules (Logic).
+                - Creating States (${t('studioModel.modelBuilder.tabs.steps')}).
+                - Creating Transitions and Rules (${t('studioModel.modelBuilder.tabs.rules')}).
                 - Rule Types: POSE_RELATION, POSE_VELOCITY, POSE_ANGLE, OBJECT_PROXIMITY.
-                - Features of Studio: Body-Centric Mode (Ref. Tubuh), Hysteresis (Buffer), Smoothing.
+                - Features of Studio: Body-Centric Mode (${t('studioModel.settings.bodyCentric')}), Hysteresis (Buffer), Smoothing.
             3. **YOUR KNOWLEDGE**: You only know the FSM logic defined below. You do not know about machine learning training.
             
             [CONTEXT - CURRENT MODEL STRUCTURE]
@@ -70,7 +72,7 @@ const StudioAssistant = ({ model }) => {
             setMessages(prev => [...prev, { role: 'assistant', content: replyText }]);
         } catch (error) {
             console.error("Assistant Error:", error);
-            setMessages(prev => [...prev, { role: 'assistant', content: "Maaf, saya sedang pusing. Coba lagi nanti ya (Error koneksi/API)." }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: t('studioModel.assistant.error') }]);
         } finally {
             setIsLoading(false);
         }
@@ -146,8 +148,8 @@ const StudioAssistant = ({ model }) => {
                                 <Bot size={20} color="#60a5fa" />
                             </div>
                             <div>
-                                <h3 style={{ margin: 0, fontSize: '1rem', color: 'white' }}>Studio AI Assistant</h3>
-                                <span style={{ fontSize: '0.75rem', color: '#93c5fd' }}>Expert in Motion Logic</span>
+                                <h3 style={{ margin: 0, fontSize: '1rem', color: 'white' }}>{t('studioModel.assistant.botName')}</h3>
+                                <span style={{ fontSize: '0.75rem', color: '#93c5fd' }}>{t('studioModel.assistant.expertRole')}</span>
                             </div>
                         </div>
                         <button
@@ -194,7 +196,7 @@ const StudioAssistant = ({ model }) => {
                                     marginTop: '4px',
                                     alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start'
                                 }}>
-                                    {msg.role === 'user' ? 'You' : 'AI Assistant'}
+                                    {msg.role === 'user' ? t('common.you') : t('common.aiAssistant')}
                                 </span>
                             </div>
                         ))}
@@ -221,7 +223,7 @@ const StudioAssistant = ({ model }) => {
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyPress={handleKeyPress}
-                            placeholder="Tanya tentang Rule / Logic..."
+                            placeholder={t('studioModel.assistant.placeholder')}
                             style={{
                                 flex: 1,
                                 backgroundColor: '#374151',

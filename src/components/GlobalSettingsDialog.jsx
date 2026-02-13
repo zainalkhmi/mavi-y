@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useDialog } from '../contexts/DialogContext';
 import ReactDOM from 'react-dom';
 import { X, Save, CheckCircle, AlertCircle, Key, Cpu, Globe } from 'lucide-react';
-import { validateApiKey } from '../utils/aiGenerator';
-import { useLanguage } from '../i18n/LanguageContext';
+import { validateApiKey, validateOpenAICompatibleKey } from '../utils/aiGenerator';
+import { useLanguage } from '../contexts/LanguageContext';
 
 
 function GlobalSettingsDialog({ isOpen, onClose }) {
@@ -85,6 +85,7 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                     headers['X-Title'] = 'Motion Study Application';
                 }
 
+                // 1. Test connection with a small completion
                 const response = await fetch(`${baseUrl}/chat/completions`, {
                     method: 'POST',
                     headers: headers,
@@ -96,9 +97,19 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                 });
 
                 if (!response.ok) {
-                    const err = await response.json();
+                    const err = await response.json().catch(() => ({}));
                     throw new Error(err.error?.message || response.statusText);
                 }
+
+                // 2. Try to fetch models for the dropdown
+                try {
+                    const models = await validateOpenAICompatibleKey(apiKey, baseUrl);
+                    setAvailableModels(models);
+                } catch (e) {
+                    console.warn("Could not fetch model list:", e);
+                    // Don't fail the whole test if just model listing fails
+                }
+
                 setTestStatusAI('success');
             }
         } catch (error) {
@@ -261,6 +272,7 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                                     {[
                                         { code: 'en', label: 'English', flag: '🇺🇸' },
+                                        { code: 'id', label: 'Indonesian', flag: '🇮🇩' },
                                         { code: 'ja', label: 'Japanese', flag: '🇯🇵' }
                                     ].map(lang => (
                                         <button
@@ -400,16 +412,31 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                             {/* Model Selector */}
                             <div>
                                 <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem' }}>{t('settings.model')}</label>
-                                {provider === 'gemini' && availableModels.length > 0 ? (
-                                    <select
-                                        value={model}
-                                        onChange={(e) => setModel(e.target.value)}
-                                        style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0, 0, 0, 0.2)', border: '1px solid rgba(255, 255, 255, 0.1)', color: 'white', borderRadius: '12px', outline: 'none' }}
-                                    >
-                                        {availableModels.map(m => (
-                                            <option key={m} value={m}>{m}</option>
-                                        ))}
-                                    </select>
+                                {availableModels.length > 0 ? (
+                                    <div style={{ position: 'relative' }}>
+                                        <select
+                                            value={model}
+                                            onChange={(e) => setModel(e.target.value)}
+                                            style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0, 0, 0, 0.2)', border: '1px solid rgba(255, 255, 255, 0.1)', color: 'white', borderRadius: '12px', outline: 'none', appearance: 'none' }}
+                                        >
+                                            <option value="">{t('elementEditor.selectOption')}</option>
+                                            {availableModels.map(m => (
+                                                <option key={m} value={m}>{m}</option>
+                                            ))}
+                                        </select>
+                                        <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#666', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    setAvailableModels([]); // Manual switch back to text input
+                                                }}
+                                                style={{ background: 'transparent', border: 'none', color: '#0078d4', fontSize: '0.75rem', cursor: 'pointer', pointerEvents: 'auto' }}
+                                            >
+                                                Edit Manual
+                                            </button>
+                                            ▼
+                                        </div>
+                                    </div>
                                 ) : (
                                     <input
                                         type="text"
@@ -447,7 +474,7 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                     </button>
                 </div>
             </div>
-        </div>,
+        </div >,
         document.body
     );
 }

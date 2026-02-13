@@ -5,7 +5,7 @@ import ModernFlowVisualization from './ModernFlowVisualization';
 import LogViewer from './LogViewer';
 import ScenarioManager from './ScenarioManager';
 
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { X, Network, Play, Settings, BarChart3, FileText, FolderOpen, Clock, Zap, AlertTriangle } from 'lucide-react';
 
 const SupplyChainModal = ({ isOpen, onClose, nodes, edges, onSimulationResult, vsmId }) => {

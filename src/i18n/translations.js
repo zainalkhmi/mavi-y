@@ -281,6 +281,28 @@ export const translations = {
             formula: 'Formula'
         },
 
+        ipCamera: {
+            title: 'IP Camera Connection',
+            preset: 'Preset',
+            streamType: 'Stream Type',
+            streamUrl: 'Stream URL',
+            connect: 'Connect to Stream',
+            connecting: 'Connecting...',
+            disconnect: 'Disconnect',
+            connected: 'Connected',
+            tips: {
+                title: 'Tips',
+                tip1: 'URL must be a direct link to the video file (not a webpage).',
+                tip2: 'For RTSP, use a conversion server (like FFmpeg/VLC) to HTTP/HLS.',
+                tip3: 'Look for URLs ending in .m3u8 or .mp4.'
+            },
+            errors: {
+                missingUrl: 'Enter stream URL',
+                videoUnavailable: 'Video element not available',
+                connectionFailed: 'Failed to connect. Ensure the URL is a direct stream (e.g. .m3u8, .mp4, or MJPEG), not a webpage.',
+                generic: 'Failed to connect to stream'
+            }
+        },
         measurement: {
             startMeasurement: 'Start Measurement',
             endMeasurement: 'End Measurement',
@@ -354,28 +376,7 @@ export const translations = {
                     desc: 'Collaborate with your team in real-time. Sync projects and manuals across devices securely.'
                 }
             },
-            ipCamera: {
-                title: 'IP Camera Connection',
-                preset: 'Preset',
-                streamType: 'Stream Type',
-                streamUrl: 'Stream URL',
-                connect: 'Connect to Stream',
-                connecting: 'Connecting...',
-                disconnect: 'Disconnect',
-                connected: 'Connected',
-                tips: {
-                    title: 'Tips',
-                    tip1: 'URL must be a direct link to the video file (not a webpage).',
-                    tip2: 'For RTSP, use a conversion server (like FFmpeg/VLC) to HTTP/HLS.',
-                    tip3: 'Look for URLs ending in .m3u8 or .mp4.'
-                },
-                errors: {
-                    missingUrl: 'Enter stream URL',
-                    videoUnavailable: 'Video element not available',
-                    connectionFailed: 'Failed to connect. Ensure the URL is a direct stream (e.g. .m3u8, .mp4, or MJPEG), not a webpage.',
-                    generic: 'Failed to connect to stream'
-                }
-            },
+
             allowance: {
                 title: 'Allowance Settings',
                 personal: 'Personal (%)',
@@ -2607,6 +2608,28 @@ export const translations = {
         },
     },
     id: {
+        ipCamera: {
+            title: 'Koneksi Kamera IP',
+            preset: 'Preset',
+            streamType: 'Tipe Stream',
+            streamUrl: 'URL Stream',
+            connect: 'Hubungkan ke Stream',
+            connecting: 'Menghubungkan...',
+            disconnect: 'Putuskan',
+            connected: 'Terhubung',
+            tips: {
+                title: 'Tips',
+                tip1: 'URL harus link langsung ke file video (bukan halaman web).',
+                tip2: 'Untuk RTSP, gunakan server konversi (seperti FFmpeg/VLC) ke HTTP/HLS.',
+                tip3: 'Cari URL yang berakhiran .m3u8 atau .mp4.'
+            },
+            errors: {
+                missingUrl: 'Masukkan URL stream',
+                videoUnavailable: 'Elemen video tidak tersedia',
+                connectionFailed: 'Gagal menghubungkan. Pastikan URL adalah stream langsung (contoh: .m3u8, .mp4, atau MJPEG), bukan halaman web.',
+                generic: 'Gagal menghubungkan ke stream'
+            }
+        },
         fileExplorer: {
             recent: 'Terbaru',
             favorites: 'Favorit',

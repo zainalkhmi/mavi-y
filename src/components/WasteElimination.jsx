@@ -12,8 +12,10 @@ import {
     Calendar,
     Target,
     Activity,
-    ClipboardList
+    ClipboardList,
+    Bot
 } from 'lucide-react';
+import AIChatOverlay from './features/AIChatOverlay';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 
@@ -24,6 +26,22 @@ function WasteElimination() {
     const [selectedProjectId, setSelectedProjectId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [analysisData, setAnalysisData] = useState(null);
+
+    // AI Chat State
+    const [showChat, setShowChat] = useState(false);
+    const [chatHistory, setChatHistory] = useState([]);
+
+    // AI Context
+    const aiContext = {
+        type: 'waste_elimination',
+        data: {
+            projectName: analysisData?.projectName,
+            before: analysisData?.before,
+            after: analysisData?.after,
+            savings: analysisData?.savings,
+            wasteElements: analysisData?.wasteElements
+        }
+    };
 
     useEffect(() => {
         loadProjects();
@@ -386,6 +404,41 @@ function WasteElimination() {
                     </>
                 )}
             </div>
+
+            {/* AI Toggle Button (Floating) */}
+            <button
+                onClick={() => setShowChat(!showChat)}
+                style={{
+                    position: 'absolute',
+                    bottom: '30px',
+                    right: '30px',
+                    width: '60px',
+                    height: '60px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    border: 'none',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 20px rgba(118, 75, 162, 0.5)',
+                    zIndex: 100
+                }}
+                title="MAVi Waste Analyst"
+            >
+                <Bot size={32} />
+            </button>
+
+            {/* AI CHAT OVERLAY */}
+            <AIChatOverlay
+                visible={showChat}
+                onClose={() => setShowChat(false)}
+                context={aiContext}
+                chatHistory={chatHistory}
+                setChatHistory={setChatHistory}
+                title="MAVi Waste Elimination Expert"
+            />
         </div>
     );
 }

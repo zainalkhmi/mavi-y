@@ -54,7 +54,8 @@ const MENU_ITEMS = [
 
     // AI STUDIO
     { path: '/studio-model', icon: <PencilRuler size={20} />, title: 'Studio Model', labelKey: 'header.studioModel', category: 'AI', beta: true },
-    { path: '/teachable-machine', icon: <Cpu size={20} />, title: 'Teachable Machine Studio', labelKey: 'header.teachableMachine', category: 'AI', beta: true },
+    // { path: '/teachable-machine', icon: <Cpu size={20} />, title: 'Teachable Machine Studio', labelKey: 'header.teachableMachine', category: 'AI', beta: true },
+
 
     { path: '/realtime-compliance', icon: <Cctv size={20} />, title: 'Real-time Compliance', labelKey: 'header.realtimeCompliance', category: 'AI', beta: true },
     { path: '/ergo-copilot', icon: <Shield size={20} />, title: 'Ergo Copilot', labelKey: 'header.ergoCopilot', category: 'AI', beta: true },

@@ -1,9 +1,15 @@
-import React from 'react';
-import { X, BarChart3, Table } from 'lucide-react';
+import React, { useState } from 'react'; // Added useState
+import { X, BarChart3, Table, Bot } from 'lucide-react'; // Added Bot icon
 import { useLanguage } from '../../contexts/LanguageContext';
+import AIChatOverlay from '../features/AIChatOverlay'; // Import AIChatOverlay
 
 const YamazumiChart = ({ isOpen, onClose, nodes, taktTime, currentLanguage }) => {
     const { t } = useLanguage();
+
+    // AI Chat State
+    const [showChat, setShowChat] = useState(false);
+    const [chatHistory, setChatHistory] = useState([]);
+
     if (!isOpen) return null;
 
     // Process Data
@@ -32,6 +38,18 @@ const YamazumiChart = ({ isOpen, onClose, nodes, taktTime, currentLanguage }) =>
     const maxTime = Math.max(taktTime * 1.5, ...processNodes.map(p => p.ct), 10);
     const chartHeight = 350;
 
+    // Prepare AI Context
+    const aiContext = {
+        type: 'yamazumi',
+        data: {
+            processNodes,
+            taktTime,
+            maxTime,
+            totalCT: processNodes.reduce((sum, n) => sum + n.ct, 0),
+            bottleneck: processNodes.reduce((prev, current) => (prev.ct > current.ct) ? prev : current, { ct: 0, name: 'None' })
+        }
+    };
+
     return (
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -48,7 +66,8 @@ const YamazumiChart = ({ isOpen, onClose, nodes, taktTime, currentLanguage }) =>
                 border: '1px solid rgba(255, 255, 255, 0.1)',
                 boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
                 display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                animation: 'modalSlideUp 0.3s ease-out'
+                animation: 'modalSlideUp 0.3s ease-out',
+                position: 'relative' // For AI Overlay positioning if needed
             }}>
                 {/* Header */}
                 <div style={{
@@ -74,20 +93,42 @@ const YamazumiChart = ({ isOpen, onClose, nodes, taktTime, currentLanguage }) =>
                             <div style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.8rem' }}>{t('vsm.analysis.yamazumiSubtitle')}</div>
                         </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        style={{
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            color: '#fff',
-                            cursor: 'pointer',
-                            padding: '10px',
-                            borderRadius: '10px',
-                            transition: 'all 0.2s ease'
-                        }}
-                    >
-                        <X size={20} />
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                            onClick={() => setShowChat(!showChat)}
+                            style={{
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                border: 'none',
+                                color: '#fff',
+                                cursor: 'pointer',
+                                padding: '10px 16px',
+                                borderRadius: '10px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                fontWeight: 'bold',
+                                fontSize: '0.9rem',
+                                boxShadow: '0 4px 12px rgba(118, 75, 162, 0.3)'
+                            }}
+                        >
+                            <Bot size={18} />
+                            AI Analysis
+                        </button>
+                        <button
+                            onClick={onClose}
+                            style={{
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                color: '#fff',
+                                cursor: 'pointer',
+                                padding: '10px',
+                                borderRadius: '10px',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Content Scrollable Area */}
@@ -299,6 +340,17 @@ const YamazumiChart = ({ isOpen, onClose, nodes, taktTime, currentLanguage }) =>
                     {t('vsm.analysis.heijunkaTip').split(':').slice(1).join(':')}
                 </div>
             </div>
+
+            {/* AI CHAT OVERLAY */}
+            <AIChatOverlay
+                visible={showChat}
+                onClose={() => setShowChat(false)}
+                context={aiContext}
+                chatHistory={chatHistory}
+                setChatHistory={setChatHistory}
+                title="MAVi VSM Analyst"
+            />
+
             <style>{`
                 @keyframes modalSlideUp {
                     from { opacity: 0; transform: translateY(20px); }

@@ -40,7 +40,7 @@ class RoboflowDetector {
             }
         });
 
-        return this.cache;
+        return { ...this.cache };
     }
 
     /**

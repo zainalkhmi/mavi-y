@@ -319,7 +319,15 @@ class InferenceEngine {
     }
 
     evaluateCondition(condition, pose, objects, hands, track, allTracks, data = {}) {
-        if (!condition || !condition.rules || condition.rules.length === 0) return false;
+        if (!condition) return false;
+
+        // Use Logic Tree if available
+        if (condition.logicTree) {
+            return this.evaluateLogicTree(condition.logicTree, condition.rules || [], { pose, objects, hands, track, allTracks, data });
+        }
+
+        // Fallback to simple AND/OR
+        if (!condition.rules || condition.rules.length === 0) return false;
         const operator = condition.operator || 'AND';
         const evaluateItem = (item) => {
             let result = (item.rules && item.rules.length > 0)
@@ -329,6 +337,52 @@ class InferenceEngine {
         };
 
         return operator === 'OR' ? condition.rules.some(evaluateItem) : condition.rules.every(evaluateItem);
+    }
+
+    evaluateLogicTree(node, rules, context) {
+        if (!node) return false;
+
+        if (node.type === 'RULE') {
+            const rule = rules.find(r => r.id === node.ruleId);
+            if (!rule) return false;
+
+            const result = this.checkRule(rule, context.pose, context.objects, context.hands, context.track, context.allTracks, context.data);
+            return node.negate ? !result : result;
+        }
+
+        if (node.type === 'GROUP') {
+            // Optimization: For AND/OR, we can short-circuit if we evaluate lazily?
+            // But map evaluates all. For now map is fine, unless performance issue.
+            // Actually, let's just map all for simplicity and consistency with XOR/etc.
+            const results = node.children.map(child =>
+                this.evaluateLogicTree(child, rules, context)
+            );
+
+            let groupResult;
+            switch (node.operator) {
+                case 'AND':
+                    groupResult = results.every(r => r === true);
+                    break;
+                case 'OR':
+                    groupResult = results.some(r => r === true);
+                    break;
+                case 'XOR':
+                    groupResult = results.filter(r => r === true).length === 1;
+                    break;
+                case 'NAND':
+                    groupResult = !results.every(r => r === true);
+                    break;
+                case 'NOR':
+                    groupResult = !results.some(r => r === true);
+                    break;
+                default:
+                    groupResult = false;
+            }
+
+            return node.negate ? !groupResult : groupResult;
+        }
+
+        return false;
     }
 
     checkRule(rule, pose, objects, hands, track, allTracks, data = {}) {
@@ -362,7 +416,7 @@ class InferenceEngine {
             case 'HAND_GESTURE': return this.checkHandGesture(params, hands);
             case 'HAND_PROXIMITY': return this.checkHandProximity(params, hands, pose);
             case 'OBJECT_PROXIMITY': return this.checkObjectProximity(params, objects, pose);
-            case 'OBJECT_IN_ROI': return this.checkObjectInROI(params, objects);
+            case 'OBJECT_IN_ROI': return this.checkObjectInROI(params, objects, pose, track);
             case 'OPERATOR_PROXIMITY': return this.checkOperatorProximity(params, pose, allTracks, track.id);
             case 'TEACHABLE_MACHINE': return this.checkTeachableMachine(params, data.teachableMachine);
             case 'ROBOFLOW_DETECTION': return this.checkRoboflow(params, data.roboflow);
@@ -470,17 +524,38 @@ class InferenceEngine {
         });
     }
 
-    checkObjectInROI(params, objects) {
-        const { objectClass, roi } = params;
-        if (!objects || objects.length === 0 || !roi) return false;
+    checkObjectInROI(params, objects, pose, track) {
+        let roi = null;
+        if (params.roiSource === 'GLOBAL_ZONE') {
+            roi = this.model.zones?.find(z => z.id === params.zoneId);
+        } else {
+            // Default to STATE_ROI
+            const state = this.model.statesList.find(s => s.id === track.currentState);
+            roi = state ? state.roi : null;
+        }
 
-        return objects.some(obj => {
-            if (obj.class !== objectClass) return false;
-            const objX = obj.bbox[0] + obj.bbox[2] / 2;
-            const objY = obj.bbox[1] + obj.bbox[3] / 2;
-            return objX >= roi.x && objX <= (roi.x + roi.width) &&
-                objY >= roi.y && objY <= (roi.y + roi.height);
-        });
+        if (!roi) return false;
+
+        const targetType = params.targetType || 'OBJECT';
+
+        if (targetType === 'KEYPOINT') {
+            const joint = getKeypoint(pose.keypoints, params.joint);
+            if (!joint) return false;
+            return joint.x >= roi.x && joint.x <= (roi.x + roi.width) &&
+                joint.y >= roi.y && joint.y <= (roi.y + roi.height);
+        } else {
+            // OBJECT
+            const { objectClass } = params;
+            if (!objects || objects.length === 0) return false;
+
+            return objects.some(obj => {
+                if (obj.class !== objectClass) return false;
+                const objX = obj.bbox[0] + obj.bbox[2] / 2;
+                const objY = obj.bbox[1] + obj.bbox[3] / 2;
+                return objX >= roi.x && objX <= (roi.x + roi.width) &&
+                    objY >= roi.y && objY <= (roi.y + roi.height);
+            });
+        }
     }
 
     checkPoseVelocity(params, track) {

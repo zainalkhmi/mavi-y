@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import HelpButton from './HelpButton';
 import { helpContent } from '../utils/helpContent.jsx';
 import { useLanguage } from '../contexts/LanguageContext';
+import { Bot, Calculator } from 'lucide-react'; // Added icons
+import AIChatOverlay from './features/AIChatOverlay'; // Import AIChatOverlay
 
 function AllowanceCalculator() {
     const { t } = useLanguage();
@@ -24,6 +26,10 @@ function AllowanceCalculator() {
         delay: 2,
         special: 0
     });
+
+    // AI Chat State
+    const [showChat, setShowChat] = useState(false);
+    const [chatHistory, setChatHistory] = useState([]);
 
     // Variable fatigue allowance factors
     const variableFatigueOptions = {
@@ -105,19 +111,57 @@ function AllowanceCalculator() {
     // Calculate standard time
     const standardTime = normalTime * (1 + totalAllowancePercent / 100);
 
+    // AI Context
+    const aiContext = {
+        type: 'allowance_calculator',
+        data: {
+            normalTime,
+            allowances,
+            totalFatigue,
+            totalAllowancePercent,
+            standardTime,
+            factors: variableFatigueOptions // Pass options so AI knows available choices
+        }
+    };
+
     return (
-        <div style={{ padding: '20px', backgroundColor: '#1e1e1e', minHeight: '100vh', color: '#fff' }}>
+        <div style={{ padding: '20px', backgroundColor: '#1e1e1e', minHeight: '100vh', color: '#fff', paddingBottom: '80px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div>
-                    <h2 style={{ margin: '0 0 5px 0', color: '#00a6ff' }}>{t('allowance.calculatorTitle')}</h2>
+                    <h2 style={{ margin: '0 0 5px 0', color: '#00a6ff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <Calculator size={28} />
+                        {t('allowance.calculatorTitle')}
+                    </h2>
                     <p style={{ color: '#aaa', margin: 0, fontSize: '0.9rem' }}>
                         {t('allowance.subtitle')}
                     </p>
                 </div>
-                <HelpButton
-                    title={helpContent['allowance-calculator'].title}
-                    content={helpContent['allowance-calculator'].content}
-                />
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                        onClick={() => setShowChat(!showChat)}
+                        style={{
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            border: 'none',
+                            color: '#fff',
+                            cursor: 'pointer',
+                            padding: '10px 16px',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontWeight: 'bold',
+                            fontSize: '0.9rem',
+                            boxShadow: '0 4px 12px rgba(118, 75, 162, 0.3)'
+                        }}
+                    >
+                        <Bot size={18} />
+                        Ask Sensei
+                    </button>
+                    <HelpButton
+                        title={helpContent['allowance-calculator'].title}
+                        content={helpContent['allowance-calculator'].content}
+                    />
+                </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -309,6 +353,16 @@ function AllowanceCalculator() {
                     </div>
                 </div>
             </div>
+
+            {/* AI CHAT OVERLAY */}
+            <AIChatOverlay
+                visible={showChat}
+                onClose={() => setShowChat(false)}
+                context={aiContext}
+                chatHistory={chatHistory}
+                setChatHistory={setChatHistory}
+                title="MAVi Sensei"
+            />
         </div>
     );
 }

@@ -92,7 +92,7 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                     body: JSON.stringify({
                         model: model,
                         messages: [{ role: 'user', content: 'Hello' }],
-                        max_tokens: 5
+                        max_completion_tokens: 10
                     })
                 });
 
@@ -107,10 +107,18 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                     setAvailableModels(models);
                 } catch (e) {
                     console.warn("Could not fetch model list:", e);
-                    // Don't fail the whole test if just model listing fails
+                    setAvailableModels([]);
+                    await showAlert('Connection Success, but...', `Connected to ${baseUrl}, but could not list models. You can enter a model name manually.`);
+                }
+
+                if (availableModels.length === 0) {
+                    // If no models found, maybe show a toast or just let them enter manually
                 }
 
                 setTestStatusAI('success');
+                await showAlert('Success', 'AI Connection Successful!');
+
+
             }
         } catch (error) {
             console.error("AI Connection Test Failed:", error);
@@ -340,6 +348,40 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            {/* Active Configuration Status Card */}
+                            <div style={{
+                                padding: '16px',
+                                borderRadius: '12px',
+                                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.1) 100%)',
+                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '16px'
+                            }}>
+                                <div style={{
+                                    width: '40px',
+                                    height: '40px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#3b82f6',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    color: 'white'
+                                }}>
+                                    <Cpu size={24} />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.85rem', color: '#93c5fd', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        {t('settings.activeSystem') || 'ACTIVE SYSTEM'}
+                                    </div>
+                                    <div style={{ fontSize: '1.1rem', color: 'white', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ textTransform: 'capitalize' }}>{provider === 'ollama' ? 'Local AI (Ollama)' : provider}</span>
+                                        <span style={{ color: 'rgba(255,255,255,0.4)' }}>/</span>
+                                        <span>{model || 'No Model Selected'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Provider Selector */}
                             <div>
                                 <label style={{ display: 'block', color: '#aaa', marginBottom: '12px', fontSize: '0.9rem', fontWeight: '500' }}>{t('settings.provider')}</label>
@@ -357,9 +399,14 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                                                 cursor: 'pointer',
                                                 textTransform: 'capitalize',
                                                 fontWeight: provider === p ? '600' : '400',
-                                                transition: 'all 0.2s'
+                                                transition: 'all 0.2s',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                gap: '6px'
                                             }}
                                         >
+                                            {/* Icon placeholder or just text */}
                                             {p === 'ollama' ? t('settings.ollama') : (p === 'custom' ? 'Custom API' : p)}
                                         </button>
                                     ))}

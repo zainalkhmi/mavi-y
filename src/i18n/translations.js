@@ -570,6 +570,7 @@ export const translations = {
                 tabs: {
                     rules: 'Rules & Logic',
                     steps: 'Steps',
+                    zones: 'Zones',
                     data: 'Data',
                     test: 'Test Run',
                     settings: 'Settings',
@@ -590,6 +591,7 @@ export const translations = {
                     addState: 'Add State',
                     backToList: 'Back to List',
                     drawRoi: 'Draw ROI',
+                    addZone: 'Add Zone',
                     captureFrame: 'Capture Frame',
                     addSound: 'Sound',
                     addWebhook: 'Webhook',
@@ -599,6 +601,10 @@ export const translations = {
                     delete: 'Delete',
                     backToVideo: 'Back to Video',
                     backToCamera: 'Back to Camera',
+                },
+                messages: {
+                    noZones: 'No zones defined yet.',
+                    drawZoneHint: 'Click "Add Zone" to draw a region on the canvas.',
                 },
                 rulesEditor: {
                     addTransition: 'Add Transition',
@@ -725,6 +731,8 @@ export const translations = {
                     previewHint: 'Enter URL and click Start',
                 },
                 messages: {
+                    noZones: 'No zones defined yet.',
+                    drawZoneHint: 'Click "Add Zone" to draw a region on the canvas.',
                     minOneState: 'At least one state determines the model.',
                     loadListError: 'Failed to load project list.',
                     projectImported: 'Project "{{name}}" imported successfully with {{count}} elements as baseline model.',
@@ -1811,6 +1819,7 @@ export const translations = {
             ai: 'AI Configuration',
             provider: 'AI Provider',
             ollama: 'Local AI (Ollama)',
+            activeSystem: 'Active System',
             apiKey: 'API Key',
             model: 'Model',
             testConnection: 'Test Connection',
@@ -3147,6 +3156,7 @@ export const translations = {
                 tabs: {
                     rules: 'Aturan & Logika',
                     steps: 'Langkah',
+                    zones: 'Zona',
                     data: 'Data',
                     test: 'Uji Coba',
                     settings: 'Pengaturan',
@@ -3169,6 +3179,7 @@ export const translations = {
                     addState: 'Tambah State',
                     backToList: 'Kembali ke Daftar',
                     drawRoi: 'Gambar ROI',
+                    addZone: 'Tambah Zona',
                     captureFrame: 'Ambil Frame',
                     addSound: 'Suara',
                     addWebhook: 'Webhook',
@@ -3178,6 +3189,10 @@ export const translations = {
                     delete: 'Hapus',
                     backToVideo: 'Kembali ke Video',
                     backToCamera: 'Kembali ke Kamera',
+                },
+                messages: {
+                    noZones: 'Belum ada zona yang didefinisikan.',
+                    drawZoneHint: 'Klik "Tambah Zona" untuk menggambar area di kanvas.',
                 },
                 labels: {
                     ruler: 'Penggaris',
@@ -3892,6 +3907,7 @@ export const translations = {
                 ai: 'Konfigurasi AI',
                 provider: 'Penyedia AI',
                 ollama: 'AI Lokal (Ollama)',
+                activeSystem: 'Sistem Aktif',
                 apiKey: 'API Key',
                 model: 'Model',
                 testConnection: 'Tes Koneksi',
@@ -4985,6 +5001,7 @@ export const translations = {
                 tabs: {
                     rules: 'ルールとロジック (Rules & Logic)',
                     steps: 'ステップ (Steps)',
+                    zones: 'ゾーン (Zones)',
                     data: 'データ (Data)',
                     test: 'テスト実行 (Test Run)',
                     settings: '設定 (Settings)',
@@ -5005,6 +5022,7 @@ export const translations = {
                     addState: 'ステート追加 (Add State)',
                     backToList: 'リストに戻る (Back to List)',
                     drawRoi: 'ROI描画 (Draw ROI)',
+                    addZone: 'ゾーン追加 (Add Zone)',
                     captureFrame: 'フレームキャプチャ (Capture Frame)',
                     addSound: 'サウンド (Sound)',
                     addWebhook: 'Webhook',
@@ -5014,6 +5032,10 @@ export const translations = {
                     delete: '削除 (Delete)',
                     backToVideo: 'ビデオに戻る',
                     backToCamera: 'カメラに戻る',
+                },
+                messages: {
+                    noZones: 'ゾーンはまだ定義されていません。',
+                    drawZoneHint: '「ゾーン追加」をクリックしてキャンバス上に領域を描画してください。',
                 },
                 labels: {
                     motionTimeline: 'モーションタイムライン (MOTION TIMELINE)',
@@ -5225,6 +5247,8 @@ export const translations = {
                     templateLoad: '"{{name}}" を読み込みますか？これにより、現在のモデルが置き換えられます。',
                 },
                 messages: {
+                    noZones: 'ゾーンはまだ定義されていません。',
+                    drawZoneHint: '「ゾーン追加」をクリックしてキャンバス上に領域を描画してください。',
                     minOneState: '少なくとも1つのステートがモデルを決定します。',
                     loadListError: 'プロジェクトリストの読み込みに失敗しました。',
                     projectImported: 'プロジェクト「{{name}}」が{{count}}個の要素をベースラインモデルとして正常にインポートされました。',

@@ -504,13 +504,26 @@ ${inventoryDetails || 'None'}
             ${userMessage}
             
             **INSTRUCTIONS:**
-            1. Always answer based on the "Application User Guide" if the user asks about features.
-            2. If asked about Industrial Engineering (Time Study, Line Balancing, etc.), use your general expert knowledge.
-            3. Be helpful, professional, and concise.
-            4. Provide specific recommendations based on the measurement data if available.
-            5. Respond in the SAME LANGUAGE as the user (Indonesian or English).
+            1. **FORMATTING IS CRITICAL:**
+               - Use **Bold** for key terms and menu names.
+               - Use \`Code Blocks\` for values or specific inputs.
+               - Use **Bullet Points** or **Numbered Lists** for steps. NEVER use long paragraphs.
+               - Use ### Headings to separate sections.
             
-            Respond directly without JSON formatting.
+            2. **COACHING ROLE:**
+               - Do not just explain "what" a feature is. Explain **"HOW"** to use it step-by-step.
+               - Guide the user like a mentor (Coach).
+               - If the user asks about a menu, look up the "Cara Pakai" in your Knowledge Base and explain it clearly.
+
+            3. **KNOWLEDGE BASE:**
+               - Always answer based on the "Application User Guide" if the user asks about features.
+               - If asked about Industrial Engineering (Time Study, Line Balancing, etc.), use your general expert knowledge.
+
+            4. **TONE & LANGUAGE:**
+               - Be helpful, professional, and concise.
+               - Respond in the SAME LANGUAGE as the user (Indonesian or English).
+
+            Respond in clean **Markdown** format.
         `;
     }
 
@@ -525,7 +538,7 @@ ${inventoryDetails || 'None'}
         } else {
             // OpenAI Compatible Chat
             const modelToUse = model || (provider === 'openai' ? 'gpt-3.5-turbo' : localStorage.getItem(`${provider}_model`)) || localStorage.getItem('gemini_model') || 'gpt-3.5-turbo';
-            return await callOpenAICompatible(prompt, keyToUse, modelToUse, baseUrl);
+            return await callOpenAICompatible(prompt, keyToUse, modelToUse, baseUrl, false);
         }
 
 

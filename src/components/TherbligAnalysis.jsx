@@ -5,6 +5,8 @@ import { useDialog } from '../contexts/DialogContext';
 import { THERBLIGS } from '../constants/therbligs.jsx';
 import { getAllProjects } from '../utils/database';
 import { WORKSTATION_OBJECTS, checkCollision, calculatePath, calculateTotalDistance, analyzeReachZones, calculateEfficiencyScore, snapToGrid } from '../utils/workstationSimulator';
+import AIChatOverlay from './features/AIChatOverlay';
+import { Bot, PlayCircle, StopCircle } from 'lucide-react';
 
 function TherbligAnalysis({ measurements = [] }) {
     const { t } = useTranslation();
@@ -27,6 +29,21 @@ function TherbligAnalysis({ measurements = [] }) {
     const [showGrid, setShowGrid] = useState(true);
     const [snapEnabled, setSnapEnabled] = useState(true);
     const [efficiencyMetrics, setEfficiencyMetrics] = useState(null);
+
+    // AI Chat State
+    const [showChat, setShowChat] = useState(false);
+    const [chatHistory, setChatHistory] = useState([]);
+
+    // AI Context
+    const aiContext = {
+        type: 'therblig_analysis',
+        data: {
+            icons, // Placed Therbligs
+            workstationObjects, // Layout objects
+            efficiencyMetrics,
+            isAnimating
+        }
+    };
 
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
@@ -277,6 +294,27 @@ function TherbligAnalysis({ measurements = [] }) {
                         />
                         Snap
                     </label>
+                    <button
+                        onClick={() => setShowChat(!showChat)}
+                        style={{
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            border: 'none',
+                            color: '#fff',
+                            cursor: 'pointer',
+                            padding: '8px 16px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontWeight: 'bold',
+                            fontSize: '0.9rem',
+                            boxShadow: '0 4px 12px rgba(118, 75, 162, 0.3)',
+                            marginLeft: '10px'
+                        }}
+                    >
+                        <Bot size={18} />
+                        AI Analyst
+                    </button>
                 </div>
             </div>
 
@@ -678,6 +716,16 @@ function TherbligAnalysis({ measurements = [] }) {
                     </div>
                 </div>
             )}
+
+            {/* AI CHAT OVERLAY */}
+            <AIChatOverlay
+                visible={showChat}
+                onClose={() => setShowChat(false)}
+                context={aiContext}
+                chatHistory={chatHistory}
+                setChatHistory={setChatHistory}
+                title="MAVi Therblig Analyst"
+            />
         </div>
     );
 }

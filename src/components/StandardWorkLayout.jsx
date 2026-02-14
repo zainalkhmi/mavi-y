@@ -378,6 +378,7 @@ const SpaghettiChartContent = () => {
     const [isApplyingUShape, setIsApplyingUShape] = useState(false);
     const [isHelpVisible, setIsHelpVisible] = useState(false);
     const [isChatVisible, setIsChatVisible] = useState(false);
+    const [chatHistory, setChatHistory] = useState([]); // Added chat history state
     const [scanPosition, setScanPosition] = useState(-20);
     const [agentPos, setAgentPos] = useState(null);
     const [simulationProgress, setSimulationProgress] = useState(0);
@@ -1398,19 +1399,24 @@ const SpaghettiChartContent = () => {
 
             {/* AI and Help Dialogs */}
             {isHelpVisible && <HelpDialog />}
+            {/* AI and Help Dialogs */}
+            {isHelpVisible && <HelpDialog />}
             <AIChatOverlay
                 visible={isChatVisible}
                 onClose={() => setIsChatVisible(false)}
-                title={t('spaghettiChart.aiChat.title')}
-                subtitle={t('spaghettiChart.aiChat.subtitle')}
-                systemPrompt={t('spaghettiChart.aiChat.systemPrompt')}
-                contextData={{
-                    projectName: selectedProject?.projectName,
-                    analytics,
-                    nodeCount: nodes.length,
-                    edgeCount: edges.length,
-                    taktTime
+                chatHistory={chatHistory}
+                setChatHistory={setChatHistory}
+                context={{
+                    type: 'standard_work',
+                    data: {
+                        projectName: selectedProject?.name,
+                        analytics,
+                        nodes: nodes.map(n => ({ id: n.id, label: n.data.label, type: n.data.shape, position: n.position })),
+                        edges: edges.map(e => ({ source: e.source, target: e.target })),
+                        taktTime
+                    }
                 }}
+                title={t('spaghettiChart.aiChat.title') || "Standard Work Chat"}
             />
         </div>
     );

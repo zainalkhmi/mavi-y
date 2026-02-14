@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, MessageSquare, X, Bot, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { chatWithAI } from '../../utils/aiGenerator';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const StudioAssistant = ({ model }) => {
     const { t } = useTranslation();
@@ -188,7 +190,23 @@ const StudioAssistant = ({ model }) => {
                                     lineHeight: '1.5',
                                     boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                                 }}>
-                                    {msg.content}
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                            p: ({ node, ...props }) => <p style={{ margin: '0 0 8px 0', lastChild: { marginBottom: 0 } }} {...props} />,
+                                            ul: ({ node, ...props }) => <ul style={{ margin: '4px 0', paddingLeft: '20px' }} {...props} />,
+                                            ol: ({ node, ...props }) => <ol style={{ margin: '4px 0', paddingLeft: '20px' }} {...props} />,
+                                            li: ({ node, ...props }) => <li style={{ margin: '2px 0' }} {...props} />,
+                                            a: ({ node, ...props }) => <a style={{ color: '#60a5fa', textDecoration: 'underline' }} target="_blank" rel="noopener noreferrer" {...props} />,
+                                            code: ({ node, inline, className, children, ...props }) => {
+                                                return inline ?
+                                                    <code style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 4px', borderRadius: '4px', fontFamily: 'monospace' }} {...props}>{children}</code> :
+                                                    <code style={{ display: 'block', background: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '4px', overflowX: 'auto', fontFamily: 'monospace', margin: '8px 0' }} {...props}>{children}</code>
+                                            }
+                                        }}
+                                    >
+                                        {msg.content}
+                                    </ReactMarkdown>
                                 </div>
                                 <span style={{
                                     fontSize: '0.7rem',

@@ -96,7 +96,7 @@ function AdminPanel() {
         { id: 'comparison', label: 'Video Comparison', group: 'Process' },
         { id: 'mtm', label: 'MTM Calculator', group: 'Calculators' },
         { id: 'studio-model', label: 'Studio Model (AI)', group: 'AI Studio' },
-        { id: 'teachable-machine', label: 'Teachable Machine', group: 'AI Studio' },
+        // { id: 'teachable-machine', label: 'Teachable Machine', group: 'AI Studio' },
         { id: 'compliance', label: 'Real-time Compliance', group: 'AI Studio' },
         { id: 'ergo-copilot', label: 'Ergo Copilot', group: 'AI Studio' },
         { id: 'multi-axial', label: 'Multi-Axial Analysis', group: 'Advanced' },

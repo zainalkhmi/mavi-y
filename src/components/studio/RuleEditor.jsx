@@ -5,6 +5,7 @@ import { RULE_TYPES, JOINTS } from '../../utils/studio/ModelBuilderEngine';
 import { getDetectableClasses } from '../../utils/objectDetector';
 import JointSelector from './JointSelector';
 import ScriptAutoComplete from './ScriptAutoComplete';
+import LogicTreeBuilder from './LogicTreeBuilder';
 import { Sparkles, Loader2 } from 'lucide-react';
 
 const getOperators = (t) => [
@@ -31,7 +32,7 @@ const evaluateComparison = (val, operator, target, target2 = null) => {
     }
 };
 
-const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, onUpdateTransition, activePose, onAiSuggest, onAiValidateScript, tmModels = [], rfModels = [], selectedStateId, onSelectState, onCaptureSequence, captureBufferStatus }) => {
+const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, onUpdateTransition, activePose, onAiSuggest, onAiValidateScript, tmModels = [], rfModels = [], rfPredictions = {}, selectedStateId, onSelectState, onCaptureSequence, captureBufferStatus, zones = [] }) => {
     const { t } = useTranslation();
     const OPERATORS = useMemo(() => getOperators(t), [t]);
     const [fromState, setFromState] = useState('');
@@ -39,6 +40,16 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
     const [showSelector, setShowSelector] = useState(false);
     const [selectorTarget, setSelectorTarget] = useState(null); // { transitionId, ruleId, field }
     const [aiLoading, setAiLoading] = useState({}); // { transitionId: boolean }
+
+    // Duration tracking: { ruleId: { startTime: timestamp, elapsed: seconds, isActive: boolean } }
+    const [ruleTimers, setRuleTimers] = useState({});
+
+    // Frequency tracking: { ruleId: { events: [timestamps], count: number } }
+    const [frequencyCounters, setFrequencyCounters] = useState({});
+
+    // Logic tree mode: { transitionId: boolean }
+    const [useLogicTree, setUseLogicTree] = useState({});
+
 
     const handleAiSuggest = async (transitionId) => {
         if (!onAiSuggest) return;
@@ -175,6 +186,69 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                         return a[params.component || 'y'];
                     }
                 }
+                case 'OBJECT_PROXIMITY': {
+                    const joint = getKP(params.joint);
+                    if (!joint) return null;
+                    const objectClass = params.objectClass;
+                    let minDistance = 1000; // Infinity
+                    let found = false;
+
+                    Object.values(rfPredictions || {}).flat().forEach(det => {
+                        if (det.class === objectClass) {
+                            const [x, y, w, h] = det.bbox;
+                            const cx = x + w / 2;
+                            const cy = y + h / 2;
+                            const dist = Math.sqrt(Math.pow(joint.x - cx, 2) + Math.pow(joint.y - cy, 2));
+                            if (dist < minDistance) {
+                                minDistance = dist;
+                                found = true;
+                            }
+                        }
+                    });
+                    return found ? minDistance : null;
+                }
+                case 'OBJECT_IN_ROI': {
+                    let roi = null;
+                    if (params.roiSource === 'GLOBAL_ZONE') {
+                        roi = zones.find(z => z.id === params.zoneId);
+                    } else {
+                        // Default to STATE_ROI
+                        const state = states.find(s => s.id === selectedStateId);
+                        roi = state ? state.roi : null;
+                    }
+
+                    if (!roi) return false; // No ROI defined
+
+                    const targetType = params.targetType || 'OBJECT'; // OBJECT or KEYPOINT
+                    let isInside = false;
+
+                    if (targetType === 'KEYPOINT') {
+                        const joint = getKP(params.joint);
+                        if (joint) {
+                            // Check if joint is within ROI
+                            if (joint.x >= roi.x && joint.x <= roi.x + roi.width &&
+                                joint.y >= roi.y && joint.y <= roi.y + roi.height) {
+                                isInside = true;
+                            }
+                        }
+                    } else {
+                        // Check Objects
+                        const objectClass = params.objectClass;
+                        Object.values(rfPredictions || {}).flat().forEach(det => {
+                            if (det.class === objectClass) {
+                                const [x, y, w, h] = det.bbox;
+                                const cx = x + w / 2;
+                                const cy = y + h / 2;
+                                // ROI is {x, y, width, height}
+                                if (cx >= roi.x && cx <= roi.x + roi.width &&
+                                    cy >= roi.y && cy <= roi.y + roi.height) {
+                                    isInside = true;
+                                }
+                            }
+                        });
+                    }
+                    return isInside;
+                }
                 case 'TEACHABLE_MACHINE':
                 case 'ROBOFLOW_DETECTION':
                 case 'CVAT_MODEL': {
@@ -210,8 +284,200 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
             }
             return val.className === params.targetClass && val.probability >= params.threshold;
         }
+        if (rule.type === 'OBJECT_IN_ROI') {
+            return val === true;
+        }
         return null;
     };
+
+    // Evaluate rule with duration constraints
+    const evaluateWithDuration = (ruleId, baseCondition, durationConfig) => {
+        if (!durationConfig) return baseCondition;
+
+        const now = Date.now();
+
+        if (baseCondition) {
+            // Condition is true
+            if (!ruleTimers[ruleId] || !ruleTimers[ruleId].isActive) {
+                // Start timer
+                setRuleTimers(prev => ({
+                    ...prev,
+                    [ruleId]: { startTime: now, elapsed: 0, isActive: true }
+                }));
+                return false; // Not yet met minimum duration
+            }
+
+            const elapsed = (now - ruleTimers[ruleId].startTime) / 1000;
+
+            // Update elapsed time
+            setRuleTimers(prev => ({
+                ...prev,
+                [ruleId]: { ...prev[ruleId], elapsed }
+            }));
+
+            // Check minimum duration
+            if (durationConfig.minDuration && elapsed < durationConfig.minDuration) {
+                return false;
+            }
+
+            // Check maximum duration (timeout)
+            if (durationConfig.maxDuration && elapsed > durationConfig.maxDuration) {
+                return false; // Timeout
+            }
+
+            return true; // Duration requirements met
+        } else {
+            // Condition is false
+            if (durationConfig.resetOnFalse && ruleTimers[ruleId]) {
+                // Reset timer
+                setRuleTimers(prev => {
+                    const newTimers = { ...prev };
+                    delete newTimers[ruleId];
+                    return newTimers;
+                });
+            }
+            return false;
+        }
+    };
+
+    // Evaluate rule with frequency counting
+    const evaluateWithFrequency = (ruleId, conditionTriggered, frequencyConfig) => {
+        if (!frequencyConfig) return conditionTriggered;
+
+        const now = Date.now();
+        const windowMs = frequencyConfig.window * 1000;
+
+        if (conditionTriggered) {
+            // Add new event
+            const currentCounter = frequencyCounters[ruleId] || { events: [], count: 0 };
+            const newEvents = [...currentCounter.events, now];
+
+            // Filter events within window
+            const validEvents = newEvents.filter(timestamp =>
+                (now - timestamp) <= windowMs
+            );
+
+            setFrequencyCounters(prev => ({
+                ...prev,
+                [ruleId]: { events: validEvents, count: validEvents.length }
+            }));
+
+            // Check if threshold met
+            return validEvents.length >= frequencyConfig.count;
+        }
+
+        // Clean up old events even when not triggered
+        if (frequencyCounters[ruleId]) {
+            const validEvents = frequencyCounters[ruleId].events.filter(timestamp =>
+                (now - timestamp) <= windowMs
+            );
+
+            if (validEvents.length !== frequencyCounters[ruleId].events.length) {
+                setFrequencyCounters(prev => ({
+                    ...prev,
+                    [ruleId]: { events: validEvents, count: validEvents.length }
+                }));
+            }
+        }
+
+        return false;
+    };
+
+    // Evaluate logic tree recursively for complex boolean logic
+    const evaluateLogicTree = (node, ruleResults) => {
+        if (!node) return false;
+
+        if (node.type === 'RULE') {
+            // Leaf node - get rule result
+            const result = ruleResults[node.ruleId];
+            if (result === null || result === undefined) return false;
+            return node.negate ? !result : result;
+        }
+
+        if (node.type === 'GROUP') {
+            // Evaluate all children
+            const childResults = node.children.map(child =>
+                evaluateLogicTree(child, ruleResults)
+            );
+
+            // Apply operator
+            let groupResult;
+            switch (node.operator) {
+                case 'AND':
+                    groupResult = childResults.every(r => r === true);
+                    break;
+                case 'OR':
+                    groupResult = childResults.some(r => r === true);
+                    break;
+                case 'XOR':
+                    // Exclusive OR - exactly one must be true
+                    groupResult = childResults.filter(r => r === true).length === 1;
+                    break;
+                case 'NAND':
+                    // NOT AND
+                    groupResult = !childResults.every(r => r === true);
+                    break;
+                case 'NOR':
+                    // NOT OR
+                    groupResult = !childResults.some(r => r === true);
+                    break;
+                default:
+                    groupResult = false;
+            }
+
+            // Apply negation to group
+            return node.negate ? !groupResult : groupResult;
+        }
+
+        return false;
+    };
+
+    // Create default logic tree from existing rules
+    const createDefaultTree = (transition) => {
+        if (!transition || !transition.condition || !transition.condition.rules) {
+            return {
+                type: 'GROUP',
+                operator: 'AND',
+                negate: false,
+                children: []
+            };
+        }
+
+        return {
+            type: 'GROUP',
+            operator: transition.condition.operator || 'AND',
+            negate: false,
+            children: transition.condition.rules.map(rule => ({
+                type: 'RULE',
+                ruleId: rule.id,
+                negate: false
+            }))
+        };
+    };
+
+    // Convert tree to human-readable expression
+    const treeToExpression = (node, rules) => {
+        if (!node) return '';
+
+        if (node.type === 'RULE') {
+            const rule = rules.find(r => r.id === node.ruleId);
+            const ruleIndex = rules.indexOf(rule) + 1;
+            const expr = rule ? `Rule${ruleIndex}` : 'Unknown';
+            return node.negate ? `NOT(${expr})` : expr;
+        }
+
+        if (node.type === 'GROUP') {
+            if (!node.children || node.children.length === 0) return '';
+
+            const childExprs = node.children.map(c => treeToExpression(c, rules));
+            const grouped = `(${childExprs.join(` ${node.operator} `)})`;
+            return node.negate ? `NOT${grouped}` : grouped;
+        }
+
+        return '';
+    };
+
+
 
     const renderLiveValue = (rule) => {
         const val = calculateRuleValue(rule);
@@ -344,15 +610,16 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
             padding: '20px',
             overflowY: 'visible'
         },
-        ruleItem: {
+        ruleItem: (passing) => ({
             backgroundColor: '#111827',
             padding: '16px',
             borderRadius: '12px',
             marginBottom: '12px',
             fontSize: '0.9rem',
-            border: '1px solid #374151',
+            border: `1px solid ${passing === true ? '#10b981' : (passing === false ? '#ef4444' : '#374151')}`,
+            transition: 'border-color 0.3s ease',
             position: 'relative'
-        },
+        }),
         ruleControls: {
             display: 'flex',
             flexDirection: 'column',
@@ -407,7 +674,16 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
     };
 
 
-    const objectClasses = getDetectableClasses();
+    const objectClasses = useMemo(() => {
+        const classes = new Set(getDetectableClasses());
+        console.log('RuleEditor: rfPredictions received:', rfPredictions); // DEBUG LOG
+        if (rfPredictions) {
+            Object.values(rfPredictions).flat().forEach(d => {
+                if (d.class) classes.add(d.class);
+            });
+        }
+        return Array.from(classes).sort();
+    }, [rfPredictions]);
 
     const renderRuleParams = (rule, transitionId) => {
         const isMet = checkRuleStatus(rule);
@@ -423,14 +699,9 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                         <option value="POSE_ANGLE">{t('studioModel.modelBuilder.rules.types.POSE_ANGLE')}</option>
                         <option value="POSE_RELATION">{t('studioModel.modelBuilder.rules.types.POSE_RELATION')}</option>
                         <option value="POSE_VELOCITY">{t('studioModel.modelBuilder.rules.types.POSE_VELOCITY')}</option>
-                        <option value="OBJECT_PROXIMITY">{t('studioModel.modelBuilder.rules.types.OBJECT_PROXIMITY')}</option>
-                        <option value="OBJECT_IN_ROI">{t('studioModel.modelBuilder.rules.types.OBJECT_IN_ROI')}</option>
                         <option value="OPERATOR_PROXIMITY">{t('studioModel.modelBuilder.rules.types.OPERATOR_PROXIMITY')}</option>
                         <option value="POSE_MATCHING">{t('studioModel.modelBuilder.rules.types.POSE_MATCHING')}</option>
                         <option value="SEQUENCE_MATCH">{t('studioModel.modelBuilder.rules.types.SEQUENCE_MATCH')}</option>
-                        <option value="TEACHABLE_MACHINE">{t('studioModel.modelBuilder.rules.types.TEACHABLE_MACHINE')}</option>
-                        <option value="ROBOFLOW_DETECTION">{t('studioModel.modelBuilder.rules.types.ROBOFLOW_DETECTION')}</option>
-                        <option value="CVAT_MODEL">{t('studioModel.modelBuilder.rules.types.CVAT_MODEL')}</option>
                         <option value="ADVANCED_SCRIPT">{t('studioModel.modelBuilder.rules.types.ADVANCED_SCRIPT')}</option>
                     </select>
 
@@ -748,57 +1019,93 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                 )}
 
                 {rule.type === 'OBJECT_IN_ROI' && (
-                    <div style={styles.paramRow}>
-                        {rule.params.isCustomObject ? (
-                            <input
-                                style={{ ...styles.paramSelect, width: '140px', backgroundColor: '#374151', border: '1px solid #60a5fa' }}
-                                value={rule.params.objectClass || ''}
-                                placeholder={t('studioModel.modelBuilder.rulesEditor.customNamePlaceholder')}
-                                onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, objectClass: e.target.value } })}
-                            />
-                        ) : (
+                    <div style={{ ...styles.paramRow, flexWrap: 'wrap', alignItems: 'flex-start', flexDirection: 'column', gap: '8px' }}>
+                        <div style={styles.paramRow}>
+                            <select
+                                style={{ ...styles.paramSelect, width: '100px', fontWeight: 'bold' }}
+                                value={rule.params.targetType || 'OBJECT'}
+                                onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, targetType: e.target.value } })}
+                            >
+                                <option value="OBJECT">{t('studioModel.modelBuilder.rulesEditor.object') || 'Object'}</option>
+                                <option value="KEYPOINT">{t('studioModel.modelBuilder.rulesEditor.bodyPart') || 'Body Part'}</option>
+                            </select>
+
+                            {rule.params.targetType === 'KEYPOINT' ? (
+                                <select
+                                    style={styles.paramSelect}
+                                    value={rule.params.joint}
+                                    onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, joint: e.target.value } })}
+                                >
+                                    {JOINTS.map(j => <option key={j} value={j}>{j}</option>)}
+                                </select>
+                            ) : (
+                                <>
+                                    {rule.params.isCustomObject ? (
+                                        <input
+                                            style={{ ...styles.paramSelect, width: '140px', backgroundColor: '#374151', border: '1px solid #60a5fa' }}
+                                            value={rule.params.objectClass || ''}
+                                            placeholder={t('studioModel.modelBuilder.rulesEditor.customNamePlaceholder')}
+                                            onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, objectClass: e.target.value } })}
+                                        />
+                                    ) : (
+                                        <select
+                                            style={styles.paramSelect}
+                                            value={rule.params.objectClass}
+                                            onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, objectClass: e.target.value } })}
+                                        >
+                                            <option value="">{t('studioModel.modelBuilder.rulesEditor.selectObject')}</option>
+                                            {objectClasses.map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                    )}
+                                    <button
+                                        onClick={() => {
+                                            const isCustom = rule.params.isCustomObject;
+                                            handleUpdateRule(transitionId, rule.id, {
+                                                params: {
+                                                    ...rule.params,
+                                                    isCustomObject: !isCustom,
+                                                    objectClass: ''
+                                                }
+                                            });
+                                        }}
+                                        style={{
+                                            background: 'transparent',
+                                            border: '1px solid #4b5563',
+                                            color: rule.params.isCustomObject ? '#60a5fa' : '#9ca3af',
+                                            borderRadius: '4px',
+                                            padding: '4px 8px',
+                                            cursor: 'pointer'
+                                        }}
+                                        title={t('studioModel.modelBuilder.rulesEditor.toggleCustomName')}
+                                    >
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>✎</span>
+                                    </button>
+                                </>
+                            )}
+                        </div>
+
+                        <div style={styles.paramRow}>
+                            <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>{t('studioModel.modelBuilder.rules.mustBeIn')}</span>
                             <select
                                 style={styles.paramSelect}
-                                value={rule.params.objectClass}
-                                onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, objectClass: e.target.value } })}
+                                value={rule.params.roiSource || 'STATE_ROI'}
+                                onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, roiSource: e.target.value } })}
                             >
-                                <option value="">{t('studioModel.modelBuilder.rulesEditor.selectObject')}</option>
-                                {objectClasses.map(c => <option key={c} value={c}>{c}</option>)}
+                                <option value="STATE_ROI">{t('studioModel.modelBuilder.rulesEditor.currentState')}</option>
+                                <option value="GLOBAL_ZONE">{t('studioModel.modelBuilder.rulesEditor.globalZone') || 'Global Zone'}</option>
                             </select>
-                        )}
-                        <button
-                            onClick={() => {
-                                const isCustom = rule.params.isCustomObject;
-                                handleUpdateRule(transitionId, rule.id, {
-                                    params: {
-                                        ...rule.params,
-                                        isCustomObject: !isCustom,
-                                        objectClass: ''
-                                    }
-                                });
-                            }}
-                            style={{
-                                background: 'transparent',
-                                border: '1px solid #4b5563',
-                                color: rule.params.isCustomObject ? '#60a5fa' : '#9ca3af',
-                                borderRadius: '4px',
-                                padding: '4px 8px',
-                                cursor: 'pointer',
-                                marginLeft: '8px'
-                            }}
-                            title={t('studioModel.modelBuilder.rulesEditor.toggleCustomName')}
-                        >
-                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>✎</span>
-                        </button>
 
-                        <div style={{ fontSize: '0.85rem', color: '#9ca3af', marginLeft: '8px' }}>{t('studioModel.modelBuilder.rules.mustBeIn')}</div>
-                        <select
-                            style={styles.paramSelect}
-                            value={rule.params.roiSource || 'STATE_ROI'}
-                            onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, roiSource: e.target.value } })}
-                        >
-                            <option value="STATE_ROI">{t('studioModel.modelBuilder.rulesEditor.currentState')}</option>
-                        </select>
+                            {rule.params.roiSource === 'GLOBAL_ZONE' && (
+                                <select
+                                    style={{ ...styles.paramSelect, border: '1px solid #eab308', color: '#fca5a5' }}
+                                    value={rule.params.zoneId || ''}
+                                    onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, zoneId: e.target.value } })}
+                                >
+                                    <option value="">{t('studioModel.modelBuilder.rulesEditor.selectZone') || 'Select Zone...'}</option>
+                                    {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+                                </select>
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -1157,6 +1464,151 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                         {rule.params.trustPersistent !== false ? t('studioModel.modelBuilder.rulesEditor.resilient') : t('studioModel.modelBuilder.rulesEditor.strict')}
                     </button>
                 </div>
+
+                {/* Duration and Frequency Controls */}
+                <div style={{ marginTop: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                        onClick={() => handleUpdateRule(transitionId, rule.id, {
+                            durationConfig: rule.durationConfig ? null : { minDuration: 3, maxDuration: null, resetOnFalse: true }
+                        })}
+                        style={{
+                            padding: '6px 12px',
+                            background: rule.durationConfig ? '#0ea5e9' : '#374151',
+                            border: 'none',
+                            borderRadius: '6px',
+                            color: 'white',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}
+                    >
+                        ⏱️ {rule.durationConfig ? 'Disable' : 'Enable'} Duration
+                    </button>
+
+                    <button
+                        onClick={() => handleUpdateRule(transitionId, rule.id, {
+                            frequencyConfig: rule.frequencyConfig ? null : { count: 5, window: 60, resetMode: 'SLIDING' }
+                        })}
+                        style={{
+                            padding: '6px 12px',
+                            background: rule.frequencyConfig ? '#f59e0b' : '#374151',
+                            border: 'none',
+                            borderRadius: '6px',
+                            color: 'white',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}
+                    >
+                        🔢 {rule.frequencyConfig ? 'Disable' : 'Enable'} Frequency
+                    </button>
+                </div>
+
+                {/* Duration Configuration UI */}
+                {rule.durationConfig && (
+                    <div style={{ marginTop: '12px', padding: '12px', background: '#1a1a1a', borderRadius: '6px', border: '1px solid #0ea5e9' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#60a5fa', marginBottom: '8px', fontWeight: '600' }}>
+                            ⏱️ Duration Settings
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                            <div>
+                                <label style={{ fontSize: '0.7rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Min Duration (s)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.1"
+                                    value={rule.durationConfig.minDuration || 0}
+                                    onChange={(e) => handleUpdateRule(transitionId, rule.id, {
+                                        durationConfig: { ...rule.durationConfig, minDuration: parseFloat(e.target.value) || 0 }
+                                    })}
+                                    style={{ width: '100%', padding: '6px', background: '#111', border: '1px solid #333', color: 'white', borderRadius: '4px', fontSize: '0.85rem' }}
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '0.7rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Max Duration (s)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.1"
+                                    value={rule.durationConfig.maxDuration || ''}
+                                    placeholder="No limit"
+                                    onChange={(e) => handleUpdateRule(transitionId, rule.id, {
+                                        durationConfig: { ...rule.durationConfig, maxDuration: e.target.value ? parseFloat(e.target.value) : null }
+                                    })}
+                                    style={{ width: '100%', padding: '6px', background: '#111', border: '1px solid #333', color: 'white', borderRadius: '4px', fontSize: '0.85rem' }}
+                                />
+                            </div>
+                        </div>
+
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontSize: '0.75rem', color: '#9ca3af', cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={rule.durationConfig.resetOnFalse !== false}
+                                onChange={(e) => handleUpdateRule(transitionId, rule.id, {
+                                    durationConfig: { ...rule.durationConfig, resetOnFalse: e.target.checked }
+                                })}
+                            />
+                            Reset timer when condition becomes false
+                        </label>
+
+                        {/* Real-time feedback */}
+                        {ruleTimers[rule.id] && ruleTimers[rule.id].isActive && (
+                            <div style={{ marginTop: '8px', padding: '6px', background: '#0a3a0a', borderRadius: '4px', fontSize: '0.7rem', color: '#4ade80', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                ⏱️ Active: {ruleTimers[rule.id].elapsed.toFixed(1)}s
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Frequency Configuration UI */}
+                {rule.frequencyConfig && (
+                    <div style={{ marginTop: '12px', padding: '12px', background: '#1a1a1a', borderRadius: '6px', border: '1px solid #f59e0b' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#f59e0b', marginBottom: '8px', fontWeight: '600' }}>
+                            🔢 Frequency Counter
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                            <div>
+                                <label style={{ fontSize: '0.7rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Count Threshold</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={rule.frequencyConfig.count || 1}
+                                    onChange={(e) => handleUpdateRule(transitionId, rule.id, {
+                                        frequencyConfig: { ...rule.frequencyConfig, count: parseInt(e.target.value) || 1 }
+                                    })}
+                                    style={{ width: '100%', padding: '6px', background: '#111', border: '1px solid #333', color: 'white', borderRadius: '4px', fontSize: '0.85rem' }}
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '0.7rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Time Window (s)</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={rule.frequencyConfig.window || 60}
+                                    onChange={(e) => handleUpdateRule(transitionId, rule.id, {
+                                        frequencyConfig: { ...rule.frequencyConfig, window: parseInt(e.target.value) || 60 }
+                                    })}
+                                    style={{ width: '100%', padding: '6px', background: '#111', border: '1px solid #333', color: 'white', borderRadius: '4px', fontSize: '0.85rem' }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Real-time feedback */}
+                        {frequencyCounters[rule.id] && (
+                            <div style={{ marginTop: '8px', padding: '6px', background: '#3a2a0a', borderRadius: '4px', fontSize: '0.7rem', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                🔢 Count: {frequencyCounters[rule.id].count} / {rule.frequencyConfig.count}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         );
     };
@@ -1263,99 +1715,148 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                 <div style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                                         <h4 style={{ margin: 0, color: '#9ca3af', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('studioModel.modelBuilder.rulesEditor.conditions')}</h4>
+                                        <button
+                                            onClick={() => {
+                                                const newMode = !useLogicTree[transition.id];
+                                                setUseLogicTree(prev => ({ ...prev, [transition.id]: newMode }));
+
+                                                if (newMode && !transition.condition.logicTree) {
+                                                    onUpdateTransition(transition.id, {
+                                                        condition: {
+                                                            ...transition.condition,
+                                                            logicTree: createDefaultTree(transition)
+                                                        }
+                                                    });
+                                                }
+                                            }}
+                                            style={{
+                                                padding: '4px 8px',
+                                                background: useLogicTree[transition.id] ? '#8b5cf6' : '#374151',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                color: 'white',
+                                                fontSize: '0.7rem',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                        >
+                                            🌳 {useLogicTree[transition.id] ? t('studioModel.modelBuilder.rulesEditor.simpleMode') || 'Simple Mode' : t('studioModel.modelBuilder.rulesEditor.logicTree') || 'Logic Tree'}
+                                        </button>
                                     </div>
 
-                                    {transition.condition.rules.map((rule, idx) => (
-                                        <div key={rule.id || idx} style={{ ...styles.ruleItem, borderColor: rule.aiGenerated ? '#a855f7' : '#374151' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid #374151', paddingBottom: '8px' }}>
-                                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: rule.aiGenerated ? '#a855f7' : '#60a5fa', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                    {rule.aiGenerated ? <Sparkles size={14} /> : null}
-                                                    {t('studioModel.modelBuilder.rulesEditor.ruleHash')}{idx + 1} {rule.aiGenerated ? '(AI)' : ''}
-                                                </div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    {rule.aiReasoning && (
-                                                        <div title={rule.aiReasoning} style={{ cursor: 'help', color: '#a855f7' }}>
-                                                            <Info size={14} />
+                                    {useLogicTree[transition.id] ? (
+                                        <LogicTreeBuilder
+                                            tree={transition.condition.logicTree || createDefaultTree(transition)}
+                                            rules={transition.condition.rules}
+                                            checkRuleStatus={checkRuleStatus}
+                                            onUpdate={(newTree) => {
+                                                onUpdateTransition(transition.id, {
+                                                    condition: {
+                                                        ...transition.condition,
+                                                        logicTree: newTree
+                                                    }
+                                                });
+                                            }}
+                                        />
+                                    ) : (
+                                        <>
+                                            {transition.condition.rules.map((rule, idx) => (
+                                                <div key={rule.id || idx} style={{ ...styles.ruleItem, borderColor: rule.aiGenerated ? '#a855f7' : '#374151' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid #374151', paddingBottom: '8px' }}>
+                                                        <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: rule.aiGenerated ? '#a855f7' : '#60a5fa', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            {rule.aiGenerated ? <Sparkles size={14} /> : null}
+                                                            {t('studioModel.modelBuilder.rulesEditor.ruleHash')}{idx + 1} {rule.aiGenerated ? '(AI)' : ''}
                                                         </div>
-                                                    )}
-                                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#9ca3af', cursor: 'pointer' }}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={!!rule.invert}
-                                                            onChange={(e) => handleUpdateRule(transition.id, rule.id, { invert: e.target.checked })}
-                                                            style={{ cursor: 'pointer', accentColor: '#2563eb' }}
-                                                        />
-                                                        {t('studioModel.modelBuilder.rulesEditor.invertNOT')}
-                                                    </label>
-                                                    <button
-                                                        style={{ background: 'transparent', border: 'none', color: '#60a5fa', cursor: 'pointer' }}
-                                                        onClick={() => handleDuplicateRule(transition.id, rule.id)}
-                                                        title={t('studioModel.modelBuilder.rulesEditor.duplicateRule')}
-                                                    >
-                                                        <Copy size={14} />
-                                                    </button>
-                                                    <button
-                                                        style={{ background: 'transparent', border: 'none', color: '#4b5563', cursor: 'pointer' }}
-                                                        onClick={() => handleDeleteRule(transition.id, rule.id)}
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            {rule.aiReasoning && (
+                                                                <div title={rule.aiReasoning} style={{ cursor: 'help', color: '#a855f7' }}>
+                                                                    <Info size={14} />
+                                                                </div>
+                                                            )}
+                                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#9ca3af', cursor: 'pointer' }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={!!rule.invert}
+                                                                    onChange={(e) => handleUpdateRule(transition.id, rule.id, { invert: e.target.checked })}
+                                                                    style={{ cursor: 'pointer', accentColor: '#2563eb' }}
+                                                                />
+                                                                {t('studioModel.modelBuilder.rulesEditor.invertNOT')}
+                                                            </label>
+                                                            <button
+                                                                style={{ background: 'transparent', border: 'none', color: '#60a5fa', cursor: 'pointer' }}
+                                                                onClick={() => handleDuplicateRule(transition.id, rule.id)}
+                                                                title={t('studioModel.modelBuilder.rulesEditor.duplicateRule')}
+                                                            >
+                                                                <Copy size={14} />
+                                                            </button>
+                                                            <button
+                                                                style={{ background: 'transparent', border: 'none', color: '#4b5563', cursor: 'pointer' }}
+                                                                onClick={() => handleDeleteRule(transition.id, rule.id)}
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    {renderRuleParams(rule, transition.id)}
                                                 </div>
+                                            ))}
+
+                                            <div style={{ display: 'flex', gap: '10px' }}>
+                                                <button
+                                                    onClick={() => handleAddRule(transition.id)}
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '12px',
+                                                        background: 'rgba(37, 99, 235, 0.05)',
+                                                        color: '#60a5fa',
+                                                        border: '1px dashed #2563eb',
+                                                        borderRadius: '12px',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '8px',
+                                                        fontSize: '0.85rem',
+                                                        fontWeight: '600',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    <Plus size={16} /> {t('studioModel.modelBuilder.rulesEditor.addRuleCondition')}
+                                                </button>
+
+                                                <button
+                                                    onClick={() => handleAiSuggest(transition.id)}
+                                                    disabled={aiLoading[transition.id]}
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '12px',
+                                                        background: 'rgba(168, 85, 247, 0.05)',
+                                                        color: '#a855f7',
+                                                        border: '1px dashed #a855f7',
+                                                        borderRadius: '12px',
+                                                        cursor: aiLoading[transition.id] ? 'not-allowed' : 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '8px',
+                                                        fontSize: '0.85rem',
+                                                        fontWeight: '600',
+                                                        transition: 'all 0.2s',
+                                                        opacity: aiLoading[transition.id] ? 0.6 : 1
+                                                    }}
+                                                >
+                                                    {aiLoading[transition.id] ? (
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                    ) : (
+                                                        <Sparkles size={16} />
+                                                    )}
+                                                    {aiLoading[transition.id] ? t('studioModel.modelBuilder.rulesEditor.aiThinking') : t('studioModel.modelBuilder.rulesEditor.aiSuggestRule')}
+                                                </button>
                                             </div>
-                                            {renderRuleParams(rule, transition.id)}
-                                        </div>
-                                    ))}
-
-                                    <button
-                                        onClick={() => handleAddRule(transition.id)}
-                                        style={{
-                                            flex: 1,
-                                            padding: '12px',
-                                            background: 'rgba(37, 99, 235, 0.05)',
-                                            color: '#60a5fa',
-                                            border: '1px dashed #2563eb',
-                                            borderRadius: '12px',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '8px',
-                                            fontSize: '0.85rem',
-                                            fontWeight: '600',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        <Plus size={16} /> {t('studioModel.modelBuilder.rulesEditor.addRuleCondition')}
-                                    </button>
-
-                                    <button
-                                        onClick={() => handleAiSuggest(transition.id)}
-                                        disabled={aiLoading[transition.id]}
-                                        style={{
-                                            flex: 1,
-                                            padding: '12px',
-                                            background: 'rgba(168, 85, 247, 0.05)',
-                                            color: '#a855f7',
-                                            border: '1px dashed #a855f7',
-                                            borderRadius: '12px',
-                                            cursor: aiLoading[transition.id] ? 'not-allowed' : 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '8px',
-                                            fontSize: '0.85rem',
-                                            fontWeight: '600',
-                                            transition: 'all 0.2s',
-                                            opacity: aiLoading[transition.id] ? 0.6 : 1
-                                        }}
-                                    >
-                                        {aiLoading[transition.id] ? (
-                                            <Loader2 size={16} className="animate-spin" />
-                                        ) : (
-                                            <Sparkles size={16} />
-                                        )}
-                                        {aiLoading[transition.id] ? t('studioModel.modelBuilder.rulesEditor.aiThinking') : t('studioModel.modelBuilder.rulesEditor.aiSuggestRule')}
-                                    </button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>

@@ -18,8 +18,9 @@ import {
     useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Trash2, Plus, Layout, Activity, Save, PlayCircle, StopCircle, RefreshCcw } from 'lucide-react'; // Icons
+import { Trash2, Plus, Layout, Activity, Save, PlayCircle, StopCircle, RefreshCcw, Bot } from 'lucide-react'; // Icons
 import { useLanguage } from '../contexts/LanguageContext';
+import AIChatOverlay from './features/AIChatOverlay';
 
 // Sortable Task Item
 function SortableTask({ id, task, isStochastic, onUpdate }) {
@@ -203,6 +204,21 @@ export default function LineBalancingBoard({ measurements, onUpdateMeasurements,
     const [isSimulating, setIsSimulating] = useState(false);
     const [simResults, setSimResults] = useState(null);
     const [isDigitalTwinRunning, setIsDigitalTwinRunning] = useState(false);
+
+    // AI Chat State
+    const [showChat, setShowChat] = useState(false);
+    const [chatHistory, setChatHistory] = useState([]);
+
+    // AI Context
+    const aiContext = {
+        type: 'line_balancing',
+        data: {
+            items, // Stations and tasks
+            taktTime,
+            simResults, // Monte Carlo results
+            isStochasticMode
+        }
+    };
 
     // Initialize items from measurements
     useEffect(() => {
@@ -440,6 +456,28 @@ export default function LineBalancingBoard({ measurements, onUpdateMeasurements,
                         {isDigitalTwinRunning ? t('yamazumi.stopSimulation') : t('yamazumi.startSimulation')}
                     </button>
                 )}
+
+                <button
+                    onClick={() => setShowChat(!showChat)}
+                    style={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        padding: '8px 16px',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontWeight: 'bold',
+                        fontSize: '0.9rem',
+                        boxShadow: '0 4px 12px rgba(118, 75, 162, 0.3)',
+                        marginLeft: '10px'
+                    }}
+                >
+                    <Bot size={18} />
+                    AI Analyst
+                </button>
             </div>
 
             {/* CONTENT AREA */}
@@ -537,6 +575,16 @@ export default function LineBalancingBoard({ measurements, onUpdateMeasurements,
                     </div>
                 </>
             )}
+
+            {/* AI CHAT OVERLAY */}
+            <AIChatOverlay
+                visible={showChat}
+                onClose={() => setShowChat(false)}
+                context={aiContext}
+                chatHistory={chatHistory}
+                setChatHistory={setChatHistory}
+                title="MAVi Line Balancing Expert"
+            />
         </div>
     );
 }

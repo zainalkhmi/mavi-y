@@ -21,3 +21,17 @@ export const JOINTS = [
     "left_knee", "right_knee", "left_ankle", "right_ankle", "left_heel", "right_heel",
     "left_foot_index", "right_foot_index"
 ];
+
+// Duration configuration for time-based rule conditions
+export const DURATION_CONFIG = {
+    minDuration: 0,      // seconds - minimum time condition must be true
+    maxDuration: null,   // seconds - maximum time before timeout (null = no limit)
+    resetOnFalse: true   // reset timer if condition becomes false
+};
+
+// Frequency counter configuration for repetition tracking
+export const FREQUENCY_CONFIG = {
+    count: 1,            // number of occurrences required
+    window: 60,          // time window in seconds
+    resetMode: 'SLIDING' // 'SLIDING' (rolling window) or 'FIXED' (reset after trigger)
+};

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { chatWithAI, getStoredApiKey } from '../../utils/aiGenerator';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 function AIChatOverlay({
     visible,
@@ -196,8 +198,24 @@ function AIChatOverlay({
                 ) : (
                     chatHistory.map((msg, idx) => (
                         <div key={idx} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                            <div style={{ maxWidth: '80%', padding: '8px 12px', borderRadius: '8px', backgroundColor: msg.role === 'user' ? '#0078d4' : '#2d2d2d', color: 'white', fontSize: '0.85rem', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
-                                {msg.content}
+                            <div style={{ maxWidth: '80%', padding: '8px 12px', borderRadius: '8px', backgroundColor: msg.role === 'user' ? '#0078d4' : '#2d2d2d', color: 'white', fontSize: '0.85rem', lineHeight: '1.4' }}>
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                        p: ({ node, ...props }) => <p style={{ margin: '0 0 8px 0', lastChild: { marginBottom: 0 } }} {...props} />,
+                                        ul: ({ node, ...props }) => <ul style={{ margin: '4px 0', paddingLeft: '20px' }} {...props} />,
+                                        ol: ({ node, ...props }) => <ol style={{ margin: '4px 0', paddingLeft: '20px' }} {...props} />,
+                                        li: ({ node, ...props }) => <li style={{ margin: '2px 0' }} {...props} />,
+                                        a: ({ node, ...props }) => <a style={{ color: '#60a5fa', textDecoration: 'underline' }} target="_blank" rel="noopener noreferrer" {...props} />,
+                                        code: ({ node, inline, className, children, ...props }) => {
+                                            return inline ?
+                                                <code style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 4px', borderRadius: '4px', fontFamily: 'monospace' }} {...props}>{children}</code> :
+                                                <code style={{ display: 'block', background: 'rgba(0,0,0,0.3)', padding: '8px', borderRadius: '4px', overflowX: 'auto', fontFamily: 'monospace', margin: '8px 0' }} {...props}>{children}</code>
+                                        }
+                                    }}
+                                >
+                                    {msg.content}
+                                </ReactMarkdown>
                             </div>
                         </div>
                     ))
@@ -231,7 +249,7 @@ function AIChatOverlay({
                     {isAiThinking ? '⌛' : '→'}
                 </button>
             </div>
-        </div>
+        </div >
     );
 }
 

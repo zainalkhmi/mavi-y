@@ -29,6 +29,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
         ...model,
         states: model.statesList || [{ id: 's_start', name: t('studioModel.modelBuilder.labels.none') }],
         transitions: model.transitions || [],
+        zones: model.zones || [],
         tmModels: model.tmModels || (model.tmModelUrl ? [{ id: 'default', name: t('studioModel.modelBuilder.labels.defined'), url: model.tmModelUrl, type: model.tmModelType || 'image' }] : [])
     });
     const [showHelp, setShowHelp] = useState(false);
@@ -452,8 +453,16 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                         const smoothedKeypoints = smootherRef.current.smooth(poses[0].keypoints);
                         const smoothedPose = { ...poses[0], keypoints: smoothedKeypoints };
                         setActivePose(smoothedPose);
-                        drawVisualizations(smoothedPose);
-                        console.log('✅ Initial pose detected!');
+
+                        // Initial Object Detection
+                        let rfData = {};
+                        if (currentModel.rfModels && currentModel.rfModels.length > 0) {
+                            rfData = await roboflowDetector.detectAll(videoRef.current, currentModel.rfModels, smoothedPose);
+                            setRfPredictions(rfData);
+                        }
+
+                        drawVisualizations(smoothedPose, null, null, [smoothedPose], rfData);
+                        console.log('✅ Initial pose & objects detected!');
                     }
                 } catch (error) {
                     console.error('Failed to detect initial pose:', error);
@@ -613,7 +622,9 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
 
                     let rfData = {};
                     if (currentModel.rfModels && currentModel.rfModels.length > 0) {
+                        console.log('ModelBuilder: Seeking - Running Roboflow Detection...'); // DEBUG
                         rfData = await roboflowDetector.detectAll(videoRef.current, currentModel.rfModels, pose);
+                        console.log('ModelBuilder: Seeking - Detection Result:', rfData); // DEBUG
                         setRfPredictions(rfData);
                     }
 
@@ -670,6 +681,13 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
             };
         }
     }, [videoSrc, visOptions, activeTab, currentModel, detectorReady, testModeInput]);
+
+    // Keep Inference Engine in sync with model changes
+    useEffect(() => {
+        if (engineRef.current && currentModel) {
+            engineRef.current.loadModel(currentModel);
+        }
+    }, [currentModel]);
 
     // Action Execution Logic
     const executeAction = (action) => {
@@ -847,6 +865,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
             statesList: currentModel.states, // Persist full state objects
             states: currentModel.states.length, // Update count for dashboard
             rules: currentModel.transitions.length, // Update count for dashboard
+            zones: currentModel.zones || [],
             updated: new Date().toISOString().split('T')[0]
         };
         onSave(modelToSave);
@@ -1316,18 +1335,47 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
         const canvas = canvasRef.current;
         const relevantTransitions = currentModel.transitions;
 
+        ctx.save();
+
         relevantTransitions.forEach(t => {
             t.condition.rules.forEach(rule => {
                 const getKP = (p, name) => p.keypoints.find(k => k.name === name);
+
+                // Helper to check if rule passes (Reusing simple logic for visualization)
+                let isPassing = false;
+                let currentVal = null;
 
                 if (rule.type === 'POSE_ANGLE') {
                     const a = getKP(pose, rule.params.jointA);
                     const b = getKP(pose, rule.params.jointB);
                     const c = getKP(pose, rule.params.jointC);
+
                     if (a && b && c) {
+                        const ang1 = Math.atan2(a.y - b.y, a.x - b.x);
+                        const ang2 = Math.atan2(c.y - b.y, c.x - b.x);
+                        let angleDeg = Math.abs((ang2 - ang1) * 180 / Math.PI);
+                        if (angleDeg > 180) angleDeg = 360 - angleDeg;
+                        currentVal = angleDeg;
+
+                        // Check condition
+                        const op = rule.params.operator;
+                        const target = parseFloat(rule.params.value);
+                        if (op === '>' && angleDeg > target) isPassing = true;
+                        if (op === '<' && angleDeg < target) isPassing = true;
+                        if (op === '>=' && angleDeg >= target) isPassing = true;
+                        if (op === '<=' && angleDeg <= target) isPassing = true;
+                        if (op === '==' && Math.abs(angleDeg - target) < 5) isPassing = true;
+
+                        // Update rule for UI
+                        rule.lastValue = angleDeg;
+                        rule.isPassing = isPassing;
+
+                        // Visuals
+                        const color = isPassing ? '#10b981' : '#ef4444'; // Green or Red
                         const isPred = a.isPredicted || b.isPredicted || c.isPredicted;
-                        ctx.strokeStyle = isPred ? 'rgba(239, 68, 68, 0.4)' : '#ef4444';
-                        ctx.lineWidth = 3;
+
+                        ctx.strokeStyle = isPred ? `${color}66` : color;
+                        ctx.lineWidth = isPassing ? 4 : 3;
                         if (isPred) ctx.setLineDash([5, 5]); else ctx.setLineDash([]);
 
                         ctx.beginPath();
@@ -1336,66 +1384,140 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                         ctx.lineTo(c.x * canvas.width, c.y * canvas.height);
                         ctx.stroke();
 
-                        const ang1 = Math.atan2(a.y - b.y, a.x - b.x);
-                        const ang2 = Math.atan2(c.y - b.y, c.x - b.x);
                         ctx.beginPath();
                         ctx.arc(b.x * canvas.width, b.y * canvas.height, 20, ang1, ang2);
                         ctx.stroke();
 
-                        ctx.fillStyle = isPred ? 'rgba(239, 68, 68, 0.6)' : '#ef4444';
+                        ctx.fillStyle = color;
                         ctx.font = isPred ? 'italic 12px Inter' : 'bold 12px Inter';
-                        const angleDeg = Math.abs((ang2 - ang1) * 180 / Math.PI);
-                        const displayAngle = angleDeg > 180 ? 360 - angleDeg : angleDeg;
-                        ctx.fillText(`${displayAngle.toFixed(1)}°${isPred ? ' (pred)' : ''}`, b.x * canvas.width + 25, b.y * canvas.height);
-                        ctx.setLineDash([]);
+                        ctx.fillText(`${angleDeg.toFixed(1)}°`, b.x * canvas.width + 25, b.y * canvas.height);
+
+                        // Draw threshold line/indicator if needed
+                        // ctx.fillText(`${op} ${target}`, b.x * canvas.width + 25, b.y * canvas.height + 14);
                     }
                 } else if (rule.type === 'POSE_RELATION' || rule.type === 'OPERATOR_PROXIMITY') {
                     const a = getKP(pose, rule.params.jointA || rule.params.joint);
                     if (!a) return;
 
-                    ctx.lineWidth = 2;
-                    ctx.setLineDash([4, 4]);
+                    let b, dist;
+                    let targetPose = pose;
 
+                    // Logic to find 'b'
                     if (rule.type === 'OPERATOR_PROXIMITY' || (rule.type === 'POSE_RELATION' && rule.params.targetType === 'POINT')) {
-                        let targetPose = pose;
                         let jointBName = rule.params.jointB || rule.params.joint;
-
-                        // Handle inter-operator targeting
                         const targetTrackId = rule.params.targetTrackId;
                         if (targetTrackId && targetTrackId !== 'self' && allPoses) {
                             const targetIdx = typeof targetTrackId === 'number' ? targetTrackId - 1 : (targetTrackId === 'nearest' ? 1 : 0);
                             if (allPoses[targetIdx]) targetPose = allPoses[targetIdx];
                         }
-
-                        const b = getKP(targetPose, jointBName);
-                        if (b) {
-                            ctx.strokeStyle = rule.type === 'OPERATOR_PROXIMITY' ? '#a855f7' : '#10b981';
-                            ctx.beginPath();
-                            ctx.moveTo(a.x * canvas.width, a.y * canvas.height);
-                            ctx.lineTo(b.x * canvas.width, b.y * canvas.height);
-                            ctx.stroke();
-
-                            const dist = Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
-                            ctx.fillStyle = ctx.strokeStyle;
-                            ctx.font = '10px Inter';
-                            ctx.fillText(`${rule.type === 'OPERATOR_PROXIMITY' ? 'prox' : 'rel'}: ${dist.toFixed(2)}`, (a.x + b.x) / 2 * canvas.width, (a.y + b.y) / 2 * canvas.height - 10);
-                        }
+                        b = getKP(targetPose, jointBName);
                     } else if (rule.type === 'POSE_RELATION' && rule.params.targetType === 'VALUE') {
-                        ctx.strokeStyle = '#10b981';
-                        ctx.beginPath();
-                        if (rule.params.component === 'y') {
-                            ctx.moveTo(0, rule.params.value * canvas.height);
-                            ctx.lineTo(canvas.width, rule.params.value * canvas.height);
-                        } else {
-                            ctx.moveTo(rule.params.value * canvas.width, 0);
-                            ctx.lineTo(rule.params.value * canvas.width, canvas.height);
-                        }
-                        ctx.stroke();
+                        // Virtual point on axis
+                        b = {
+                            x: rule.params.component === 'x' ? rule.params.value : a.x,
+                            y: rule.params.component === 'y' ? rule.params.value : a.y
+                        };
                     }
-                    ctx.setLineDash([]);
+
+                    if (b) {
+                        dist = Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+                        // Normalize dist if needed, usually just raw pixel ratio distance in normalized cords
+                        currentVal = dist;
+
+                        const op = rule.params.operator;
+                        const target = parseFloat(rule.params.value);
+
+                        // Simple check
+                        if (op === '>' && dist > target) isPassing = true;
+                        if (op === '<' && dist < target) isPassing = true;
+
+                        rule.lastValue = dist;
+                        rule.isPassing = isPassing;
+
+                        const color = isPassing ? '#10b981' : '#ef4444';
+
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = color;
+                        ctx.setLineDash([4, 4]);
+
+                        ctx.beginPath();
+                        ctx.moveTo(a.x * canvas.width, a.y * canvas.height);
+                        ctx.lineTo(b.x * canvas.width, b.y * canvas.height);
+                        ctx.stroke();
+
+                        ctx.fillStyle = color;
+                        ctx.font = '10px Inter';
+                        ctx.fillText(`${dist.toFixed(2)} (${op} ${target})`, (a.x + b.x) / 2 * canvas.width, (a.y + b.y) / 2 * canvas.height - 10);
+                    }
                 }
             });
         });
+
+        ctx.restore();
+    };
+
+    const drawDebugOverlay = (ctx, pose, allPoses) => {
+        if (!showDebug) return;
+
+        const canvas = canvasRef.current;
+        const padding = 10;
+        let y = padding + 20;
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, 300, canvas.height);
+
+        ctx.fillStyle = '#feca57';
+        ctx.font = 'bold 14px Inter';
+        ctx.fillText(`DEBUG OVERLAY`, padding, y);
+        y += 20;
+
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px Inter';
+        ctx.fillText(`Time: ${videoRef.current?.currentTime.toFixed(2)}s`, padding, y);
+        y += 20;
+
+        // Active State
+        /* 
+           Note: This only shows if we are running the engine. 
+           In builder mode we might not have 'currentTestState'.
+        */
+        if (currentTestState) {
+            ctx.fillStyle = '#60a5fa';
+            ctx.fillText(`State: ${currentTestState}`, padding, y);
+            y += 20;
+        }
+
+        y += 10;
+        ctx.fillStyle = '#a78bfa';
+        ctx.font = 'bold 12px Inter';
+        ctx.fillText(`Active Rules:`, padding, y);
+        y += 20;
+
+        ctx.font = '11px monospace';
+        currentModel.transitions.forEach((t, tIdx) => {
+            // Only show if relevant to current state (optional, for now show all)
+            ctx.fillStyle = '#e5e7eb';
+            ctx.fillText(`T${tIdx + 1}: ${t.from} -> ${t.to}`, padding, y);
+            y += 15;
+
+            t.condition.rules.forEach((r, rIdx) => {
+                const pass = r.isPassing;
+                ctx.fillStyle = pass ? '#10b981' : '#f87171';
+                let valStr = r.lastValue !== undefined && r.lastValue !== null ?
+                    (typeof r.lastValue === 'number' ? r.lastValue.toFixed(1) : r.lastValue)
+                    : '?';
+
+                let criteria = `${r.params.operator} ${r.params.value}`;
+                if (r.type === 'POSE_ANGLE') criteria += '°';
+
+                ctx.fillText(`  R${rIdx + 1}: ${valStr} (${criteria}) [${pass ? 'PASS' : 'FAIL'}]`, padding, y);
+                y += 15;
+            });
+            y += 5;
+        });
+
+        ctx.restore();
     };
 
     const drawRoboflowDetections = (ctx, rfPredictions) => {
@@ -1440,22 +1562,51 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
         if (visOptions.skeleton) drawSkeleton(ctx, pose);
         if (visOptions.rules) drawRulesVisuals(ctx, pose, allPoses);
 
-        // Draw Roboflow Bounding Boxes
-        if (visOptions.rules) {
-            drawRoboflowDetections(ctx, currentRfPredictions || rfPredictions);
+        // Draw Roboflow Detections
+        if (currentRfPredictions) {
+            drawRoboflowDetections(ctx, currentRfPredictions);
         }
 
-        if (visOptions.roi && selectedStateId) {
-            const state = currentModel.states.find(s => s.id === selectedStateId);
-            if (state && state.roi) {
-                ctx.strokeStyle = '#eab308';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(
-                    state.roi.x * canvasRef.current.width,
-                    state.roi.y * canvasRef.current.height,
-                    state.roi.width * canvasRef.current.width,
-                    state.roi.height * canvasRef.current.height
-                );
+        if (visOptions.roi) {
+            // Draw Global Zones
+            if (currentModel.zones && currentModel.zones.length > 0) {
+                currentModel.zones.forEach(zone => {
+                    ctx.strokeStyle = zone.color || '#ef4444';
+                    ctx.lineWidth = 2;
+                    ctx.fillStyle = (zone.color || '#ef4444') + '33'; // 20% opacity using hex alpha
+
+                    const x = zone.x * canvasRef.current.width;
+                    const y = zone.y * canvasRef.current.height;
+                    const w = zone.width * canvasRef.current.width;
+                    const h = zone.height * canvasRef.current.height;
+
+                    ctx.fillRect(x, y, w, h);
+                    ctx.strokeRect(x, y, w, h);
+
+                    // Label
+                    ctx.fillStyle = zone.color || '#ef4444';
+                    ctx.font = 'bold 12px Inter';
+                    ctx.fillText(zone.name, x, y - 5);
+                });
+            }
+
+            // Draw Legacy State ROI
+            if (selectedStateId) {
+                const state = currentModel.states.find(s => s.id === selectedStateId);
+                if (state && state.roi) {
+                    ctx.strokeStyle = '#eab308';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]); // Dashed for state ROI to distinguish
+                    ctx.strokeRect(
+                        state.roi.x * canvasRef.current.width,
+                        state.roi.y * canvasRef.current.height,
+                        state.roi.width * canvasRef.current.width,
+                        state.roi.height * canvasRef.current.height
+                    );
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = '#eab308';
+                    ctx.fillText(state.name, state.roi.x * canvasRef.current.width, state.roi.y * canvasRef.current.height - 5);
+                }
             }
         }
 
@@ -1483,14 +1634,30 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
         const ctx = canvasRef.current.getContext('2d');
         ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
-        ctx.strokeStyle = '#00ff00';
+        // Redraw existing zones for context
+        if (currentModel.zones) {
+            currentModel.zones.forEach(zone => {
+                ctx.strokeStyle = (zone.color || '#ef4444') + '80'; // Fade out slightly
+                ctx.lineWidth = 1;
+                ctx.strokeRect(
+                    zone.x * canvasRef.current.width,
+                    zone.y * canvasRef.current.height,
+                    zone.width * canvasRef.current.width,
+                    zone.height * canvasRef.current.height
+                );
+            });
+        }
+
+        ctx.strokeStyle = activeTab === 'zones' ? '#3b82f6' : '#eab308'; // Blue for new zone, Yellow for ROI
         ctx.lineWidth = 2;
+        ctx.setLineDash(activeTab === 'zones' ? [] : [5, 5]);
         ctx.strokeRect(
             roiStart.x * canvasRef.current.width,
             roiStart.y * canvasRef.current.height,
             (currentX - roiStart.x) * canvasRef.current.width,
             (currentY - roiStart.y) * canvasRef.current.height
         );
+        ctx.setLineDash([]);
     };
 
     const endDrawingROI = (e) => {
@@ -1506,7 +1673,24 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
             height: Math.abs(currentY - roiStart.y)
         };
 
-        handleUpdateState(selectedStateId, 'roi', newROI);
+        if (activeTab === 'zones') {
+            // Create Global Zone
+            const newZone = {
+                id: `z_${Date.now()}`,
+                name: `Zone ${currentModel.zones ? currentModel.zones.length + 1 : 1}`,
+                color: ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'][Math.floor(Math.random() * 9)],
+                ...newROI
+            };
+            setCurrentModel(prev => ({
+                ...prev,
+                zones: [...(prev.zones || []), newZone]
+            }));
+            showAlert(t('common.success'), t('studioModel.modelBuilder.messages.zoneCreated') || 'Zone created successfully');
+        } else if (selectedStateId) {
+            // Update State ROI
+            handleUpdateState(selectedStateId, 'roi', newROI);
+        }
+
         setRoiStart(null);
         setIsDrawingROI(false);
     };
@@ -2375,25 +2559,58 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                                     onClick={() => {
                                                         setSelectedMeasurePoints([]);
                                                         setMeasurementResult(null);
+                                                        setMeasurementMode(null);
                                                     }}
                                                     style={{
-                                                        width: '44px',
-                                                        height: '44px',
+                                                        padding: '10px',
                                                         borderRadius: '12px',
                                                         backgroundColor: 'rgba(239, 68, 68, 0.1)',
                                                         color: '#ef4444',
                                                         border: '1px solid rgba(239, 68, 68, 0.2)',
                                                         cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        transition: 'all 0.2s'
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        marginTop: '4px'
                                                     }}
                                                     title={t('studioModel.modelBuilder.measure.clear')}
                                                 >
-                                                    <Trash2 size={18} />
+                                                    <X size={20} />
                                                 </button>
                                             )}
+                                        </div>
+
+                                        {/* DEBUG TOGGLE */}
+                                        <div style={{
+                                            backgroundColor: 'rgba(31, 41, 55, 0.4)',
+                                            backdropFilter: 'blur(4px)',
+                                            borderRadius: '16px',
+                                            padding: '8px',
+                                            border: '1px solid #374151',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '8px',
+                                            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                                            width: 'fit-content'
+                                        }}>
+                                            <div style={{
+                                                padding: '4px 8px',
+                                                fontSize: '0.65rem',
+                                                fontWeight: '700',
+                                                color: '#fbbf24',
+                                                textAlign: 'center',
+                                                borderBottom: '1px solid #374151',
+                                                marginBottom: '4px'
+                                            }}>DEBUG</div>
+
+                                            <button
+                                                onClick={() => setShowDebug(!showDebug)}
+                                                style={{
+                                                    backgroundColor: showDebug ? '#f59e0b' : 'transparent',
+                                                    border: 'none', padding: '10px', borderRadius: '12px', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
+                                                }}
+                                                title="Toggle Debug Overlay"
+                                            >
+                                                <Activity size={20} />
+                                            </button>
                                         </div>
 
                                         {/* RESULT DISPLAY */}
@@ -2804,6 +3021,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                         {[
                             { id: 'rules', label: t('studioModel.modelBuilder.tabs.rules'), icon: <Activity size={16} /> },
                             { id: 'states', label: `${t('studioModel.modelBuilder.tabs.steps')} (${currentModel.states.length})`, icon: <Layers size={16} /> },
+                            { id: 'zones', label: t('studioModel.modelBuilder.tabs.zones') || 'Zones', icon: <Square size={16} /> },
                             { id: 'extraction', label: t('studioModel.modelBuilder.tabs.data'), icon: <Database size={16} /> },
                             { id: 'test', label: t('studioModel.modelBuilder.tabs.test'), icon: <PlayCircle size={16} /> },
                             { id: 'settings', label: t('studioModel.modelBuilder.tabs.settings'), icon: <Settings size={16} /> }
@@ -3070,11 +3288,97 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                 onAiValidateScript={handleAiValidateScript}
                                 tmModels={currentModel.tmModels}
                                 rfModels={currentModel.rfModels}
+                                rfPredictions={rfPredictions}
                                 selectedStateId={selectedStateId}
                                 onSelectState={setSelectedStateId}
                                 onCaptureSequence={handleCaptureSequence}
                                 captureBufferStatus={captureBufferStatus}
+                                zones={currentModel.zones}
                             />
+                        )}
+
+                        {activeTab === 'zones' && (
+                            <div style={{ padding: '20px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                    <h3 style={{ margin: 0 }}>{t('studioModel.modelBuilder.tabs.zones') || 'Global Zones'}</h3>
+                                    <button
+                                        onClick={() => setIsDrawingROI(!isDrawingROI)}
+                                        style={{
+                                            background: isDrawingROI ? '#eab308' : '#2563eb',
+                                            color: 'white',
+                                            border: 'none',
+                                            padding: '8px 16px',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            fontWeight: '500'
+                                        }}
+                                    >
+                                        <Square size={16} />
+                                        {isDrawingROI ? (t('studioModel.modelBuilder.indicators.drawing') || 'Drawing...') : (t('studioModel.modelBuilder.buttons.addZone') || 'Add Zone')}
+                                    </button>
+                                </div>
+
+                                {(!currentModel.zones || currentModel.zones.length === 0) ? (
+                                    <div style={{
+                                        padding: '40px',
+                                        textAlign: 'center',
+                                        color: '#9ca3af',
+                                        border: '1px dashed #374151',
+                                        borderRadius: '8px',
+                                        background: 'rgba(55, 65, 81, 0.2)'
+                                    }}>
+                                        <Square size={48} style={{ opacity: 0.2, marginBottom: '16px' }} />
+                                        <p>{t('studioModel.modelBuilder.messages.noZones') || 'No zones defined yet.'}</p>
+                                        <p style={{ fontSize: '0.85rem' }}>{t('studioModel.modelBuilder.messages.drawZoneHint') || 'Click "Add Zone" to draw a region on the canvas.'}</p>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        {currentModel.zones.map((zone, idx) => (
+                                            <div key={zone.id} style={{
+                                                backgroundColor: '#1f2937',
+                                                padding: '12px',
+                                                borderRadius: '8px',
+                                                border: '1px solid #374151',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}>
+                                                <div style={{ display: 'flex', items: 'center', gap: '12px' }}>
+                                                    <div style={{
+                                                        width: '16px',
+                                                        height: '16px',
+                                                        borderRadius: '4px',
+                                                        backgroundColor: zone.color || '#ef4444',
+                                                        border: '1px solid rgba(255,255,255,0.2)'
+                                                    }} />
+                                                    <span style={{ fontWeight: '500' }}>{zone.name}</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        setCurrentModel(prev => ({
+                                                            ...prev,
+                                                            zones: prev.zones.filter(z => z.id !== zone.id)
+                                                        }));
+                                                    }}
+                                                    style={{
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        color: '#ef4444',
+                                                        cursor: 'pointer',
+                                                        padding: '4px'
+                                                    }}
+                                                    title="Delete Zone"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         )}
 
                         {activeTab === 'states' && (
@@ -3510,235 +3814,6 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                     </p>
                                 </div>
 
-                                {/* TEACHABLE MACHINE CONFIGURATION */}
-                                <div style={{ marginBottom: '24px', padding: '16px', background: '#111827', borderRadius: '8px', border: '1px solid #374151' }}>
-                                    <h4 style={{ margin: '0 0 16px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <Layers size={18} color="#10b981" /> {t('studioModel.modelBuilder.labels.tmModels')}
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    window.open('https://teachablemachine.withgoogle.com/train/pose', '_blank');
-                                                }}
-                                                style={{ padding: '6px 12px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3b82f6', color: '#60a5fa', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', zIndex: 10, position: 'relative' }}
-                                            >
-                                                <ExternalLink size={14} /> {t('studioModel.modelBuilder.buttons.goToSite')}
-                                            </button>
-                                            <button
-                                                onClick={handleAddTmModel}
-                                                style={{ padding: '6px 12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', color: '#10b981', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                            >
-                                                <Plus size={14} /> {t('studioModel.modelBuilder.buttons.addModel')}
-                                            </button>
-                                        </div>
-                                    </h4>
-
-                                    {(currentModel.tmModels || []).map((m, idx) => (
-                                        <div key={m.id} style={{ marginBottom: idx === currentModel.tmModels.length - 1 ? 0 : '16px', padding: '12px', background: '#1f2937', borderRadius: '8px', border: '1px solid #374151' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                                                <input
-                                                    type="text"
-                                                    value={m.name}
-                                                    onChange={(e) => handleUpdateTmModel(m.id, { name: e.target.value })}
-                                                    style={{ background: 'transparent', border: 'none', borderBottom: '1px solid #4b5563', color: 'white', fontSize: '0.9rem', width: '200px', fontWeight: 'bold', outline: 'none' }}
-                                                />
-                                                <button
-                                                    onClick={() => handleRemoveTmModel(m.id)}
-                                                    style={{ padding: '4px', background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer' }}
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-
-                                            <div style={{ marginBottom: '12px' }}>
-                                                <label style={{ display: 'block', fontSize: '0.75rem', color: '#9ca3af', marginBottom: '4px' }}>Model URL</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="https://teachablemachine.../models/[MODEL_ID]/"
-                                                    value={m.url || ''}
-                                                    onChange={(e) => {
-                                                        let url = e.target.value;
-                                                        if (url && !url.endsWith('/')) url += '/';
-                                                        handleUpdateTmModel(m.id, { url });
-                                                    }}
-                                                    style={{ width: '100%', padding: '8px', background: '#111827', border: '1px solid #4b5563', color: 'white', borderRadius: '4px', fontSize: '0.85rem' }}
-                                                />
-                                            </div>
-
-                                            <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.8rem' }}>
-                                                    <input
-                                                        type="radio"
-                                                        name={`tmType_${m.id}`}
-                                                        value="image"
-                                                        checked={m.type !== 'pose'}
-                                                        onChange={() => handleUpdateTmModel(m.id, { type: 'image' })}
-                                                    />
-                                                    <span>Image</span>
-                                                </label>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.8rem' }}>
-                                                    <input
-                                                        type="radio"
-                                                        name={`tmType_${m.id}`}
-                                                        value="pose"
-                                                        checked={m.type === 'pose'}
-                                                        onChange={() => handleUpdateTmModel(m.id, { type: 'pose' })}
-                                                    />
-                                                    <span>Pose</span>
-                                                </label>
-                                            </div>
-
-                                            {tmLoadingStates[m.id] && (
-                                                <div style={{ fontSize: '0.75rem', color: '#60a5fa', marginBottom: '8px' }}>
-                                                    <RotateCw size={12} className="animate-spin" /> Loading Model...
-                                                </div>
-                                            )}
-
-                                            <div style={{ padding: '10px', background: '#111827', borderRadius: '6px', border: '1px dashed #374151' }}>
-                                                <p style={{ margin: '0 0 8px', fontSize: '0.75rem', color: '#6b7280' }}>{t('studioModel.modelBuilder.labels.offlineMode')}</p>
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                                                    <input type="file" accept=".json" onChange={(e) => handleTmFileUpload(e, m.id, 'model')} style={{ fontSize: '0.65rem' }} />
-                                                    <input type="file" accept=".bin" onChange={(e) => handleTmFileUpload(e, m.id, 'weights')} style={{ fontSize: '0.65rem' }} />
-                                                    <input type="file" accept=".json" onChange={(e) => handleTmFileUpload(e, m.id, 'metadata')} style={{ fontSize: '0.65rem' }} />
-                                                </div>
-                                                <button
-                                                    onClick={() => handleLoadTmFromFiles(m.id)}
-                                                    style={{ marginTop: '8px', width: '100%', padding: '4px', fontSize: '0.75rem', background: '#374151', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'white' }}
-                                                >
-                                                    {t('studioModel.modelBuilder.buttons.loadFiles')}
-                                                </button>
-                                            </div>
-
-                                            {tmPredictions[m.id] && (
-                                                <div style={{ marginTop: '8px', padding: '8px', backgroundColor: 'rgba(16, 185, 129, 0.05)', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                                                        <span style={{ fontWeight: 'bold', color: '#10b981' }}>{tmPredictions[m.id].className}</span>
-                                                        <span style={{ color: '#9ca3af' }}>{(tmPredictions[m.id].probability * 100).toFixed(0)}%</span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-
-                                </div>
-
-                                {/* ROBOFLOW CONFIGURATION */}
-                                <div style={{ marginBottom: '24px', padding: '16px', background: '#111827', borderRadius: '8px', border: '1px solid #374151' }}>
-                                    <h4 style={{ margin: '0 0 16px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <Database size={18} color="#a855f7" /> Roboflow Models
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    window.open('https://roboflow.com/', '_blank');
-                                                }}
-                                                style={{ padding: '6px 12px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3b82f6', color: '#60a5fa', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', zIndex: 10, position: 'relative' }}
-                                            >
-                                                <ExternalLink size={14} /> {t('studioModel.modelBuilder.buttons.goToSite')}
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    const demoModel = {
-                                                        id: `rf_demo_${Date.now()}`,
-                                                        name: 'PPE Demo (YOLO)',
-                                                        apiKey: 'DEMO',
-                                                        projectId: 'ppe-detection',
-                                                        version: 1
-                                                    };
-                                                    setCurrentModel(m => ({ ...m, rfModels: [...(m.rfModels || []), demoModel] }));
-                                                }}
-                                                style={{ padding: '6px 12px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3b82f6', color: '#60a5fa', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                            >
-                                                <Sparkles size={14} /> {t('studioModel.modelBuilder.buttons.tryDemo')}
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    const newModel = { id: `rf_${Date.now()}`, name: 'Roboflow Model', apiKey: '', projectUrl: '', version: 1 };
-                                                    setCurrentModel(m => ({ ...m, rfModels: [...(m.rfModels || []), newModel] }));
-                                                }}
-                                                style={{ padding: '6px 12px', background: 'rgba(168, 85, 247, 0.1)', border: '1px solid #a855f7', color: '#a855f7', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                            >
-                                                <Plus size={14} /> {t('studioModel.modelBuilder.buttons.addModel')}
-                                            </button>
-                                        </div>
-                                    </h4>
-
-                                    {(currentModel.rfModels || []).map((m, idx) => (
-                                        <div key={m.id} style={{ marginBottom: idx === currentModel.rfModels.length - 1 ? 0 : '16px', padding: '12px', background: '#1f2937', borderRadius: '8px', border: '1px solid #374151' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                                                <input
-                                                    type="text"
-                                                    value={m.name}
-                                                    onChange={(e) => {
-                                                        const updated = currentModel.rfModels.map(rm => rm.id === m.id ? { ...rm, name: e.target.value } : rm);
-                                                        setCurrentModel(ms => ({ ...ms, rfModels: updated }));
-                                                    }}
-                                                    style={{ background: 'transparent', border: 'none', borderBottom: '1px solid #4b5563', color: 'white', fontSize: '0.9rem', width: '200px', fontWeight: 'bold', outline: 'none' }}
-                                                />
-                                                <button
-                                                    onClick={() => {
-                                                        const updated = currentModel.rfModels.filter(rm => rm.id !== m.id);
-                                                        setCurrentModel(ms => ({ ...ms, rfModels: updated }));
-                                                    }}
-                                                    style={{ padding: '4px', background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer' }}
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 0.5fr', gap: '10px' }}>
-                                                <div>
-                                                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#9ca3af', marginBottom: '4px' }}>API Key</label>
-                                                    <input
-                                                        type="password"
-                                                        value={m.apiKey || ''}
-                                                        onChange={(e) => {
-                                                            const updated = currentModel.rfModels.map(rm => rm.id === m.id ? { ...rm, apiKey: e.target.value } : rm);
-                                                            setCurrentModel(ms => ({ ...ms, rfModels: updated }));
-                                                        }}
-                                                        style={{ width: '100%', padding: '8px', background: '#111827', border: '1px solid #4b5563', color: 'white', borderRadius: '4px', fontSize: '0.85rem' }}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#9ca3af', marginBottom: '4px' }}>Project ID</label>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="helm-safety-xhv2j"
-                                                        value={m.projectUrl || ''}
-                                                        onChange={(e) => {
-                                                            const updated = currentModel.rfModels.map(rm => rm.id === m.id ? { ...rm, projectUrl: e.target.value } : rm);
-                                                            setCurrentModel(ms => ({ ...ms, rfModels: updated }));
-                                                        }}
-                                                        style={{ width: '100%', padding: '8px', background: '#111827', border: '1px solid #4b5563', color: 'white', borderRadius: '4px', fontSize: '0.85rem' }}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#9ca3af', marginBottom: '4px' }}>Ver.</label>
-                                                    <input
-                                                        type="number"
-                                                        value={m.version || 1}
-                                                        onChange={(e) => {
-                                                            const updated = currentModel.rfModels.map(rm => rm.id === m.id ? { ...rm, version: parseInt(e.target.value) || 1 } : rm);
-                                                            setCurrentModel(ms => ({ ...ms, rfModels: updated }));
-                                                        }}
-                                                        style={{ width: '100%', padding: '8px', background: '#111827', border: '1px solid #4b5563', color: 'white', borderRadius: '4px', fontSize: '0.85rem' }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-
-                                    {(!currentModel.rfModels || currentModel.rfModels.length === 0) && (
-                                        <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280', fontSize: '0.85rem' }}>
-                                            {t('studioModel.modelBuilder.indicators.noRoboflowModels')}
-                                        </div>
-                                    )}
-                                </div>
-
                                 {/* PORTABILITY SECTION */}
                                 <div style={{ marginBottom: '24px', padding: '16px', background: '#111827', borderRadius: '8px', border: '1px solid #374151' }}>
                                     <h4 style={{ margin: '0 0 16px', color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -3789,248 +3864,257 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                     </div>
                                 </div>
                             </div>
-                        )}
+                        )
+                        }
 
-                        {activeTab === 'extraction' && (
-                            <div>
+                        {
+                            activeTab === 'extraction' && (
+                                <div>
 
 
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                    <h3 style={{ margin: 0 }}>{t('studioModel.modelBuilder.labels.poseExtraction')}</h3>
-                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                        <span style={{ fontSize: '0.8rem', color: '#9ca3af', border: '1px solid #374151', padding: '2px 6px', borderRadius: '4px' }}>
-                                            Mode: {currentModel.coordinateSystem === 'screen' ? 'Screen' : 'Body-Relative'}
-                                        </span>
-                                        <span style={{ fontSize: '0.8rem', color: activePose ? '#10b981' : '#6b7280' }}>
-                                            {activePose ? `● ${t('studioModel.modelBuilder.indicators.trackingLive')}` : `○ ${t('studioModel.modelBuilder.indicators.noData')}`}
-                                        </span>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                        <h3 style={{ margin: 0 }}>{t('studioModel.modelBuilder.labels.poseExtraction')}</h3>
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.8rem', color: '#9ca3af', border: '1px solid #374151', padding: '2px 6px', borderRadius: '4px' }}>
+                                                Mode: {currentModel.coordinateSystem === 'screen' ? 'Screen' : 'Body-Relative'}
+                                            </span>
+                                            <span style={{ fontSize: '0.8rem', color: activePose ? '#10b981' : '#6b7280' }}>
+                                                {activePose ? `● ${t('studioModel.modelBuilder.indicators.trackingLive')}` : `○ ${t('studioModel.modelBuilder.indicators.noData')}`}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: '30px 1fr 60px 60px 50px',
+                                        gap: '8px',
+                                        fontSize: '0.8rem',
+                                        fontWeight: '600',
+                                        color: '#9ca3af',
+                                        padding: '0 8px 8px 8px',
+                                        borderBottom: '1px solid #374151'
+                                    }}>
+                                        <span>#</span>
+                                        <span>{t('studioModel.modelBuilder.labels.keypoint')}</span>
+                                        <span>X</span>
+                                        <span>Y</span>
+                                        <span>Conf</span>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxHeight: '500px', overflowY: 'auto' }}>
+                                        {KEYPOINT_NAMES.map((name, idx) => {
+                                            const rawPoint = activePose?.keypoints.find(k => k.name === name);
+                                            const isSelected = selectedKeypoints[name];
+
+                                            // Compute display value based on system
+                                            let displayPoint = rawPoint;
+                                            if (currentModel.coordinateSystem !== 'screen' && activePose) {
+                                                // We calculate normalized stats on the fly for visualization
+                                                // Optimization: In real app, calculate once per frame outside loop
+                                                const normalized = PoseNormalizer.normalize(activePose.keypoints);
+                                                displayPoint = normalized.find(k => k.name === name);
+                                            }
+
+                                            return (
+                                                <div key={name} style={{
+                                                    display: 'grid',
+                                                    gridTemplateColumns: '30px 1fr 60px 60px 50px',
+                                                    gap: '8px',
+                                                    padding: '8px',
+                                                    backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                                    borderLeft: isSelected ? '3px solid #3b82f6' : '3px solid transparent',
+                                                    alignItems: 'center',
+                                                    fontSize: '0.85rem'
+                                                }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!isSelected}
+                                                        onChange={(e) => setSelectedKeypoints(prev => ({ ...prev, [name]: e.target.checked }))}
+                                                        style={{ cursor: 'pointer' }}
+                                                    />
+                                                    <span style={{ color: isSelected ? 'white' : '#9ca3af' }}>{idx}. {name}</span>
+                                                    <span style={{ fontFamily: 'monospace', color: displayPoint ? '#60a5fa' : '#4b5563' }}>
+                                                        {displayPoint ? displayPoint.x.toFixed(2) : '-'}
+                                                    </span>
+                                                    <span style={{ fontFamily: 'monospace', color: displayPoint ? '#60a5fa' : '#4b5563' }}>
+                                                        {displayPoint ? displayPoint.y.toFixed(2) : '-'}
+                                                    </span>
+                                                    <span style={{
+                                                        fontFamily: 'monospace',
+                                                        color: rawPoint && rawPoint.score > 0.5 ? '#10b981' : '#ef4444'
+                                                    }}>
+                                                        {rawPoint ? (rawPoint.score * 100).toFixed(0) + '%' : '-'}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
-
-                                <div style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: '30px 1fr 60px 60px 50px',
-                                    gap: '8px',
-                                    fontSize: '0.8rem',
-                                    fontWeight: '600',
-                                    color: '#9ca3af',
-                                    padding: '0 8px 8px 8px',
-                                    borderBottom: '1px solid #374151'
-                                }}>
-                                    <span>#</span>
-                                    <span>{t('studioModel.modelBuilder.labels.keypoint')}</span>
-                                    <span>X</span>
-                                    <span>Y</span>
-                                    <span>Conf</span>
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxHeight: '500px', overflowY: 'auto' }}>
-                                    {KEYPOINT_NAMES.map((name, idx) => {
-                                        const rawPoint = activePose?.keypoints.find(k => k.name === name);
-                                        const isSelected = selectedKeypoints[name];
-
-                                        // Compute display value based on system
-                                        let displayPoint = rawPoint;
-                                        if (currentModel.coordinateSystem !== 'screen' && activePose) {
-                                            // We calculate normalized stats on the fly for visualization
-                                            // Optimization: In real app, calculate once per frame outside loop
-                                            const normalized = PoseNormalizer.normalize(activePose.keypoints);
-                                            displayPoint = normalized.find(k => k.name === name);
-                                        }
-
-                                        return (
-                                            <div key={name} style={{
-                                                display: 'grid',
-                                                gridTemplateColumns: '30px 1fr 60px 60px 50px',
-                                                gap: '8px',
-                                                padding: '8px',
-                                                backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                                                borderLeft: isSelected ? '3px solid #3b82f6' : '3px solid transparent',
-                                                alignItems: 'center',
-                                                fontSize: '0.85rem'
-                                            }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={!!isSelected}
-                                                    onChange={(e) => setSelectedKeypoints(prev => ({ ...prev, [name]: e.target.checked }))}
-                                                    style={{ cursor: 'pointer' }}
-                                                />
-                                                <span style={{ color: isSelected ? 'white' : '#9ca3af' }}>{idx}. {name}</span>
-                                                <span style={{ fontFamily: 'monospace', color: displayPoint ? '#60a5fa' : '#4b5563' }}>
-                                                    {displayPoint ? displayPoint.x.toFixed(2) : '-'}
-                                                </span>
-                                                <span style={{ fontFamily: 'monospace', color: displayPoint ? '#60a5fa' : '#4b5563' }}>
-                                                    {displayPoint ? displayPoint.y.toFixed(2) : '-'}
-                                                </span>
-                                                <span style={{
-                                                    fontFamily: 'monospace',
-                                                    color: rawPoint && rawPoint.score > 0.5 ? '#10b981' : '#ef4444'
-                                                }}>
-                                                    {rawPoint ? (rawPoint.score * 100).toFixed(0) + '%' : '-'}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                            )
+                        }
+                    </div >
 
                     {/* Template Selection Modal */}
-                    {showTemplateModal && (
-                        <div style={{
-                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                            backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 2000,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
+                    {
+                        showTemplateModal && (
                             <div style={{
-                                backgroundColor: '#1f2937', padding: '24px', borderRadius: '12px',
-                                width: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column',
-                                border: '1px solid #374151'
+                                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                                backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 2000,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
                             }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                    <h3 style={{ color: 'white', margin: 0 }}>{t('studioModel.modelBuilder.labels.selectMotionTemplate')}</h3>
-                                    <button onClick={() => setShowTemplateModal(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}>✕</button>
+                                <div style={{
+                                    backgroundColor: '#1f2937', padding: '24px', borderRadius: '12px',
+                                    width: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+                                    border: '1px solid #374151'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                                        <h3 style={{ color: 'white', margin: 0 }}>{t('studioModel.modelBuilder.labels.selectMotionTemplate')}</h3>
+                                        <button onClick={() => setShowTemplateModal(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}>✕</button>
+                                    </div>
+
+                                    <div style={{ overflowY: 'auto', display: 'grid', gap: '12px' }}>
+                                        {MODEL_TEMPLATES.map(tpl => (
+                                            <div
+                                                key={tpl.id}
+                                                onClick={() => handleLoadTemplate(tpl.id)}
+                                                style={{
+                                                    padding: '16px',
+                                                    backgroundColor: '#374151',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    border: '1px solid transparent',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                onMouseOver={(e) => { e.currentTarget.style.borderColor = '#60a5fa'; e.currentTarget.style.backgroundColor = '#4b5563'; }}
+                                                onMouseOut={(e) => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.backgroundColor = '#374151'; }}
+                                            >
+                                                <div style={{ fontWeight: 'bold', color: 'white', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                                                    {tpl.name}
+                                                    <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#9ca3af', backgroundColor: '#1f2937', padding: '2px 8px', borderRadius: '4px' }}>
+                                                        {tpl.states.length} {t('studioModel.modelBuilder.settings.states')}
+                                                    </span>
+                                                </div>
+                                                <div style={{ fontSize: '0.85rem', color: '#d1d5db' }}>{tpl.description}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    {/* LABORATORY OVERLAYS */}
+                    {
+                        isLaboratory && showChallengePanel && (
+                            <div style={{
+                                position: 'fixed',
+                                right: '24px',
+                                top: '80px',
+                                width: '320px',
+                                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                                backdropFilter: 'blur(12px)',
+                                borderRadius: '1.5rem',
+                                border: '1px solid rgba(139, 92, 246, 0.5)',
+                                padding: '1.5rem',
+                                zIndex: 2001,
+                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '1rem',
+                                animation: 'slideIn 0.3s ease-out'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <FlaskConical size={18} /> Tantangan: {challenge?.name}
+                                    </h3>
+                                    <button onClick={() => setShowChallengePanel(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>✕</button>
                                 </div>
 
-                                <div style={{ overflowY: 'auto', display: 'grid', gap: '12px' }}>
-                                    {MODEL_TEMPLATES.map(tpl => (
+                                <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: 0 }}>{challenge?.target}</p>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+                                    {labTasks.map(task => (
                                         <div
-                                            key={tpl.id}
-                                            onClick={() => handleLoadTemplate(tpl.id)}
+                                            key={task.id}
+                                            onClick={() => toggleTask(task.id)}
                                             style={{
-                                                padding: '16px',
-                                                backgroundColor: '#374151',
-                                                borderRadius: '8px',
+                                                display: 'flex',
+                                                alignItems: 'flex-start',
+                                                gap: '10px',
+                                                fontSize: '0.85rem',
+                                                color: task.completed ? '#4ade80' : '#d1d5db',
                                                 cursor: 'pointer',
-                                                border: '1px solid transparent',
+                                                padding: '8px',
+                                                borderRadius: '8px',
+                                                backgroundColor: task.completed ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255,255,255,0.05)',
                                                 transition: 'all 0.2s'
                                             }}
-                                            onMouseOver={(e) => { e.currentTarget.style.borderColor = '#60a5fa'; e.currentTarget.style.backgroundColor = '#4b5563'; }}
-                                            onMouseOut={(e) => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.backgroundColor = '#374151'; }}
                                         >
-                                            <div style={{ fontWeight: 'bold', color: 'white', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
-                                                {tpl.name}
-                                                <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#9ca3af', backgroundColor: '#1f2937', padding: '2px 8px', borderRadius: '4px' }}>
-                                                    {tpl.states.length} {t('studioModel.modelBuilder.settings.states')}
-                                                </span>
-                                            </div>
-                                            <div style={{ fontSize: '0.85rem', color: '#d1d5db' }}>{tpl.description}</div>
+                                            {task.completed ? <CheckCircle size={16} /> : <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid #4b5563', flexShrink: 0 }} />}
+                                            <span>{task.text}</span>
                                         </div>
                                     ))}
                                 </div>
+
+                                <button
+                                    style={{
+                                        marginTop: '1rem',
+                                        padding: '0.75rem',
+                                        borderRadius: '0.75rem',
+                                        border: 'none',
+                                        background: labTasks.every(t => t.completed) ? 'linear-gradient(to right, #10b981, #059669)' : '#334155',
+                                        color: 'white',
+                                        fontWeight: '600',
+                                        cursor: labTasks.every(t => t.completed) ? 'pointer' : 'not-allowed',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px',
+                                        transition: 'all 0.3s'
+                                    }}
+                                    disabled={!labTasks.every(t => t.completed)}
+                                    onClick={async () => {
+                                        await showAlert(t('common.success'), "Selamat! Tantangan berhasil diselesaikan! MAVi Master Badge diperoleh!");
+                                        onClose();
+                                    }}
+                                >
+                                    {t('studioModel.modelBuilder.buttons.submitSolution')} <Trophy size={16} />
+                                </button>
                             </div>
-                        </div>
-                    )}
+                        )
+                    }
 
-                    {/* LABORATORY OVERLAYS */}
-                    {isLaboratory && showChallengePanel && (
-                        <div style={{
-                            position: 'fixed',
-                            right: '24px',
-                            top: '80px',
-                            width: '320px',
-                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                            backdropFilter: 'blur(12px)',
-                            borderRadius: '1.5rem',
-                            border: '1px solid rgba(139, 92, 246, 0.5)',
-                            padding: '1.5rem',
-                            zIndex: 2001,
-                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '1rem',
-                            animation: 'slideIn 0.3s ease-out'
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <FlaskConical size={18} /> Tantangan: {challenge?.name}
-                                </h3>
-                                <button onClick={() => setShowChallengePanel(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>✕</button>
-                            </div>
-
-                            <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: 0 }}>{challenge?.target}</p>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                                {labTasks.map(task => (
-                                    <div
-                                        key={task.id}
-                                        onClick={() => toggleTask(task.id)}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'flex-start',
-                                            gap: '10px',
-                                            fontSize: '0.85rem',
-                                            color: task.completed ? '#4ade80' : '#d1d5db',
-                                            cursor: 'pointer',
-                                            padding: '8px',
-                                            borderRadius: '8px',
-                                            backgroundColor: task.completed ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255,255,255,0.05)',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        {task.completed ? <CheckCircle size={16} /> : <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid #4b5563', flexShrink: 0 }} />}
-                                        <span>{task.text}</span>
-                                    </div>
-                                ))}
-                            </div>
-
+                    {
+                        isLaboratory && !showChallengePanel && (
                             <button
+                                onClick={() => setShowChallengePanel(true)}
                                 style={{
-                                    marginTop: '1rem',
-                                    padding: '0.75rem',
-                                    borderRadius: '0.75rem',
-                                    border: 'none',
-                                    background: labTasks.every(t => t.completed) ? 'linear-gradient(to right, #10b981, #059669)' : '#334155',
+                                    position: 'fixed',
+                                    right: '24px',
+                                    bottom: '24px',
+                                    width: '56px',
+                                    height: '56px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#8b5cf6',
                                     color: 'white',
-                                    fontWeight: '600',
-                                    cursor: labTasks.every(t => t.completed) ? 'pointer' : 'not-allowed',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    zIndex: 2001,
+                                    boxShadow: '0 10px 15px -3px rgba(139, 92, 246, 0.5)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    gap: '8px',
-                                    transition: 'all 0.3s'
+                                    animation: 'bounce 2s infinite'
                                 }}
-                                disabled={!labTasks.every(t => t.completed)}
-                                onClick={async () => {
-                                    await showAlert(t('common.success'), "Selamat! Tantangan berhasil diselesaikan! MAVi Master Badge diperoleh!");
-                                    onClose();
-                                }}
+                                title="Buka Panel Tantangan"
                             >
-                                {t('studioModel.modelBuilder.buttons.submitSolution')} <Trophy size={16} />
+                                <FlaskConical size={24} />
                             </button>
-                        </div>
-                    )}
-
-                    {isLaboratory && !showChallengePanel && (
-                        <button
-                            onClick={() => setShowChallengePanel(true)}
-                            style={{
-                                position: 'fixed',
-                                right: '24px',
-                                bottom: '24px',
-                                width: '56px',
-                                height: '56px',
-                                borderRadius: '50%',
-                                backgroundColor: '#8b5cf6',
-                                color: 'white',
-                                border: 'none',
-                                cursor: 'pointer',
-                                zIndex: 2001,
-                                boxShadow: '0 10px 15px -3px rgba(139, 92, 246, 0.5)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                animation: 'bounce 2s infinite'
-                            }}
-                            title="Buka Panel Tantangan"
-                        >
-                            <FlaskConical size={24} />
-                        </button>
-                    )}
-                </div>
-            </div>
-        </div>
+                        )
+                    }
+                </div >
+            </div >
+        </div >
     );
 };
 

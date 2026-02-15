@@ -293,6 +293,144 @@ export const validateApiKey = async (apiKey) => {
 
 import { helpContent } from './helpContent';
 
+/**
+ * Convert structured analysis JSON into natural markdown text for chat UI.
+ */
+const formatAnalysisContextToNaturalText = (analysisContext) => {
+    if (!analysisContext || typeof analysisContext !== 'object') return '';
+
+    const moduleName = analysisContext.module || 'Analysis';
+    const projectName = analysisContext.project || analysisContext.projectName || 'Project aktif';
+    const totalElements = analysisContext.total_elements ?? analysisContext.totalElements;
+    const totalCycleTime = analysisContext.total_cycle_time ?? analysisContext.totalCycleTime;
+    const elements = analysisContext.elements;
+
+    const elementLines = [];
+    if (elements && typeof elements === 'object') {
+        Object.entries(elements).forEach(([idx, value]) => {
+            elementLines.push(`${idx}. ${value}`);
+        });
+    }
+
+    let response = `### Ringkasan ${moduleName}\n`;
+    response += `- **Project:** ${projectName}\n`;
+    if (typeof totalElements !== 'undefined') response += `- **Total Elemen:** ${totalElements}\n`;
+    if (typeof totalCycleTime !== 'undefined') response += `- **Total Cycle Time:** ${totalCycleTime}\n`;
+
+    if (elementLines.length > 0) {
+        response += `\n**Detail Elemen:**\n`;
+        response += elementLines.map((line) => `- ${line}`).join('\n');
+    }
+
+    response += `\n\nJika Anda mau, saya bisa lanjutkan dengan analisis bottleneck dan rekomendasi perbaikan paling prioritas.`;
+    return response;
+};
+
+const toReadableLabel = (key = '') => String(key)
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/^./, (s) => s.toUpperCase());
+
+const formatStructuredDataToMarkdown = (data, level = 0) => {
+    if (data === null || typeof data === 'undefined') return 'N/A';
+    if (typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean') {
+        return String(data);
+    }
+
+    if (Array.isArray(data)) {
+        if (data.length === 0) return '- (kosong)';
+
+        return data.map((item) => {
+            if (item && typeof item === 'object') {
+                const nested = formatStructuredDataToMarkdown(item, level + 1)
+                    .split('\n')
+                    .map((line, idx) => (idx === 0 ? line : `  ${line}`))
+                    .join('\n');
+                return `- ${nested}`;
+            }
+            return `- ${String(item)}`;
+        }).join('\n');
+    }
+
+    const entries = Object.entries(data);
+    if (entries.length === 0) return '- (kosong)';
+
+    return entries.map(([key, value]) => {
+        const label = toReadableLabel(key);
+        if (value && typeof value === 'object') {
+            const nested = formatStructuredDataToMarkdown(value, level + 1)
+                .split('\n')
+                .map((line) => `  ${line}`)
+                .join('\n');
+            return `- **${label}:**\n${nested}`;
+        }
+        return `- **${label}:** ${String(value)}`;
+    }).join('\n');
+};
+
+const formatGenericJsonToNaturalText = (obj) => {
+    if (!obj || typeof obj !== 'object') return '';
+
+    if (typeof obj.response === 'string') {
+        return obj.response;
+    }
+
+    if (obj.response && typeof obj.response === 'object') {
+        return `### Ringkasan\n${formatStructuredDataToMarkdown(obj.response)}`;
+    }
+
+    return `### Ringkasan\n${formatStructuredDataToMarkdown(obj)}`;
+};
+
+/**
+ * Normalize AI chat result so UI shows natural text instead of raw JSON/programmatic payload.
+ */
+const normalizeAiChatResponse = (rawResponse) => {
+    if (!rawResponse) return '';
+
+    // If provider already returns object
+    if (typeof rawResponse === 'object') {
+        const analysisContext = rawResponse?.response?.analysis_context || rawResponse?.analysis_context;
+        if (analysisContext) {
+            return formatAnalysisContextToNaturalText(analysisContext);
+        }
+        return formatGenericJsonToNaturalText(rawResponse);
+    }
+
+    let text = String(rawResponse).trim();
+    if (!text) return '';
+
+    // Remove fenced markdown wrappers if model returns ```json ... ```
+    text = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+    // If the model accidentally returns JSON string, convert to natural text if possible
+    const looksLikeJson = (text.startsWith('{') && text.endsWith('}')) || (text.startsWith('[') && text.endsWith(']'));
+    if (looksLikeJson) {
+        try {
+            const parsed = JSON.parse(text);
+            const analysisContext = parsed?.response?.analysis_context || parsed?.analysis_context;
+            if (analysisContext) {
+                return formatAnalysisContextToNaturalText(analysisContext);
+            }
+
+            if (typeof parsed?.response === 'string') {
+                return parsed.response;
+            }
+
+            if (parsed && typeof parsed === 'object') {
+                return formatGenericJsonToNaturalText(parsed);
+            }
+
+            return String(parsed);
+        } catch (e) {
+            // Keep original text if parsing fails
+            return text;
+        }
+    }
+
+    return text;
+};
+
 // Helper to strip HTML/JSX tags for AI context
 const getPlainHelpText = () => {
     let text = "APPLICATION USER GUIDE:\n\n";
@@ -323,20 +461,48 @@ export const chatWithAI = async (userMessage, context = {}, chatHistory = [], ap
         throw new Error("API Key is missing. Please configure it in AI Settings.");
     }
 
+    // Normalize context so every module can be analyzed even if it sends `measurements` instead of `elements`
+    const normalizedContext = { ...(context || {}) };
+    if ((!normalizedContext.elements || normalizedContext.elements.length === 0) && Array.isArray(normalizedContext.measurements)) {
+        normalizedContext.elements = normalizedContext.measurements.map((m, idx) => {
+            const numericDuration = Number(m.duration);
+            const fallbackDuration =
+                (Number(m.manualTime) || 0) +
+                (Number(m.walkTime) || 0) +
+                (Number(m.waitingTime) || 0) +
+                (Number(m.autoTime) || 0);
+
+            return {
+                ...m,
+                elementName: m.elementName || m.name || m.station || `Element ${idx + 1}`,
+                duration: Number.isFinite(numericDuration) && numericDuration > 0 ? numericDuration : fallbackDuration,
+                therblig: m.therblig || m.category || 'N/A'
+            };
+        });
+    }
+
+    if (!normalizedContext.projectName) {
+        normalizedContext.projectName =
+            normalizedContext.videoName ||
+            normalizedContext.moduleName ||
+            normalizedContext.currentProjectName ||
+            'Active Project';
+    }
+
     // Build context summary from multi-module data
     let contextSummary = "";
 
     // 1. Measurement Data
-    if (context.elements && context.elements.length > 0) {
-        const totalTime = context.elements.reduce((sum, el) => sum + (el.duration || 0), 0);
-        const elementList = context.elements.map((el, i) =>
+    if (normalizedContext.elements && normalizedContext.elements.length > 0) {
+        const totalTime = normalizedContext.elements.reduce((sum, el) => sum + (el.duration || 0), 0);
+        const elementList = normalizedContext.elements.map((el, i) =>
             `${i + 1}. ${el.elementName || 'Unnamed'} (${el.therblig || 'N/A'}) - ${(el.duration || 0).toFixed(2)}s`
         ).join('\n');
 
         contextSummary += `
 [Module: Time Study]
-- Project: ${context.projectName || 'Unnamed Project'}
-- Total Elements: ${context.elements.length}
+- Project: ${normalizedContext.projectName || 'Unnamed Project'}
+- Total Elements: ${normalizedContext.elements.length}
 - Total Cycle Time: ${totalTime.toFixed(2)} seconds
 - Elements:
 ${elementList}
@@ -344,8 +510,8 @@ ${elementList}
     }
 
     // 2. Workstation Layout Data (from TherbligAnalysis)
-    if (context.workstation) {
-        const { objects = [], metrics = {} } = context.workstation;
+    if (normalizedContext.workstation) {
+        const { objects = [], metrics = {} } = normalizedContext.workstation;
         contextSummary += `
 [Module: Workstation Layout]
 - Objects in Digital Twin: ${objects.length} (${objects.map(o => o.name).join(', ')})
@@ -356,8 +522,8 @@ ${elementList}
     }
 
     // 3. Ergonomics Data (from ErgonomicAnalysis)
-    if (context.ergonomics) {
-        const { mode = 'RULA', scores = {}, riskLevel = 'N/A' } = context.ergonomics;
+    if (normalizedContext.ergonomics) {
+        const { mode = 'RULA', scores = {}, riskLevel = 'N/A' } = normalizedContext.ergonomics;
         contextSummary += `
 [Module: Ergonomics]
 - Analysis Mode: ${mode}
@@ -367,19 +533,19 @@ ${elementList}
     }
 
     // 4. Productivity Metrics (from AnalysisDashboard)
-    if (context.metrics) {
+    if (normalizedContext.metrics) {
         contextSummary += `
 [Module: Productivity Analytics]
-- OEE: ${context.metrics.oee || 'N/A'}%
-- Efficiency: ${context.metrics.efficiency || 'N/A'}%
-- Takt Status: ${context.metrics.taktStatus || 'N/A'}
-- Productivity Index: ${context.metrics.productivityIndex || 'N/A'}
+- OEE: ${normalizedContext.metrics.oee || 'N/A'}%
+- Efficiency: ${normalizedContext.metrics.efficiency || 'N/A'}%
+- Takt Status: ${normalizedContext.metrics.taktStatus || 'N/A'}
+- Productivity Index: ${normalizedContext.metrics.productivityIndex || 'N/A'}
 `;
     }
 
     // 5. VSM Data (from ValueStreamMap)
-    if (context.vsm) {
-        const processNodes = context.vsm.nodes?.filter(n => n.type === 'process') || [];
+    if (normalizedContext.vsm) {
+        const processNodes = normalizedContext.vsm.nodes?.filter(n => n.type === 'process') || [];
         const processDetails = processNodes.map(n =>
             `- Node: ${n.data.label || n.data.name} [Type: ${n.data.processType || 'Normal'}]
   * CT: ${n.data.ct || 0}s (${n.data.pcsPerHour || (n.data.ct > 0 ? Math.round(3600 / n.data.ct) : 0)} pcs/hr)
@@ -389,7 +555,7 @@ ${elementList}
   * Cost: $${n.data.costPerUnit || 0}/unit, Holding: $${n.data.holdingCostPerDay || 0}/day`
         ).join('\n');
 
-        const inventoryNodes = context.vsm.nodes?.filter(n => n.type === 'inventory') || [];
+        const inventoryNodes = normalizedContext.vsm.nodes?.filter(n => n.type === 'inventory') || [];
         const inventoryDetails = inventoryNodes.map(n =>
             `- Inventory: ${n.data.label || n.data.name}
   * Amount: ${n.data.amount || 0} ${n.data.unit || 'pcs'}
@@ -399,14 +565,37 @@ ${elementList}
 
         contextSummary += `
 [Module: Value Stream Map]
-- Total Lead Time: ${context.vsm.metrics?.totalLT || 'N/A'}s
-- Efficiency: ${context.vsm.metrics?.efficiency || 'N/A'}%
-- Calculated Takt Time: ${context.vsm.metrics?.calculatedTakt || 'N/A'}s
-- Bottleneck Candidate: ${context.vsm.bottleneck || 'N/A'}
+- Total Lead Time: ${normalizedContext.vsm.metrics?.totalLT || 'N/A'}s
+- Efficiency: ${normalizedContext.vsm.metrics?.efficiency || 'N/A'}%
+- Calculated Takt Time: ${normalizedContext.vsm.metrics?.calculatedTakt || 'N/A'}s
+- Bottleneck Candidate: ${normalizedContext.vsm.bottleneck || 'N/A'}
 - Process Nodes:
 ${processDetails || 'None'}
 - Inventory Nodes:
 ${inventoryDetails || 'None'}
+`;
+    }
+
+    // 6. Generic Active-Menu Context (for all AI chat menus)
+    if (normalizedContext.moduleData && typeof normalizedContext.moduleData === 'object') {
+        let snapshot = '';
+        try {
+            snapshot = JSON.stringify(normalizedContext.moduleData, null, 2);
+            // Keep prompt size under control
+            if (snapshot.length > 6000) {
+                snapshot = `${snapshot.slice(0, 6000)}\n... [truncated]`;
+            }
+        } catch (e) {
+            snapshot = '[Unable to serialize module data]';
+        }
+
+        contextSummary += `
+[Module: Active Menu Context]
+- Module Name: ${normalizedContext.moduleName || 'Current Module'}
+- Active Route: ${normalizedContext.activePath || 'N/A'}
+- Analysis Mode: ${normalizedContext.analysisMode || 'standard'}
+- Data Snapshot:
+${snapshot || 'None'}
 `;
     }
 
@@ -428,9 +617,9 @@ ${inventoryDetails || 'None'}
 
     // OVERRIDE: If a custom system prompt is provided in context (e.g. for Studio Model), use it exclusively.
     // This allows creating isolated personas without polluting with general app knowledge.
-    if (context.systemPrompt) {
+    if (normalizedContext.systemPrompt) {
         prompt = `
-            ${context.systemPrompt}
+            ${normalizedContext.systemPrompt}
 
             **HISTORY:**
             ${historyContext}
@@ -475,9 +664,9 @@ ${inventoryDetails || 'None'}
     // Wait, I can just define 'prompt' inside the else block and have 'let prompt' outside?
     // Let's rewrite the block cleanly.
 
-    if (context.systemPrompt) {
+    if (normalizedContext.systemPrompt) {
         prompt = `
-        ${context.systemPrompt}
+        ${normalizedContext.systemPrompt}
 
         **HISTORY:**
         ${historyContext}
@@ -510,16 +699,21 @@ ${inventoryDetails || 'None'}
                - Use **Bullet Points** or **Numbered Lists** for steps. NEVER use long paragraphs.
                - Use ### Headings to separate sections.
             
-            2. **COACHING ROLE:**
-               - Do not just explain "what" a feature is. Explain **"HOW"** to use it step-by-step.
+            2. **ANALYSIS-FIRST RULE (MANDATORY):**
+               - If "CURRENT ANALYSIS CONTEXT" contains active menu data/measurements, ALWAYS prioritize data analysis first.
+               - Explain findings from the actual data (cycle time, bottleneck, waste, risk, imbalance, trend, anomaly) before anything else.
+               - Give practical recommendations based on the numbers/context available.
+               - NEVER switch to generic "cara pakai" explanation unless user explicitly asks about usage/help/tutorial.
+
+            3. **COACHING ROLE (WHEN USER ASKS HOW-TO):**
+               - If the user asks about feature usage, explain **HOW** to use it step-by-step.
                - Guide the user like a mentor (Coach).
-               - If the user asks about a menu, look up the "Cara Pakai" in your Knowledge Base and explain it clearly.
+               - Use "Application User Guide" only for usage/help questions.
 
-            3. **KNOWLEDGE BASE:**
-               - Always answer based on the "Application User Guide" if the user asks about features.
-               - If asked about Industrial Engineering (Time Study, Line Balancing, etc.), use your general expert knowledge.
+            4. **KNOWLEDGE BASE:**
+               - If asked about Industrial Engineering (Time Study, Line Balancing, etc.), use your expert knowledge and active context.
 
-            4. **TONE & LANGUAGE:**
+            5. **TONE & LANGUAGE:**
                - Be helpful, professional, and concise.
                - Respond in the SAME LANGUAGE as the user (Indonesian or English).
 
@@ -534,11 +728,12 @@ ${inventoryDetails || 'None'}
             const modelToUse = model || localStorage.getItem('gemini_model') || 'gemini-1.5-flash-002';
             const aiResponse = await callGemini(prompt, keyToUse, modelToUse, false);
             console.log('AI Chat Response:', aiResponse);
-            return aiResponse;
+            return normalizeAiChatResponse(aiResponse);
         } else {
             // OpenAI Compatible Chat
             const modelToUse = model || (provider === 'openai' ? 'gpt-3.5-turbo' : localStorage.getItem(`${provider}_model`)) || localStorage.getItem('gemini_model') || 'gpt-3.5-turbo';
-            return await callOpenAICompatible(prompt, keyToUse, modelToUse, baseUrl, false);
+            const aiResponse = await callOpenAICompatible(prompt, keyToUse, modelToUse, baseUrl, false);
+            return normalizeAiChatResponse(aiResponse);
         }
 
 
@@ -881,9 +1076,63 @@ export const uploadFileToGemini = async (file, apiKey) => {
 
 /**
  * Chat with AI using a Video context (Gemini 1.5 Pro/Flash).
+ * @param {string} userMessage
+ * @param {string} fileUri
+ * @param {Array<{role: string, content: string}>} chatHistory
+ * @param {string|null} apiKey
+ * @param {object} videoContext - Optional measurement/project context from workspace
  */
-export const chatWithVideo = async (userMessage, fileUri, chatHistory = [], apiKey) => {
+export const chatWithVideo = async (userMessage, fileUri, chatHistory = [], apiKey, videoContext = {}) => {
     const keyToUse = getStoredApiKey(apiKey);
+
+    let contextSummary = '';
+    if (videoContext && typeof videoContext === 'object') {
+        const elements = Array.isArray(videoContext.elements) ? videoContext.elements : [];
+        const projectName = videoContext.projectName || videoContext.videoName || 'Video Workspace';
+
+        if (elements.length > 0) {
+            const totalTime = elements.reduce((sum, el) => sum + (Number(el.duration) || 0), 0);
+            const sampleElements = elements.slice(0, 20).map((el, i) =>
+                `${i + 1}. ${el.elementName || 'Unnamed'} (${el.category || 'N/A'}) - ${(Number(el.duration) || 0).toFixed(2)}s`
+            ).join('\n');
+
+            contextSummary += `
+[Workspace Measurement Context]
+- Project/Video: ${projectName}
+- Total Elements: ${elements.length}
+- Total Cycle Time: ${totalTime.toFixed(2)} seconds
+- Element List (sample):
+${sampleElements}
+`;
+        }
+    }
+
+    let historyContext = '';
+    if (chatHistory.length > 0) {
+        historyContext = chatHistory
+            .slice(-5)
+            .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+            .join('\n');
+    }
+
+    const prompt = `
+You are "Mavi", an expert Industrial Engineer specialized in video-based motion study.
+
+${contextSummary ? `CURRENT WORKSPACE DATA:\n${contextSummary}` : 'No measurement data available yet in workspace.'}
+
+RECENT CHAT HISTORY:
+${historyContext || 'No previous history.'}
+
+USER QUESTION:
+${userMessage}
+
+INSTRUCTIONS:
+1. Answer in the SAME LANGUAGE as user.
+2. If workspace measurement data is available, analyze it directly (cycle time, waste, bottleneck, improvement).
+3. If user asks about video behavior, combine visual reasoning + measurement context.
+4. Use clean Markdown (short sections/bullets), NEVER raw JSON.
+5. Be practical and specific.
+`;
 
     // Priority list of models to try
     const userModel = localStorage.getItem('gemini_model');
@@ -902,7 +1151,7 @@ export const chatWithVideo = async (userMessage, fileUri, chatHistory = [], apiK
             console.log(`Video Chat: Attempting with model ${model}`);
 
             const parts = [
-                { text: userMessage },
+                { text: prompt },
                 {
                     file_data: {
                         mime_type: "video/mp4", // generic fallback
@@ -930,7 +1179,7 @@ export const chatWithVideo = async (userMessage, fileUri, chatHistory = [], apiK
                 throw new Error("Empty response from AI");
             }
 
-            return data.candidates[0].content.parts[0].text;
+            return normalizeAiChatResponse(data.candidates[0].content.parts[0].text);
 
         } catch (error) {
             lastError = error;

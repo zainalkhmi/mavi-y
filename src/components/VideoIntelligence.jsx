@@ -3,7 +3,7 @@ import { Upload, MessageSquare, Video, Loader, Send, Trash2, Maximize2, Minimize
 import { uploadFileToGemini, chatWithVideo, generateElementsFromVideo, generateKaizenAnalysis } from '../utils/aiGenerator';
 import { getStoredApiKey } from '../utils/aiGenerator';
 
-const VideoIntelligence = ({ videoRef, onClose, onUpdateMeasurements, isEmbedded = false, videoFile }) => {
+const VideoIntelligence = ({ videoRef, onClose, onUpdateMeasurements, isEmbedded = false, videoFile, measurements = [], projectName = '' }) => {
     const [fileUri, setFileUri] = useState(null);
     const [uploadStatus, setUploadStatus] = useState('idle'); // idle, uploading, ready, error
     const [chatHistory, setChatHistory] = useState([]);
@@ -132,7 +132,10 @@ const VideoIntelligence = ({ videoRef, onClose, onUpdateMeasurements, isEmbedded
         setIsTyping(true);
 
         try {
-            const aiResponse = await chatWithVideo(userMsg, fileUri, chatHistory);
+            const aiResponse = await chatWithVideo(userMsg, fileUri, chatHistory, null, {
+                elements: measurements,
+                projectName
+            });
             setChatHistory(prev => [...prev, { role: 'ai', content: aiResponse }]);
         } catch (error) {
             console.error("Chat failed:", error);

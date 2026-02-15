@@ -15,7 +15,9 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['@sqlite.org/sqlite-wasm'],
+    // Prevent stale pre-bundled dep hash errors ("Outdated Optimize Dep")
+    // on heavy modules used by VSM route.
+    exclude: ['@sqlite.org/sqlite-wasm', 'reactflow', 'html2canvas'],
   },
   worker: {
     format: 'es',

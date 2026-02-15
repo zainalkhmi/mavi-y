@@ -8,7 +8,7 @@ function AIChatOverlay({
     onClose,
     onOpenSettings,
     contextData,
-    systemPrompt = "You are an expert Industrial Engineer assistant.",
+    systemPrompt = null,
     title = "Mavi Engineer",
     subtitle = "AI Assistant"
 }) {
@@ -48,6 +48,17 @@ function AIChatOverlay({
 
     const getGlobalContext = () => {
         const globalContext = { ...contextData };
+
+        // Add active module metadata so AI can prioritize current menu analysis
+        const path = window.location?.pathname || '';
+        const fallbackModule = title || subtitle || 'Current Module';
+        globalContext.moduleName = globalContext.moduleName || fallbackModule;
+        globalContext.activePath = globalContext.activePath || path;
+        globalContext.analysisMode = 'data-first';
+
+        if (!globalContext.moduleData) {
+            globalContext.moduleData = { ...contextData };
+        }
 
         // Proactively try to gather context from known places if not already in contextData
         if (!globalContext.elements) {
@@ -101,7 +112,7 @@ function AIChatOverlay({
             // Prepare context
             const context = {
                 ...getGlobalContext(),
-                systemPrompt
+                ...(systemPrompt ? { systemPrompt } : {})
             };
 
             const aiResponse = await chatWithAI(userMessage, context, newHistory);

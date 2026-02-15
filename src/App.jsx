@@ -7,6 +7,8 @@ import Header from './components/Header';
 import NewProjectDialog from './components/NewProjectDialog';
 import OpenProjectDialog from './components/OpenProjectDialog';
 import SaveAsDialog from './components/SaveAsDialog';
+import YamazumiChart from './components/YamazumiChart';
+import ValueStreamMap from './components/ValueStreamMap';
 
 import BroadcastControls from './components/features/BroadcastControls';
 import LicenseGuard from './components/features/LicenseGuard';
@@ -36,7 +38,6 @@ const StandardWorkCombinationSheet = React.lazy(() => import('./components/Stand
 const StatisticalAnalysis = React.lazy(() => import('./components/StatisticalAnalysis'));
 const MTMCalculator = React.lazy(() => import('./components/MTMCalculator'));
 const AllowanceCalculator = React.lazy(() => import('./components/AllowanceCalculator'));
-const YamazumiChart = React.lazy(() => import('./components/YamazumiChart'));
 const MultiAxialAnalysis = React.lazy(() => import('./components/MultiAxialAnalysis'));
 const MultiCameraFusion = React.lazy(() => import('./components/MultiCameraFusion'));
 const ManualCreation = React.lazy(() => import('./components/ManualCreation'));
@@ -56,7 +57,6 @@ const FileExplorer = React.lazy(() => import('./components/FileExplorer'));
 const PublicManualViewer = React.lazy(() => import('./components/PublicManualViewer'));
 const SystemDiagnostics = React.lazy(() => import('./components/SystemDiagnostics'));
 const AdminPanel = React.lazy(() => import('./components/AdminPanel'));
-const ValueStreamMap = React.lazy(() => import('./components/ValueStreamMap'));
 const AIProcessWorkspace = React.lazy(() => import('./components/AIProcessWorkspace'));
 const StandardDataBuilder = React.lazy(() => import('./components/StandardDataBuilder'));
 const ErgoCopilot = React.lazy(() => import('./components/ErgoCopilot'));

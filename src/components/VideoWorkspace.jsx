@@ -1318,6 +1318,8 @@ function VideoWorkspace({
                                 videoFile={videoFile}
                                 videoRef={videoRef}
                                 isEmbedded={true}
+                                measurements={videoState.measurements}
+                                projectName={videoName || currentProject?.name || 'Video Workspace'}
                                 onUpdateMeasurements={(newMeasurements) => {
                                     onUpdateMeasurements(newMeasurements);
                                     // Also sync with internal video player state if needed

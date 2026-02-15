@@ -38,6 +38,10 @@ const generateId = () => Math.random().toString(36).substr(2, 9);
 
 function ManualCreation() {
     const { t } = useLanguage();
+    const tt = (key, fallback) => {
+        const value = t(key);
+        return !value || value === key ? fallback : value;
+    };
     const { currentProject } = useProject();
     const { showAlert, showConfirm } = useDialog();
     const [projects, setProjects] = useState([]);
@@ -1053,7 +1057,7 @@ function ManualCreation() {
                         <Book size={20} />
                     </div>
                     <h2 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0, letterSpacing: '-0.02em', color: '#fff' }}>
-                        {t('manual.creator') || 'Manual Creator'}
+                        {tt('manual.creator', 'Manual Creator')}
                     </h2>
                 </div>
 
@@ -1071,7 +1075,7 @@ function ManualCreation() {
                         }}
                     >
                         {isPreviewMode ? <Layout size={16} /> : <Eye size={16} />}
-                        {isPreviewMode ? (t('common.edit') || 'Edit Mode') : (t('common.preview') || 'Preview Mode')}
+                        {isPreviewMode ? tt('common.edit', 'Edit Mode') : tt('common.preview', 'Preview Mode')}
                     </button>
 
                     <div style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255, 255, 255, 0.1)', margin: '0 4px' }} />
@@ -1080,19 +1084,19 @@ function ManualCreation() {
                         onClick={handleSaveManual}
                         className="btn-pro"
                         style={{ backgroundColor: '#16a34a', color: 'white', border: 'none' }}
-                        title={t('common.save') || 'Save'}
+                        title={tt('common.save', 'Save')}
                     >
                         <Save size={16} />
-                        {t('common.save') || 'Save'}
+                        {tt('common.save', 'Save')}
                     </button>
                     <button
                         onClick={handleLoadManualsList}
                         className="btn-pro"
                         style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'white' }}
-                        title={t('common.open') || 'Open'}
+                        title={tt('common.open', 'Open')}
                     >
                         <FolderOpen size={16} />
-                        {t('common.open') || 'Open'}
+                        {tt('common.open', 'Open')}
                     </button>
 
 
@@ -1113,7 +1117,7 @@ function ManualCreation() {
                             className="pro-select"
                             style={{ paddingRight: '32px', minWidth: '140px' }}
                         >
-                            <option value="">{t('common.exportAs') || 'Export As...'}</option>
+                            <option value="">{tt('common.exportAs', 'Export As...')}</option>
                             <option value="pdf">📄 PDF Document</option>
                             <option value="word">📝 MS Word (.docx)</option>
                             <option value="pptx">📊 PowerPoint (.pptx)</option>
@@ -1163,7 +1167,7 @@ function ManualCreation() {
                             className="pro-select"
                             style={{ paddingRight: '32px', minWidth: '160px', backgroundColor: 'rgba(59, 130, 246, 0.05)', borderColor: 'rgba(59, 130, 246, 0.3)' }}
                         >
-                            <option value="">{t('common.selectProject') || 'Select Project'}</option>
+                            <option value="">{tt('common.selectProject', 'Select Project')}</option>
                             {projects.map(p => (
                                 <option key={p.projectName} value={p.projectName}>{p.projectName}</option>
                             ))}
@@ -1198,7 +1202,7 @@ function ManualCreation() {
                                         <Book size={32} />
                                     </div>
                                     <h1 style={{ fontSize: '3rem', fontWeight: '900', color: '#fff', margin: '0 0 16px 0', letterSpacing: '-0.04em' }}>
-                                        {guide.title || t('manual.workInstructions') || 'Work Instructions'}
+                                        {guide.title || tt('manual.workInstructions', 'Work Instructions')}
                                     </h1>
                                     <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', flexWrap: 'wrap' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.85rem' }}>
@@ -1226,7 +1230,7 @@ function ManualCreation() {
                                                 <QRCodeSVG value={`${window.location.origin}/#/manual/${guide.id}`} size={100} />
                                             </div>
                                             <span style={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '700' }}>
-                                                {t('manual.scanForMobile') || 'Scan for Digital Access'}
+                                                {tt('manual.scanForMobile', 'Scan for Digital Access')}
                                             </span>
                                         </div>
                                     )}
@@ -1367,7 +1371,7 @@ function ManualCreation() {
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <Video size={16} style={{ color: '#60a5fa' }} />
-                                    {t('manual.sourceVideo') || 'Source Video'}
+                                    {tt('manual.sourceVideo', 'Source Video')}
                                 </div>
                                 <label style={{
                                     cursor: 'pointer',
@@ -1385,7 +1389,7 @@ function ManualCreation() {
                                     onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(37, 99, 235, 0.1)'}
                                 >
                                     <Upload size={14} />
-                                    {t('common.upload') || 'Upload'}
+                                    {tt('common.upload', 'Upload')}
                                     <input
                                         type="file"
                                         accept="video/*"
@@ -1468,10 +1472,10 @@ function ManualCreation() {
                                         }}>
                                             <VideoOff size={24} />
                                         </div>
-                                        <div style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.85rem' }}>{t('manual.noVideoLoaded')}</div>
+                                        <div style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.85rem' }}>{tt('manual.noVideoLoaded', 'No video loaded')}</div>
                                         <label className="btn-pro" style={{ padding: '8px 16px', backgroundColor: 'rgba(255, 255, 255, 0.05)', cursor: 'pointer', fontSize: '0.8rem' }}>
                                             <Upload size={14} />
-                                            {t('manual.uploadVideo')}
+                                            {tt('manual.uploadVideo', 'Upload Video')}
                                             <input
                                                 type="file"
                                                 accept="video/*"
@@ -1529,10 +1533,10 @@ function ManualCreation() {
 
                         <div style={{ textAlign: 'center' }}>
                             <h2 style={{ fontSize: '1.8rem', fontWeight: '800', margin: '0 0 12px 0', letterSpacing: '-0.02em' }}>
-                                {t('manual.newManual')}
+                                {tt('manual.newManual', 'New Manual')}
                             </h2>
                             <p style={{ color: 'rgba(255, 255, 255, 0.5)', maxWidth: '400px', lineHeight: '1.6', fontSize: '0.95rem' }}>
-                                {t('manual.newManualDescription')}
+                                {tt('manual.newManualDescription', 'Create a new manual from project data or start from scratch.')}
                             </p>
                         </div>
 
@@ -1544,7 +1548,7 @@ function ManualCreation() {
                                     className="pro-select"
                                     style={{ padding: '12px 40px 12px 16px', borderRadius: '12px', height: 'auto', fontSize: '1rem', minWidth: '200px', appearance: 'none' }}
                                 >
-                                    <option value="">{t('common.selectProject') || '-- Pilih Proyek --'}</option>
+                                    <option value="">{tt('common.selectProject', 'Select Project')}</option>
                                     {projects.map(p => (
                                         <option key={p.projectName} value={p.projectName}>{p.projectName}</option>
                                     ))}
@@ -1570,7 +1574,7 @@ function ManualCreation() {
                                 }}
                             >
                                 <Plus size={20} />
-                                {t('manual.newManual')}
+                                {tt('manual.newManual', 'New Manual')}
                             </button>
 
                             <button
@@ -1586,7 +1590,7 @@ function ManualCreation() {
                                 }}
                             >
                                 <FolderOpen size={20} />
-                                {t('manual.openManual')}
+                                {tt('manual.openManual', 'Open Manual')}
                             </button>
                         </div>
                     </div>
@@ -1621,7 +1625,7 @@ function ManualCreation() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <FolderOpen size={20} style={{ color: '#0891b2' }} />
                                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', letterSpacing: '-0.01em' }}>
-                                    {t('manual.openSaved') || 'Open Saved Manual'}
+                                    {tt('manual.openSaved', 'Open Saved Manual')}
                                 </h3>
                             </div>
                             <button
@@ -1645,7 +1649,7 @@ function ManualCreation() {
                             {savedManuals.length === 0 ? (
                                 <div style={{ textAlign: 'center', padding: '40px 0', opacity: 0.5 }}>
                                     <Book size={48} style={{ marginBottom: '16px', color: 'rgba(255, 255, 255, 0.2)' }} />
-                                    <p>{t('manual.noSavedFound') || 'No saved manuals found.'}</p>
+                                    <p>{tt('manual.noSavedFound', 'No saved manuals found.')}</p>
                                 </div>
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

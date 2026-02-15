@@ -3278,6 +3278,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
 
                         {activeTab === 'rules' && (
                             <RuleEditor
+                                modelId={currentModel.id}
                                 states={currentModel.states}
                                 transitions={currentModel.transitions}
                                 onAddTransition={handleAddTransition}

@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, ArrowRight, Check, Activity, MousePointer2, Copy, Video, Target, Info } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, Check, Activity, MousePointer2, Copy, Video, Target, Info, Upload, Download, Library } from 'lucide-react';
 import { RULE_TYPES, JOINTS } from '../../utils/studio/ModelBuilderEngine';
 import { getDetectableClasses } from '../../utils/objectDetector';
 import JointSelector from './JointSelector';
@@ -32,7 +32,98 @@ const evaluateComparison = (val, operator, target, target2 = null) => {
     }
 };
 
-const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, onUpdateTransition, activePose, onAiSuggest, onAiValidateScript, tmModels = [], rfModels = [], rfPredictions = {}, selectedStateId, onSelectState, onCaptureSequence, captureBufferStatus, zones = [] }) => {
+const BUILTIN_RULE_TEMPLATES = [
+    {
+        id: 'tpl_posture_bent_arm',
+        name: 'Bent Arm Detection',
+        description: 'Detect elbow angle below 90°',
+        condition: {
+            operator: 'AND',
+            holdTime: 0,
+            rules: [
+                {
+                    id: 'rule_tpl_1',
+                    type: 'POSE_ANGLE',
+                    params: {
+                        jointA: 'right_shoulder',
+                        jointB: 'right_elbow',
+                        jointC: 'right_wrist',
+                        operator: '<',
+                        value: 90
+                    }
+                }
+            ]
+        }
+    },
+    {
+        id: 'tpl_object_near_hand',
+        name: 'Object Near Hand',
+        description: 'Object close to right wrist',
+        condition: {
+            operator: 'AND',
+            holdTime: 0,
+            rules: [
+                {
+                    id: 'rule_tpl_2',
+                    type: 'OBJECT_PROXIMITY',
+                    params: {
+                        objectClass: 'target',
+                        joint: 'right_wrist',
+                        operator: '<',
+                        distance: 0.12
+                    }
+                }
+            ]
+        }
+    },
+    {
+        id: 'tpl_zone_entry',
+        name: 'Zone Entry Alert',
+        description: 'Detect object/body entering ROI',
+        condition: {
+            operator: 'AND',
+            holdTime: 0,
+            rules: [
+                {
+                    id: 'rule_tpl_3',
+                    type: 'OBJECT_IN_ROI',
+                    params: {
+                        targetType: 'OBJECT',
+                        objectClass: 'person',
+                        roiSource: 'STATE_ROI'
+                    }
+                }
+            ]
+        }
+    },
+    {
+        id: 'tpl_repetitive_motion',
+        name: 'Repetitive Motion (Frequency)',
+        description: 'Track frequent repeated trigger in time window',
+        condition: {
+            operator: 'AND',
+            holdTime: 0,
+            rules: [
+                {
+                    id: 'rule_tpl_4',
+                    type: 'POSE_VELOCITY',
+                    params: {
+                        joint: 'right_wrist',
+                        operator: '>',
+                        value: 0.03
+                    },
+                    frequencyConfig: {
+                        count: 5,
+                        window: 60,
+                        resetMode: 'SLIDING'
+                    }
+                }
+            ]
+        }
+    }
+];
+
+const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, onUpdateTransition, activePose, onAiSuggest, onAiValidateScript, tmModels = [], rfModels = [], rfPredictions = {}, selectedStateId, onSelectState, onCaptureSequence, captureBufferStatus, zones = [], modelId = 'global' }) => {
     const { t } = useTranslation();
     const OPERATORS = useMemo(() => getOperators(t), [t]);
     const [fromState, setFromState] = useState('');
@@ -40,6 +131,28 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
     const [showSelector, setShowSelector] = useState(false);
     const [selectorTarget, setSelectorTarget] = useState(null); // { transitionId, ruleId, field }
     const [aiLoading, setAiLoading] = useState({}); // { transitionId: boolean }
+    const [selectedTemplateId, setSelectedTemplateId] = useState(BUILTIN_RULE_TEMPLATES[0]?.id || '');
+    const [selectedTemplateTransitionId, setSelectedTemplateTransitionId] = useState('');
+    const [ruleLibrary, setRuleLibrary] = useState([]);
+    const importInputRef = useRef(null);
+
+    const LIBRARY_KEY = `studioRuleLibrary_${modelId}`;
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(LIBRARY_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) setRuleLibrary(parsed);
+            }
+        } catch (e) {
+            console.warn('Failed to load rule library:', e);
+        }
+    }, [LIBRARY_KEY]);
+
+    useEffect(() => {
+        localStorage.setItem(LIBRARY_KEY, JSON.stringify(ruleLibrary));
+    }, [ruleLibrary, LIBRARY_KEY]);
 
     // Duration tracking: { ruleId: { startTime: timestamp, elapsed: seconds, isActive: boolean } }
     const [ruleTimers, setRuleTimers] = useState({});
@@ -135,6 +248,148 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
         };
 
         onUpdateTransition(transitionId, { condition: updatedCondition });
+    };
+
+    useEffect(() => {
+        if (!selectedTemplateTransitionId && transitions.length > 0) {
+            setSelectedTemplateTransitionId(transitions[0].id);
+        }
+    }, [transitions, selectedTemplateTransitionId]);
+
+    const cloneRuleWithFreshIds = (rule) => ({
+        ...rule,
+        id: `rule_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    });
+
+    const normalizeCondition = (condition) => {
+        const safe = condition || { rules: [] };
+        return {
+            ...safe,
+            rules: (safe.rules || []).map(cloneRuleWithFreshIds)
+        };
+    };
+
+    const applyConditionToTransition = (transitionId, condition, mode = 'replace') => {
+        const transition = transitions.find(t => t.id === transitionId);
+        if (!transition) return;
+
+        const incoming = normalizeCondition(condition);
+        const mergedCondition = mode === 'append'
+            ? {
+                ...transition.condition,
+                rules: [...(transition.condition?.rules || []), ...(incoming.rules || [])]
+            }
+            : {
+                ...transition.condition,
+                ...incoming,
+                rules: incoming.rules || []
+            };
+
+        onUpdateTransition(transitionId, { condition: mergedCondition });
+    };
+
+    const allTemplates = useMemo(() => {
+        const custom = (ruleLibrary || []).map(item => ({ ...item, source: 'library' }));
+        const builtins = BUILTIN_RULE_TEMPLATES.map(item => ({ ...item, source: 'builtin' }));
+        return [...builtins, ...custom];
+    }, [ruleLibrary]);
+
+    const selectedTemplate = allTemplates.find(tpl => tpl.id === selectedTemplateId) || allTemplates[0];
+
+    const handleApplyTemplate = (mode = 'replace') => {
+        if (!selectedTemplateTransitionId || !selectedTemplate) {
+            window.alert('Select transition and template first.');
+            return;
+        }
+        applyConditionToTransition(selectedTemplateTransitionId, selectedTemplate.condition, mode);
+    };
+
+    const handleExportRules = () => {
+        const payload = {
+            type: 'studio-rule-pack',
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            transitions: transitions.map(t => ({
+                id: t.id,
+                from: t.from,
+                to: t.to,
+                condition: t.condition
+            })),
+            library: ruleLibrary
+        };
+
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `rules_${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const handleImportRules = (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+
+                if (Array.isArray(data.library)) {
+                    const normalizedLib = data.library.map(item => ({
+                        ...item,
+                        id: item.id || `lib_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+                    }));
+                    setRuleLibrary(prev => [...prev, ...normalizedLib]);
+                }
+
+                if (Array.isArray(data.transitions) && selectedTemplateTransitionId) {
+                    const firstCondition = data.transitions[0]?.condition;
+                    if (firstCondition) {
+                        applyConditionToTransition(selectedTemplateTransitionId, firstCondition, 'append');
+                    }
+                }
+
+                window.alert('Rules imported successfully.');
+            } catch (err) {
+                console.error(err);
+                window.alert('Invalid rules JSON file.');
+            }
+        };
+
+        reader.readAsText(file);
+        event.target.value = '';
+    };
+
+    const handleSaveTransitionToLibrary = () => {
+        if (!selectedTemplateTransitionId) {
+            window.alert('Select a transition first.');
+            return;
+        }
+
+        const transition = transitions.find(t => t.id === selectedTemplateTransitionId);
+        if (!transition) return;
+
+        const name = window.prompt('Preset name', 'Custom Rule Preset');
+        if (!name) return;
+
+        const item = {
+            id: `lib_${Date.now()}`,
+            name,
+            description: `From ${transition.from} → ${transition.to}`,
+            condition: transition.condition
+        };
+
+        setRuleLibrary(prev => [...prev, item]);
+        setSelectedTemplateId(item.id);
+    };
+
+    const handleDeleteLibraryItem = (id) => {
+        setRuleLibrary(prev => prev.filter(item => item.id !== id));
+        if (selectedTemplateId === id) {
+            setSelectedTemplateId(BUILTIN_RULE_TEMPLATES[0]?.id || '');
+        }
     };
 
     const openJointSelector = (transitionId, ruleId, field) => {
@@ -1654,6 +1909,106 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                         <Plus size={18} /> {t('studioModel.modelBuilder.rulesEditor.add')}
                     </button>
                 </div>
+            </div>
+
+            <div style={styles.createSection}>
+                <h3 style={styles.sectionTitle}>
+                    <Library size={18} /> Rule Templates & Presets
+                </h3>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <select
+                        style={styles.select}
+                        value={selectedTemplateTransitionId}
+                        onChange={(e) => setSelectedTemplateTransitionId(e.target.value)}
+                    >
+                        <option value="">Target Transition</option>
+                        {transitions.map(tr => {
+                            const from = states.find(s => s.id === tr.from)?.name || tr.from;
+                            const to = states.find(s => s.id === tr.to)?.name || tr.to;
+                            return <option key={tr.id} value={tr.id}>{from} → {to}</option>;
+                        })}
+                    </select>
+
+                    <select
+                        style={styles.select}
+                        value={selectedTemplateId}
+                        onChange={(e) => setSelectedTemplateId(e.target.value)}
+                    >
+                        {allTemplates.map(tpl => (
+                            <option key={tpl.id} value={tpl.id}>
+                                [{tpl.source === 'builtin' ? 'Built-in' : 'Library'}] {tpl.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {selectedTemplate && (
+                    <div style={{ marginBottom: '12px', color: '#9ca3af', fontSize: '0.85rem' }}>
+                        {selectedTemplate.description}
+                    </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                    <button style={styles.button} onClick={() => handleApplyTemplate('replace')}>
+                        Apply Preset
+                    </button>
+                    <button style={{ ...styles.button, backgroundColor: '#374151' }} onClick={() => handleApplyTemplate('append')}>
+                        Add Preset Rules
+                    </button>
+                    <button style={{ ...styles.button, backgroundColor: '#0f766e' }} onClick={handleSaveTransitionToLibrary}>
+                        Save to Library
+                    </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                    <button style={{ ...styles.button, backgroundColor: '#1d4ed8' }} onClick={handleExportRules}>
+                        <Download size={16} /> Export Rules
+                    </button>
+                    <button style={{ ...styles.button, backgroundColor: '#7c3aed' }} onClick={() => importInputRef.current?.click()}>
+                        <Upload size={16} /> Import Rules
+                    </button>
+                    <input
+                        ref={importInputRef}
+                        type="file"
+                        accept="application/json"
+                        style={{ display: 'none' }}
+                        onChange={handleImportRules}
+                    />
+                </div>
+
+                {ruleLibrary.length > 0 && (
+                    <div style={{ borderTop: '1px solid #374151', paddingTop: '12px' }}>
+                        <div style={{ fontSize: '0.85rem', color: '#9ca3af', marginBottom: '8px' }}>Rule Library</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {ruleLibrary.map(item => (
+                                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111827', border: '1px solid #374151', borderRadius: '8px', padding: '8px 10px' }}>
+                                    <div>
+                                        <div style={{ fontSize: '0.85rem', color: 'white' }}>{item.name}</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{item.description}</div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                        <button
+                                            style={{ ...styles.button, padding: '6px 10px', backgroundColor: '#374151' }}
+                                            onClick={() => {
+                                                setSelectedTemplateId(item.id);
+                                                handleApplyTemplate('append');
+                                            }}
+                                        >
+                                            Use
+                                        </button>
+                                        <button
+                                            style={{ ...styles.button, padding: '6px 10px', backgroundColor: '#7f1d1d' }}
+                                            onClick={() => handleDeleteLibraryItem(item.id)}
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* List Transitions */}

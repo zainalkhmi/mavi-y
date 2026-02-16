@@ -41,12 +41,46 @@ import {
     updateLicenseRequestStatus,
     saveCloudInstaller,
     getAllCloudInstallers,
-    deleteCloudInstaller
+    deleteCloudInstaller,
+    getMenuVisibilitySettings,
+    upsertMenuVisibility,
+    bulkUpsertMenuVisibility,
+    resetMenuVisibilityToDefault
 } from '../utils/tursoAPI';
 import AdminLicenseManager from './AdminLicenseManager';
 import AdminYouTubeManager from './AdminYouTubeManager';
 import AdminLanguageControl from './AdminLanguageControl';
 import { useDialog } from '../contexts/DialogContext';
+
+
+const CONTROLLED_MENU_ITEMS = [
+    { path: '/menu', label: 'Main Menu', group: 'Core' },
+    { path: '/', label: 'Video Analysis', group: 'Core' },
+    { path: '/files', label: 'File Explorer', group: 'Core' },
+    { path: '/studio-model', label: 'Studio Model', group: 'AI Studio' },
+    { path: '/realtime-compliance', label: 'Real-time Compliance', group: 'AI Studio' },
+    { path: '/ergo-copilot', label: 'Ergo Copilot', group: 'AI Studio' },
+    { path: '/swcs', label: 'SWCS', group: 'Industrial Engineering' },
+    { path: '/yamazumi', label: 'Yamazumi', group: 'Industrial Engineering' },
+    { path: '/value-stream-map', label: 'Value Stream Map', group: 'Industrial Engineering' },
+    { path: '/statistical-analysis', label: 'Statistical Analysis', group: 'Industrial Engineering' },
+    { path: '/best-worst', label: 'Best/Worst Cycle', group: 'Industrial Engineering' },
+    { path: '/rearrangement', label: 'Rearrangement', group: 'Industrial Engineering' },
+    { path: '/waste-elimination', label: 'Waste Elimination', group: 'Industrial Engineering' },
+    { path: '/manual-creation', label: 'Manual Creation', group: 'Industrial Engineering' },
+    { path: '/comparison', label: 'Video Side-by-Side', group: 'Advanced' },
+    { path: '/vr-training', label: 'VR Training', group: 'Advanced' },
+    { path: '/multi-axial', label: 'Multi-Axial Analysis', group: 'Advanced' },
+    { path: '/mavi-class', label: 'MAVi Class', group: 'Learning & Help' },
+    { path: '/knowledge-base', label: 'Knowledge Base', group: 'Learning & Help' },
+    { path: '/broadcast', label: 'Broadcast', group: 'Learning & Help' }
+];
+
+const getDefaultMenuVisibilityMap = () =>
+    CONTROLLED_MENU_ITEMS.reduce((acc, item) => {
+        acc[item.path] = true;
+        return acc;
+    }, {});
 
 
 
@@ -66,7 +100,7 @@ function AdminPanel() {
     // License Requests management state
     const [licenseRequests, setLicenseRequests] = useState([]);
     const [allLicenses, setAllLicenses] = useState([]);
-    const [activeTab, setActiveTab] = useState('maviclass'); // 'maviclass', 'licenses', 'generator', 'installers', 'license-manager', 'youtube-manager', 'bug-checker'
+    const [activeTab, setActiveTab] = useState('maviclass'); // 'maviclass', 'licenses', 'generator', 'installers', 'license-manager', 'youtube-manager', 'bug-checker', 'menu-control'
     const [processingRequest, setProcessingRequest] = useState(null);
     const [manualEmail, setManualEmail] = useState('');
     const [isGeneratingManual, setIsGeneratingManual] = useState(false);
@@ -80,6 +114,9 @@ function AdminPanel() {
     const [runningTests, setRunningTests] = useState(false);
     const [testError, setTestError] = useState(null);
     const [selectedFeatures, setSelectedFeatures] = useState(['smoke']);
+    const [menuVisibility, setMenuVisibility] = useState(getDefaultMenuVisibilityMap());
+    const [menuVisibilityLoading, setMenuVisibilityLoading] = useState(false);
+    const [menuVisibilitySaving, setMenuVisibilitySaving] = useState(false);
 
     const availableFeatures = [
         { id: 'smoke', label: 'Basic Smoke Test', group: 'General' },
@@ -191,6 +228,8 @@ function AdminPanel() {
             loadLicenseRequests();
         } else if (activeTab === 'installers') {
             loadInstallers();
+        } else if (activeTab === 'menu-control') {
+            loadMenuVisibility();
         }
     }, [activeTab]);
 
@@ -200,6 +239,79 @@ function AdminPanel() {
             setInstallers(data);
         } catch (error) {
             console.error("Failed to load installers:", error);
+        }
+    };
+
+    const loadMenuVisibility = async () => {
+        setMenuVisibilityLoading(true);
+        try {
+            const defaults = getDefaultMenuVisibilityMap();
+            const fromCloud = await getMenuVisibilitySettings();
+            setMenuVisibility({ ...defaults, ...fromCloud });
+        } catch (error) {
+            console.error('Failed to load menu visibility settings:', error);
+            setMenuVisibility(getDefaultMenuVisibilityMap());
+        } finally {
+            setMenuVisibilityLoading(false);
+        }
+    };
+
+    const handleToggleMenuVisibility = async (menuPath, nextVisible) => {
+        const actor = user?.email || user?.id || 'admin';
+        const previous = menuVisibility[menuPath] ?? true;
+        setMenuVisibility(prev => ({ ...prev, [menuPath]: nextVisible }));
+
+        const ok = await upsertMenuVisibility(menuPath, nextVisible, actor);
+        if (!ok) {
+            setMenuVisibility(prev => ({ ...prev, [menuPath]: previous }));
+            await showAlert('Error', 'Failed to update menu visibility in Turso.');
+            return;
+        }
+
+        window.dispatchEvent(new Event('menu-visibility-updated'));
+    };
+
+    const handleBulkMenuVisibility = async (visible) => {
+        setMenuVisibilitySaving(true);
+        try {
+            const actor = user?.email || user?.id || 'admin';
+            const payload = CONTROLLED_MENU_ITEMS.map(item => ({
+                menuPath: item.path,
+                isVisible: visible
+            }));
+
+            const ok = await bulkUpsertMenuVisibility(payload, actor);
+            if (!ok) {
+                await showAlert('Error', 'Failed to update menu visibility in Turso.');
+                return;
+            }
+
+            const nextMap = getDefaultMenuVisibilityMap();
+            Object.keys(nextMap).forEach(path => {
+                nextMap[path] = visible;
+            });
+            setMenuVisibility(nextMap);
+            window.dispatchEvent(new Event('menu-visibility-updated'));
+        } finally {
+            setMenuVisibilitySaving(false);
+        }
+    };
+
+    const handleResetMenuVisibility = async () => {
+        setMenuVisibilitySaving(true);
+        try {
+            const actor = user?.email || user?.id || 'admin';
+            const ok = await resetMenuVisibilityToDefault(actor);
+            if (!ok) {
+                await showAlert('Error', 'Failed to reset menu visibility in Turso.');
+                return;
+            }
+
+            setMenuVisibility(getDefaultMenuVisibilityMap());
+            window.dispatchEvent(new Event('menu-visibility-updated'));
+            await showAlert('Success', 'Menu visibility reset to default (all visible).');
+        } finally {
+            setMenuVisibilitySaving(false);
         }
     };
 
@@ -716,6 +828,26 @@ function AdminPanel() {
                         }}
                     >
                         <Bug size={18} /> Bug Checker
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('menu-control')}
+                        style={{
+                            padding: '12px 24px',
+                            backgroundColor: activeTab === 'menu-control' ? '#0078d4' : 'transparent',
+                            color: activeTab === 'menu-control' ? 'white' : '#888',
+                            border: 'none',
+                            borderBottom: activeTab === 'menu-control' ? '3px solid #0078d4' : '3px solid transparent',
+                            cursor: 'pointer',
+                            fontSize: '1rem',
+                            fontWeight: '600',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}
+                    >
+                        👁️ Menu Control
                     </button>
 
                     <button
@@ -1669,6 +1801,113 @@ function AdminPanel() {
                                     <li>Core database connectivity (Turso)</li>
                                     <li>MaviClass content loading</li>
                                 </ul>
+                            </div>
+                        </div>
+                    </div>
+                ) : activeTab === 'menu-control' ? (
+                    <div style={{ padding: '30px', overflowY: 'auto', height: '100%' }}>
+                        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                            <h2 style={{ color: 'white', fontSize: '1.8rem', marginBottom: '10px' }}>Menu Visibility Control</h2>
+                            <p style={{ color: '#888', marginBottom: '30px' }}>
+                                Hide or unhide app menus from Admin Panel. Settings are stored in Turso Cloud.
+                            </p>
+
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                                <button
+                                    onClick={() => handleBulkMenuVisibility(true)}
+                                    disabled={menuVisibilitySaving}
+                                    style={{
+                                        padding: '10px 16px',
+                                        backgroundColor: '#1f5f3a',
+                                        color: 'white',
+                                        border: '1px solid #2f8f54',
+                                        borderRadius: '8px',
+                                        cursor: menuVisibilitySaving ? 'not-allowed' : 'pointer'
+                                    }}
+                                >
+                                    Show All
+                                </button>
+                                <button
+                                    onClick={() => handleBulkMenuVisibility(false)}
+                                    disabled={menuVisibilitySaving}
+                                    style={{
+                                        padding: '10px 16px',
+                                        backgroundColor: '#5f1f1f',
+                                        color: 'white',
+                                        border: '1px solid #8f2f2f',
+                                        borderRadius: '8px',
+                                        cursor: menuVisibilitySaving ? 'not-allowed' : 'pointer'
+                                    }}
+                                >
+                                    Hide All
+                                </button>
+                                <button
+                                    onClick={handleResetMenuVisibility}
+                                    disabled={menuVisibilitySaving}
+                                    style={{
+                                        padding: '10px 16px',
+                                        backgroundColor: '#222',
+                                        color: '#ddd',
+                                        border: '1px solid #555',
+                                        borderRadius: '8px',
+                                        cursor: menuVisibilitySaving ? 'not-allowed' : 'pointer'
+                                    }}
+                                >
+                                    Reset Default
+                                </button>
+                            </div>
+
+                            <div style={{
+                                backgroundColor: '#1e1e1e',
+                                border: '1px solid #333',
+                                borderRadius: '12px',
+                                padding: '20px'
+                            }}>
+                                {menuVisibilityLoading ? (
+                                    <div style={{ color: '#888' }}>Loading menu visibility settings...</div>
+                                ) : (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '12px' }}>
+                                        {CONTROLLED_MENU_ITEMS.map(item => {
+                                            const isVisible = menuVisibility[item.path] ?? true;
+                                            return (
+                                                <div
+                                                    key={item.path}
+                                                    style={{
+                                                        backgroundColor: '#111',
+                                                        border: '1px solid #2a2a2a',
+                                                        borderRadius: '10px',
+                                                        padding: '14px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        gap: '12px'
+                                                    }}
+                                                >
+                                                    <div>
+                                                        <div style={{ color: 'white', fontWeight: 600 }}>{item.label}</div>
+                                                        <div style={{ color: '#777', fontSize: '0.8rem' }}>{item.group} • {item.path}</div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => handleToggleMenuVisibility(item.path, !isVisible)}
+                                                        style={{
+                                                            minWidth: '92px',
+                                                            padding: '8px 10px',
+                                                            borderRadius: '20px',
+                                                            border: '1px solid',
+                                                            borderColor: isVisible ? '#2f8f54' : '#8f2f2f',
+                                                            backgroundColor: isVisible ? '#1f5f3a' : '#5f1f1f',
+                                                            color: 'white',
+                                                            fontWeight: 700,
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        {isVisible ? 'Visible' : 'Hidden'}
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

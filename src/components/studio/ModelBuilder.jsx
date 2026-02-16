@@ -54,6 +54,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
         rules: true,
         roi: true
     });
+    const [showDebug, setShowDebug] = useState(false);
 
     // LABORATORY STATE
     const [labTasks, setLabTasks] = useState(challenge?.tasks || []);
@@ -84,9 +85,23 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
     const fileInputRef = useRef(null);
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
+    const [videoDisplaySize, setVideoDisplaySize] = useState({ width: 0, height: 0 });
 
     const smootherRef = useRef(new PoseSmoother(0.5));
     const engineRef = useRef(null);
+    const isProcessingFrameRef = useRef(false);
+    const hasPendingFrameRef = useRef(false);
+    const loopRunningRef = useRef(false);
+    const latencyMetricsRef = useRef({
+        poseMs: 0,
+        tmMs: 0,
+        rfMs: 0,
+        engineMs: 0,
+        drawMs: 0,
+        totalMs: 0,
+        droppedFrames: 0,
+        lastReason: 'idle'
+    });
     const [testLogs, setTestLogs] = useState([]);
     const [timelineData, setTimelineData] = useState([]);
     const [currentTestState, setCurrentTestState] = useState(null);
@@ -198,11 +213,29 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
             console.log('File uploaded:', file.name);
             const url = URL.createObjectURL(file);
             setVideoSrc(url);
+            setVideoDisplaySize({ width: 0, height: 0 });
             setTestModeInput('video'); // Auto-switch to video mode
             if (smootherRef.current) smootherRef.current.reset(); // Reset smoothing history on new file
         }
         event.target.value = ''; // CRITICAL: Reset value so same file can be uploaded again
     };
+
+    const syncOverlaySizeToVideo = () => {
+        if (!videoRef.current) return;
+        const width = videoRef.current.clientWidth || 0;
+        const height = videoRef.current.clientHeight || 0;
+        setVideoDisplaySize(prev => (
+            prev.width === width && prev.height === height
+                ? prev
+                : { width, height }
+        ));
+    };
+
+    useEffect(() => {
+        const onResize = () => syncOverlaySizeToVideo();
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
 
     const handleAddRuleFromMeasurement = async () => {
         let targetStateId = selectedStateId;
@@ -489,11 +522,41 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
     // Continuous Detection Loop for UI Visualization
     useEffect(() => {
         let animationFrameId;
+        loopRunningRef.current = false;
 
-        const detectLoop = async () => {
-            if (!detectorReady || testModeInput === 'simulator') return; // Skip if detector not ready or in simulator mode
-            if (videoRef.current && !videoRef.current.paused && !videoRef.current.ended) {
+        const updateLatency = (patch) => {
+            latencyMetricsRef.current = {
+                ...latencyMetricsRef.current,
+                ...patch
+            };
+        };
+
+        const processLatestFrame = async (reason = 'raf') => {
+            if (!detectorReady || testModeInput === 'simulator') return;
+            if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) return;
+
+            if (isProcessingFrameRef.current) {
+                hasPendingFrameRef.current = true;
+                updateLatency({
+                    droppedFrames: (latencyMetricsRef.current.droppedFrames || 0) + 1
+                });
+                return;
+            }
+
+            isProcessingFrameRef.current = true;
+            hasPendingFrameRef.current = false;
+            const frameStart = performance.now();
+
+            try {
+                const poseStart = performance.now();
                 const poses = await detectPose(videoRef.current);
+                const poseMs = performance.now() - poseStart;
+
+                let tmMs = 0;
+                let rfMs = 0;
+                let engineMs = 0;
+                let drawMs = 0;
+
                 if (poses && poses.length > 0) {
                     // Smooth all detected poses
                     const smoothedPoses = poses.map(p => ({
@@ -506,18 +569,24 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                     // --- DETECTION PHASE ---
                     let currentTmPredictions = {};
                     if (currentModel.tmModels && currentModel.tmModels.length > 0) {
+                        const tmStart = performance.now();
                         currentTmPredictions = await tmDetector.predictAll(videoRef.current);
+                        tmMs = performance.now() - tmStart;
                         setTmPredictions(currentTmPredictions);
                     }
 
                     let currentRfPredictions = {};
                     if (currentModel.rfModels && currentModel.rfModels.length > 0) {
+                        const rfStart = performance.now();
                         currentRfPredictions = await roboflowDetector.detectAll(videoRef.current, currentModel.rfModels, smoothedPoses[0]);
+                        rfMs = performance.now() - rfStart;
                         setRfPredictions(currentRfPredictions);
                     }
 
                     // Draw Visualizations with fresh detections
+                    const drawStart = performance.now();
                     drawVisualizations(smoothedPoses[0], null, null, smoothedPoses, currentRfPredictions);
+                    drawMs = performance.now() - drawStart;
 
                     // TEST MODE & BACKGROUND INFERENCE EXECUTION
                     if (activeTab === 'test' || activeTab === 'rules') {
@@ -536,6 +605,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                             console.log("Inference Engine Started in Background:", currentModel.name);
                         }
 
+                        const engineStart = performance.now();
                         // Run Engine with all data and capture result
                         const result = engineRef.current.processFrame({
                             poses: smoothedPoses,
@@ -545,6 +615,7 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                             teachableMachine: currentTmPredictions,
                             roboflow: currentRfPredictions
                         });
+                        engineMs = performance.now() - engineStart;
 
                         // Update buffer status for UI progress bar
                         const activeTracks = engineRef.current.activeTracks;
@@ -600,66 +671,48 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                         }
                     }
                 }
-                animationFrameId = requestAnimationFrame(detectLoop);
+
+                updateLatency({
+                    poseMs,
+                    tmMs,
+                    rfMs,
+                    engineMs,
+                    drawMs,
+                    totalMs: performance.now() - frameStart,
+                    lastReason: reason
+                });
+            } finally {
+                isProcessingFrameRef.current = false;
+
+                // latest-frame-wins: process only one pending newest frame after current finishes
+                if (hasPendingFrameRef.current && loopRunningRef.current && videoRef.current && !videoRef.current.paused) {
+                    hasPendingFrameRef.current = false;
+                    processLatestFrame('pending');
+                }
             }
+        };
+
+        const tick = () => {
+            if (!loopRunningRef.current) return;
+            processLatestFrame('raf');
+            animationFrameId = requestAnimationFrame(tick);
         };
 
         if (videoRef.current) {
             const handlePlay = () => {
                 setIsVideoPaused(false);
-                detectLoop();
+                if (!loopRunningRef.current) {
+                    loopRunningRef.current = true;
+                    tick();
+                }
             };
             const handlePause = () => {
                 setIsVideoPaused(true);
+                loopRunningRef.current = false;
                 cancelAnimationFrame(animationFrameId);
             };
             const handleSeeked = async () => {
-                const poses = await detectPose(videoRef.current);
-                if (poses && poses.length > 0) {
-                    const smoothed = smootherRef.current.smooth(poses[0].keypoints);
-                    const pose = { ...poses[0], keypoints: smoothed };
-                    setActivePose(pose);
-
-                    let rfData = {};
-                    if (currentModel.rfModels && currentModel.rfModels.length > 0) {
-                        console.log('ModelBuilder: Seeking - Running Roboflow Detection...'); // DEBUG
-                        rfData = await roboflowDetector.detectAll(videoRef.current, currentModel.rfModels, pose);
-                        console.log('ModelBuilder: Seeking - Detection Result:', rfData); // DEBUG
-                        setRfPredictions(rfData);
-                    }
-
-                    drawVisualizations(pose, null, null, [pose], rfData);
-
-                    if (activeTab === 'test' || activeTab === 'rules') {
-                        if (!engineRef.current) {
-                            engineRef.current = new InferenceEngine();
-                            engineRef.current.loadModel(currentModel);
-                        }
-
-                        engineRef.current.processFrame({
-                            poses: [pose],
-                            objects: [],
-                            hands: [],
-                            timestamp: videoRef.current.currentTime,
-                            roboflow: rfData
-                        });
-
-                        const tracks = engineRef.current.activeTracks;
-                        if (tracks.size > 0) {
-                            const firstTrack = Array.from(tracks.values())[0];
-                            setCaptureBufferStatus(prev => ({
-                                ...prev,
-                                current: firstTrack.poseBuffer ? firstTrack.poseBuffer.length : 0,
-                                videoTime: videoRef.current.currentTime
-                            }));
-
-                            if (activeTab === 'test') {
-                                setCurrentTestState(firstTrack.currentState);
-                                setTestLogs([...engineRef.current.getLogs()]);
-                            }
-                        }
-                    }
-                }
+                await processLatestFrame('seeked');
             };
 
             videoRef.current.addEventListener('play', handlePlay);
@@ -672,6 +725,9 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
             }
 
             return () => {
+                loopRunningRef.current = false;
+                isProcessingFrameRef.current = false;
+                hasPendingFrameRef.current = false;
                 if (videoRef.current) {
                     videoRef.current.removeEventListener('play', handlePlay);
                     videoRef.current.removeEventListener('pause', handlePause);
@@ -1477,6 +1533,16 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
         ctx.fillText(`Time: ${videoRef.current?.currentTime.toFixed(2)}s`, padding, y);
         y += 20;
 
+        const lm = latencyMetricsRef.current || {};
+        ctx.fillStyle = '#93c5fd';
+        ctx.fillText(`Latency total: ${(lm.totalMs || 0).toFixed(1)}ms (${lm.lastReason || 'n/a'})`, padding, y);
+        y += 16;
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText(`Pose ${(lm.poseMs || 0).toFixed(1)} | TM ${(lm.tmMs || 0).toFixed(1)} | RF ${(lm.rfMs || 0).toFixed(1)} ms`, padding, y);
+        y += 16;
+        ctx.fillText(`Engine ${(lm.engineMs || 0).toFixed(1)} | Draw ${(lm.drawMs || 0).toFixed(1)} | Drop ${lm.droppedFrames || 0}`, padding, y);
+        y += 20;
+
         // Active State
         /* 
            Note: This only shows if we are running the engine. 
@@ -1614,6 +1680,9 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
         if (measurementMode) {
             drawMeasurements(ctx, pose, overridePoints, overrideResults);
         }
+
+        // Draw Debug Overlay
+        drawDebugOverlay(ctx, pose, allPoses);
     };
 
     // ROI Logic
@@ -2408,11 +2477,9 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                     }}
                                     controls
                                     onLoadedMetadata={() => {
-                                        if (canvasRef.current && videoRef.current) {
-                                            canvasRef.current.width = videoRef.current.clientWidth;
-                                            canvasRef.current.height = videoRef.current.clientHeight;
-                                        }
+                                        syncOverlaySizeToVideo();
                                     }}
+                                    onLoadedData={syncOverlaySizeToVideo}
                                 />
                                 <canvas
                                     ref={canvasRef}
@@ -2428,8 +2495,13 @@ const ModelBuilder = ({ model, onClose, onSave, isLaboratory, challenge, videoSr
                                     onClick={handleCanvasClick}
                                     style={{
                                         position: 'absolute',
-                                        top: 0, left: 0, right: 0, bottom: 0,
-                                        width: '100%', height: '100%',
+                                        top: '50%',
+                                        left: '50%',
+                                        transform: 'translate(-50%, -50%)',
+                                        width: `${videoDisplaySize.width}px`,
+                                        height: `${videoDisplaySize.height}px`,
+                                        maxWidth: '100%',
+                                        maxHeight: '100%',
                                         pointerEvents: (isDrawingROI || (measurementMode && isVideoPaused)) ? 'auto' : 'none',
                                         cursor: isDrawingROI ? 'crosshair' : (measurementMode ? 'pointer' : 'default'),
                                         zIndex: 10

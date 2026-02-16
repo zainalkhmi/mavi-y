@@ -51,12 +51,13 @@ const RichTextEditor = ({ value, onChange, placeholder }) => {
                 {/* Font Size */}
                 <select
                     onChange={(e) => execCommand('fontSize', e.target.value)}
+                    defaultValue="3"
                     style={selectStyle}
                     title={t('manual.fontSize')}
                 >
                     <option value="1">8pt</option>
                     <option value="2">10pt</option>
-                    <option value="3" selected>12pt</option>
+                    <option value="3">12pt</option>
                     <option value="4">14pt</option>
                     <option value="5">18pt</option>
                     <option value="6">24pt</option>

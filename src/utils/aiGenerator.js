@@ -4,7 +4,16 @@
  */
 export const getStoredApiKey = (providedKey) => {
     if (providedKey) return providedKey;
-    return localStorage.getItem('gemini_api_key') || '';
+
+    const provider = localStorage.getItem('ai_provider') || 'gemini';
+
+    if (provider === 'openai') return localStorage.getItem('openai_api_key') || '';
+    if (provider === 'grok') return localStorage.getItem('xai_api_key') || '';
+    if (provider === 'openrouter') return localStorage.getItem('openrouter_api_key') || '';
+    if (provider === 'custom') return localStorage.getItem('custom_api_key') || '';
+    if (provider === 'ollama') return localStorage.getItem('ollama_api_key') || 'ollama';
+
+    return localStorage.getItem('gemini_api_key_stored') || localStorage.getItem('gemini_api_key') || '';
 };
 
 /**
@@ -264,6 +273,11 @@ export const validateApiKey = async (apiKey) => {
     const keyToUse = (apiKey || localStorage.getItem('gemini_api_key') || '').trim();
     if (!keyToUse) throw new Error("API Key is missing");
 
+    // Common mistake: OpenAI-compatible keys are used in Gemini validation.
+    if (keyToUse.startsWith('sk-')) {
+        throw new Error("This key looks like an OpenAI-compatible key. Please switch provider to OpenAI/Grok/OpenRouter or use a valid Gemini API key.");
+    }
+
     try {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${keyToUse}`);
 
@@ -463,6 +477,15 @@ export const chatWithAI = async (userMessage, context = {}, chatHistory = [], ap
 
     // Normalize context so every module can be analyzed even if it sends `measurements` instead of `elements`
     const normalizedContext = { ...(context || {}) };
+    // Backward compatibility: many modules send payload as { type, data: {...} }
+    // Flatten known data object so analysis logic can read real values directly.
+    if (normalizedContext.data && typeof normalizedContext.data === 'object') {
+        Object.entries(normalizedContext.data).forEach(([key, value]) => {
+            if (typeof normalizedContext[key] === 'undefined') {
+                normalizedContext[key] = value;
+            }
+        });
+    }
     if ((!normalizedContext.elements || normalizedContext.elements.length === 0) && Array.isArray(normalizedContext.measurements)) {
         normalizedContext.elements = normalizedContext.measurements.map((m, idx) => {
             const numericDuration = Number(m.duration);
@@ -596,6 +619,35 @@ ${inventoryDetails || 'None'}
 - Analysis Mode: ${normalizedContext.analysisMode || 'standard'}
 - Data Snapshot:
 ${snapshot || 'None'}
+`;
+    }
+
+    // 7. Line Balancing Data (station load / imbalance / bottleneck)
+    if (normalizedContext.items && typeof normalizedContext.items === 'object') {
+        const stations = Object.entries(normalizedContext.items);
+        const stationSummary = stations.map(([stationName, tasks = []]) => {
+            const stationTotal = (tasks || []).reduce((sum, t) => {
+                const man = Number(t.manualTime) || 0;
+                const walk = Number(t.walkTime) || 0;
+                const wait = Number(t.waitingTime) || 0;
+                const auto = Number(t.autoTime) || 0;
+                let opTime = man + walk + wait;
+                if (opTime === 0 && auto === 0 && Number(t.duration) > 0) {
+                    opTime = Number(t.duration);
+                }
+                return sum + opTime;
+            }, 0);
+
+            return `- ${stationName}: ${stationTotal.toFixed(2)}s (${tasks.length} tasks)`;
+        }).join('\n');
+
+        contextSummary += `
+[Module: Line Balancing]
+- Takt Time: ${normalizedContext.taktTime ?? 'N/A'} s
+- Stochastic Mode: ${normalizedContext.isStochasticMode ? 'ON' : 'OFF'}
+- Total Stations: ${stations.length}
+- Station Load Summary:
+${stationSummary || 'None'}
 `;
     }
 

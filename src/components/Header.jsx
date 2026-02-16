@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { getMenuVisibilitySettings } from '../utils/tursoAPI';
 
 import { useLanguage } from '../contexts/LanguageContext';
 import GlobalSettingsDialog from './GlobalSettingsDialog';
@@ -11,7 +12,6 @@ import {
     Network,
     Home,
     Cctv,
-    Cpu,
     PencilRuler,
     GraduationCap,
     Film,
@@ -91,6 +91,7 @@ function Header({ videoName, onUpload, onLogout, sidebarCollapsed }) {
     const { userRole } = useAuth();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [dbStatus, setDbStatus] = useState({ isConfigured: false, isOnline: true, mode: 'Local' });
+    const [menuVisibilityMap, setMenuVisibilityMap] = useState({});
 
     // Poll DB status
     useEffect(() => {
@@ -101,6 +102,27 @@ function Header({ videoName, onUpload, onLogout, sidebarCollapsed }) {
         fetchStatus();
         const interval = setInterval(fetchStatus, 5000); // Check every 5s
         return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+        const loadMenuVisibility = async () => {
+            try {
+                const settings = await getMenuVisibilitySettings();
+                setMenuVisibilityMap(settings || {});
+            } catch (error) {
+                console.error('Failed to load menu visibility settings:', error);
+                setMenuVisibilityMap({});
+            }
+        };
+
+        loadMenuVisibility();
+
+        const handleVisibilityUpdated = () => {
+            loadMenuVisibility();
+        };
+
+        window.addEventListener('menu-visibility-updated', handleVisibilityUpdated);
+        return () => window.removeEventListener('menu-visibility-updated', handleVisibilityUpdated);
     }, []);
 
     // Listen for global event to open AI settings
@@ -173,50 +195,53 @@ function Header({ videoName, onUpload, onLogout, sidebarCollapsed }) {
                     <React.Fragment key={catKey}>
                         {catIndex > 0 && <div style={{ width: '32px', height: '1px', backgroundColor: 'var(--border-color)', margin: '4px 0', opacity: 0.5 }}></div>}
 
-                        {MENU_ITEMS.filter(item => item.category === catKey).map((item) => (
-                            <NavLink
-                                key={item.path}
-                                to={item.path}
-                                className={({ isActive }) => `btn ${isActive ? 'active' : ''}`}
-                                style={{
-                                    padding: '0',
-                                    fontSize: '1.2rem',
-                                    width: item.path === '/menu' ? '50px' : '80%', // Home button fixed 50px
-                                    height: '50px', // Increased height
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
-                                    color: 'white',
-                                    textDecoration: 'none',
-                                    borderRadius: '10px',
-                                    transition: item.path === '/menu' ? 'none' : 'all 0.2s ease', // No transition for Home
-                                    position: 'relative',
-                                    border: '1px solid transparent'
-                                }}
-                                title={item.labelKey ? t(item.labelKey) : item.title}
-                            >
-                                {item.icon}
-                                {item.beta && (
-                                    <span style={{
-                                        position: 'absolute',
-                                        top: '0',
-                                        right: '0',
-                                        backgroundColor: '#f59e0b', // Amber/Orange for experiment
-                                        color: '#000',
-                                        fontSize: '0.55rem',
-                                        padding: '1px 3px',
-                                        borderRadius: '4px',
-                                        fontWeight: '900',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.02em',
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                                        border: '1px solid rgba(0,0,0,0.1)'
-                                    }}>
-                                        Beta
-                                    </span>
-                                )}
-                            </NavLink>
-                        ))}
+                        {MENU_ITEMS
+                            .filter(item => item.category === catKey)
+                            .filter(item => menuVisibilityMap[item.path] !== false)
+                            .map((item) => (
+                                <NavLink
+                                    key={item.path}
+                                    to={item.path}
+                                    className={({ isActive }) => `btn ${isActive ? 'active' : ''}`}
+                                    style={{
+                                        padding: '0',
+                                        fontSize: '1.2rem',
+                                        width: item.path === '/menu' ? '50px' : '80%', // Home button fixed 50px
+                                        height: '50px', // Increased height
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        color: 'white',
+                                        textDecoration: 'none',
+                                        borderRadius: '10px',
+                                        transition: item.path === '/menu' ? 'none' : 'all 0.2s ease', // No transition for Home
+                                        position: 'relative',
+                                        border: '1px solid transparent'
+                                    }}
+                                    title={item.labelKey ? t(item.labelKey) : item.title}
+                                >
+                                    {item.icon}
+                                    {item.beta && (
+                                        <span style={{
+                                            position: 'absolute',
+                                            top: '0',
+                                            right: '0',
+                                            backgroundColor: '#f59e0b', // Amber/Orange for experiment
+                                            color: '#000',
+                                            fontSize: '0.55rem',
+                                            padding: '1px 3px',
+                                            borderRadius: '4px',
+                                            fontWeight: '900',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.02em',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                            border: '1px solid rgba(0,0,0,0.1)'
+                                        }}>
+                                            Beta
+                                        </span>
+                                    )}
+                                </NavLink>
+                            ))}
                     </React.Fragment>
                 ))}
 

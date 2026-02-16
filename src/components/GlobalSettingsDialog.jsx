@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useDialog } from '../contexts/DialogContext';
 import ReactDOM from 'react-dom';
-import { X, Save, CheckCircle, AlertCircle, Key, Cpu, Globe } from 'lucide-react';
+import { X, Save, CheckCircle, AlertCircle, Key, Cpu, Globe, Cloud, Radio } from 'lucide-react';
 import { validateApiKey, validateOpenAICompatibleKey } from '../utils/aiGenerator';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getJitsiSettings, saveJitsiSettings } from '../utils/jitsiSettings';
+import {
+    getGoogleDriveSettings,
+    saveGoogleDriveSettings,
+    signInGoogleDrive,
+    signOutGoogleDrive,
+    listGoogleDriveProjectFiles,
+    getStoredGoogleToken
+} from '../utils/googleDrive';
 
 
 function GlobalSettingsDialog({ isOpen, onClose }) {
@@ -20,6 +29,26 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
     const [isTestingAI, setIsTestingAI] = useState(false);
     const [testStatusAI, setTestStatusAI] = useState(null);
 
+    // Google Drive Settings State
+    const [driveSettings, setDriveSettings] = useState(getGoogleDriveSettings());
+    const [isDriveSigning, setIsDriveSigning] = useState(false);
+    const [isDriveTesting, setIsDriveTesting] = useState(false);
+    const [driveConnectionStatus, setDriveConnectionStatus] = useState(null);
+
+    // Jitsi Settings State
+    const [jitsiSettings, setJitsiSettings] = useState(getJitsiSettings());
+
+    const toolbarOptions = [
+        'microphone',
+        'camera',
+        'desktop',
+        'chat',
+        'participants-pane',
+        'tileview',
+        'fullscreen',
+        'hangup'
+    ];
+
 
     useEffect(() => {
         if (isOpen) {
@@ -29,9 +58,68 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
             setModel(localStorage.getItem('gemini_model') || 'gemini-1.5-flash-002');
             setBaseUrl(localStorage.getItem('ai_base_url') || '');
             setTestStatusAI(null);
+            setDriveSettings(getGoogleDriveSettings());
+            setDriveConnectionStatus(null);
+            setJitsiSettings(getJitsiSettings());
 
         }
     }, [isOpen]);
+
+    const handleDriveSettingChange = (key, value) => {
+        setDriveSettings(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleJitsiSettingChange = (key, value) => {
+        setJitsiSettings(prev => ({ ...prev, [key]: value }));
+    };
+
+    const toggleToolbarButton = (button) => {
+        setJitsiSettings(prev => {
+            const current = Array.isArray(prev.toolbarButtons) ? prev.toolbarButtons : [];
+            const exists = current.includes(button);
+            return {
+                ...prev,
+                toolbarButtons: exists ? current.filter(b => b !== button) : [...current, button]
+            };
+        });
+    };
+
+    const handleDriveSignIn = async () => {
+        setIsDriveSigning(true);
+        try {
+            await signInGoogleDrive();
+            setDriveConnectionStatus('success');
+            await showAlert('Success', 'Google Drive sign-in successful.');
+        } catch (error) {
+            console.error('Google Drive sign-in failed:', error);
+            setDriveConnectionStatus('error');
+            await showAlert('Connection Failed', error.message || 'Failed to sign in to Google Drive.');
+        } finally {
+            setIsDriveSigning(false);
+        }
+    };
+
+    const handleDriveSignOut = async () => {
+        signOutGoogleDrive();
+        setDriveConnectionStatus(null);
+        await showAlert('Info', 'Google Drive token removed from this device.');
+    };
+
+    const handleTestDriveConnection = async () => {
+        setIsDriveTesting(true);
+        setDriveConnectionStatus(null);
+        try {
+            const files = await listGoogleDriveProjectFiles();
+            setDriveConnectionStatus('success');
+            await showAlert('Success', `Google Drive connected. Found ${files.length} project zip file(s).`);
+        } catch (error) {
+            console.error('Google Drive test failed:', error);
+            setDriveConnectionStatus('error');
+            await showAlert('Connection Failed', error.message || 'Failed to connect to Google Drive.');
+        } finally {
+            setIsDriveTesting(false);
+        }
+    };
 
     // AI Handlers
     const handleProviderChange = (newProvider) => {
@@ -158,6 +246,9 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
             localStorage.setItem('ollama_model', model.trim());
         }
 
+        saveGoogleDriveSettings(driveSettings);
+        saveJitsiSettings(jitsiSettings);
+
 
         onClose();
     };
@@ -252,6 +343,42 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                         <Globe size={18} /> {t('settings.language')}
                     </button>
                     <button
+                        onClick={() => setActiveTab('cloud')}
+                        style={{
+                            padding: '16px 24px',
+                            background: 'transparent',
+                            border: 'none',
+                            borderBottom: `2px solid ${activeTab === 'cloud' ? '#0078d4' : 'transparent'}`,
+                            color: activeTab === 'cloud' ? 'white' : '#aaa',
+                            fontSize: '0.95rem',
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <Cloud size={18} /> Cloud Storage
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('conference')}
+                        style={{
+                            padding: '16px 24px',
+                            background: 'transparent',
+                            border: 'none',
+                            borderBottom: `2px solid ${activeTab === 'conference' ? '#0078d4' : 'transparent'}`,
+                            color: activeTab === 'conference' ? 'white' : '#aaa',
+                            fontSize: '0.95rem',
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <Radio size={18} /> Conference
+                    </button>
+                    <button
                         onClick={() => setActiveTab('system')}
                         style={{
                             padding: '16px 24px',
@@ -308,6 +435,99 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                                 </div>
                             </div>
                         </div>
+                    ) : activeTab === 'conference' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                            <div style={{
+                                padding: '14px',
+                                borderRadius: '10px',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'rgba(255,255,255,0.02)'
+                            }}>
+                                <div style={{ color: 'white', fontWeight: 600, marginBottom: '6px' }}>Jitsi Conference Settings</div>
+                                <div style={{ color: '#aaa', fontSize: '0.85rem' }}>
+                                    Atur domain/API Jitsi dan default conference behavior untuk menu Broadcast.
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem' }}>Jitsi Domain</label>
+                                <input
+                                    type="text"
+                                    value={jitsiSettings.domain || ''}
+                                    onChange={(e) => handleJitsiSettingChange('domain', e.target.value)}
+                                    placeholder="meet.jit.si"
+                                    style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px' }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <div>
+                                    <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem' }}>Default Room Prefix</label>
+                                    <input
+                                        type="text"
+                                        value={jitsiSettings.defaultRoomPrefix || ''}
+                                        onChange={(e) => handleJitsiSettingChange('defaultRoomPrefix', e.target.value)}
+                                        placeholder="mavi-room"
+                                        style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem' }}>Default Display Name</label>
+                                    <input
+                                        type="text"
+                                        value={jitsiSettings.defaultDisplayName || ''}
+                                        onChange={(e) => handleJitsiSettingChange('defaultDisplayName', e.target.value)}
+                                        placeholder="Guest"
+                                        style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px' }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gap: '10px' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'white', cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={!!jitsiSettings.enableWelcomePage}
+                                        onChange={(e) => handleJitsiSettingChange('enableWelcomePage', e.target.checked)}
+                                    />
+                                    Enable welcome / prejoin page
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'white', cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={!!jitsiSettings.startWithAudioMuted}
+                                        onChange={(e) => handleJitsiSettingChange('startWithAudioMuted', e.target.checked)}
+                                    />
+                                    Start with audio muted
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'white', cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={!!jitsiSettings.startWithVideoMuted}
+                                        onChange={(e) => handleJitsiSettingChange('startWithVideoMuted', e.target.checked)}
+                                    />
+                                    Start with video muted
+                                </label>
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', color: '#aaa', marginBottom: '10px', fontSize: '0.9rem' }}>
+                                    Toolbar Buttons
+                                </label>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
+                                    {toolbarOptions.map(btn => (
+                                        <label key={btn} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'white', cursor: 'pointer', fontSize: '0.85rem' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={(jitsiSettings.toolbarButtons || []).includes(btn)}
+                                                onChange={() => toggleToolbarButton(btn)}
+                                            />
+                                            {btn}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     ) : activeTab === 'system' ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <div>
@@ -344,6 +564,111 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                                         </button>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    ) : activeTab === 'cloud' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                            <div style={{
+                                padding: '14px',
+                                borderRadius: '10px',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'rgba(255,255,255,0.02)'
+                            }}>
+                                <div style={{ color: 'white', fontWeight: 600, marginBottom: '6px' }}>Google Drive Project Backup</div>
+                                <div style={{ color: '#aaa', fontSize: '0.85rem' }}>
+                                    Simpan project ZIP ke Google Drive, termasuk mode OAuth user login + fallback service account.
+                                </div>
+                            </div>
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'white', cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={!!driveSettings.enabled}
+                                    onChange={(e) => handleDriveSettingChange('enabled', e.target.checked)}
+                                />
+                                Enable Google Drive Integration
+                            </label>
+
+                            <div>
+                                <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem' }}>Mode</label>
+                                <select
+                                    value={driveSettings.mode || 'auto'}
+                                    onChange={(e) => handleDriveSettingChange('mode', e.target.value)}
+                                    style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px' }}
+                                >
+                                    <option value="auto">Auto (OAuth first, fallback Service Account)</option>
+                                    <option value="oauth">OAuth User Login</option>
+                                    <option value="service_account">Service Account</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem' }}>Google OAuth Client ID</label>
+                                <input
+                                    type="text"
+                                    value={driveSettings.clientId || ''}
+                                    onChange={(e) => handleDriveSettingChange('clientId', e.target.value)}
+                                    placeholder="xxxxxx-xxxxx.apps.googleusercontent.com"
+                                    style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px' }}
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem' }}>Default Drive Folder ID</label>
+                                <input
+                                    type="text"
+                                    value={driveSettings.defaultFolderId || ''}
+                                    onChange={(e) => handleDriveSettingChange('defaultFolderId', e.target.value)}
+                                    placeholder="Optional: folder id for project uploads"
+                                    style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px' }}
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem' }}>Service Token Endpoint (fallback)</label>
+                                <input
+                                    type="text"
+                                    value={driveSettings.serviceTokenEndpoint || ''}
+                                    onChange={(e) => handleDriveSettingChange('serviceTokenEndpoint', e.target.value)}
+                                    placeholder="https://your-backend.example.com/google-drive/token"
+                                    style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px' }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                <button
+                                    onClick={handleDriveSignIn}
+                                    disabled={isDriveSigning || !driveSettings.clientId}
+                                    style={{ padding: '10px 14px', backgroundColor: '#0078d4', border: 'none', color: 'white', borderRadius: '10px', cursor: 'pointer' }}
+                                >
+                                    {isDriveSigning ? 'Signing in...' : 'Sign In Google'}
+                                </button>
+                                <button
+                                    onClick={handleDriveSignOut}
+                                    style={{ padding: '10px 14px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', color: 'white', borderRadius: '10px', cursor: 'pointer' }}
+                                >
+                                    Sign Out
+                                </button>
+                                <button
+                                    onClick={handleTestDriveConnection}
+                                    disabled={isDriveTesting || !driveSettings.enabled}
+                                    style={{
+                                        padding: '10px 14px',
+                                        backgroundColor: driveConnectionStatus === 'success' ? '#16a34a' : 'rgba(255,255,255,0.05)',
+                                        border: '1px solid rgba(255,255,255,0.15)',
+                                        color: 'white',
+                                        borderRadius: '10px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    {isDriveTesting ? 'Testing...' : 'Test Drive Connection'}
+                                </button>
+                            </div>
+
+                            <div style={{ color: '#aaa', fontSize: '0.85rem' }}>
+                                OAuth token: {getStoredGoogleToken().token ? 'Connected' : 'Not connected'}
+                                {driveConnectionStatus === 'success' && <span style={{ color: '#16a34a', marginLeft: '8px' }}>✓ OK</span>}
+                                {driveConnectionStatus === 'error' && <span style={{ color: '#ef4444', marginLeft: '8px' }}>✗ Failed</span>}
                             </div>
                         </div>
                     ) : (

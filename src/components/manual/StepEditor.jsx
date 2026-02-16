@@ -5,7 +5,7 @@ import RichTextEditor from './RichTextEditor';
 import {
     Sparkles, Eye, Zap, Image, Camera, Upload,
     Edit3, X, CheckCircle, Info, AlertTriangle, AlertCircle,
-    Plus, Type, MessageSquare
+    Plus, Type, MessageSquare, Trash2
 } from 'lucide-react';
 
 const StepEditor = ({ step, onChange, onCaptureImage, onAiImprove, onAiGenerate, onAiGenerateFromVideo, isAiLoading, videoTime }) => {

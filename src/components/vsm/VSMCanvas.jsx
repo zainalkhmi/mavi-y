@@ -114,6 +114,10 @@ const VSMCanvasContent = () => {
     const [availableModels, setAvailableModels] = useState([]);
     const [allProjects, setAllProjects] = useState([]);
 
+    // Keep React Flow type objects stable across renders
+    const stableNodeTypes = useMemo(() => nodeTypes, []);
+    const stableEdgeTypes = useMemo(() => edgeTypes, []);
+
     // UI State
     const [showSidebar, setShowSidebar] = useState(true);
     const [showMetrics, setShowMetrics] = useState(true); // New state for metrics bar visibility
@@ -2594,7 +2598,8 @@ const VSMCanvasContent = () => {
                         onNodeDoubleClick={onNodeDoubleClick}
                         onEdgeClick={onEdgeClick}
                         onPaneClick={onPaneClick}
-                        nodeTypes={nodeTypes}
+                        nodeTypes={stableNodeTypes}
+                        edgeTypes={stableEdgeTypes}
                         connectionMode="loose"
                         fitView
                         snapToGrid={true}

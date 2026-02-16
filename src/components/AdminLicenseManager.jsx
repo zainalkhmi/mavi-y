@@ -6,7 +6,6 @@ import {
     ShieldCheck,
     Search,
     Plus,
-    Edit2,
     Trash2,
     Copy,
     CheckCircle,
@@ -19,8 +18,7 @@ import {
     getAllLicenses,
     createLicense,
     updateLicense,
-    deleteLicense,
-    searchLicenses
+    deleteLicense
 } from '../utils/tursoAPI.js';
 import { generateLicenseKey } from '../utils/licenseUtils.js';
 import { getTursoStatus } from '../utils/tursoClient.js';
@@ -41,7 +39,6 @@ function AdminLicenseManager() {
         machineId: ''
     });
     const [isGenerating, setIsGenerating] = useState(false);
-    const [editingId, setEditingId] = useState(null);
 
     useEffect(() => {
         loadLicenses();
@@ -55,11 +52,23 @@ function AdminLicenseManager() {
             const filtered = licenses.filter(license =>
                 license.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 license.key_string?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                license.machine_id?.toLowerCase().includes(searchQuery.toLowerCase())
+                license.machine_id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                license.bound_machine_id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                license.bound_ip?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                license.bound_country?.toLowerCase().includes(searchQuery.toLowerCase())
             );
             setFilteredLicenses(filtered);
         }
     }, [searchQuery, licenses]);
+
+    const formatDateTime = (value) => {
+        if (!value) return '-';
+        try {
+            return new Date(value).toLocaleString();
+        } catch {
+            return '-';
+        }
+    };
 
     const checkDatabaseStatus = async () => {
         const status = await getTursoStatus();
@@ -133,12 +142,33 @@ function AdminLicenseManager() {
     };
 
     const exportToCSV = () => {
-        const headers = ['ID', 'Email', 'License Key', 'Machine ID', 'Status', 'Created At'];
+        const headers = [
+            'ID',
+            'Email',
+            'License Key',
+            'Machine ID',
+            'Bound Machine ID',
+            'Bound IP',
+            'Bound Country',
+            'Last Seen At',
+            'Last Seen IP',
+            'Last Seen Country',
+            'Violation Count',
+            'Status',
+            'Created At'
+        ];
         const rows = licenses.map(l => [
             l.id,
             l.email || '',
             l.key_string,
             l.machine_id || '',
+            l.bound_machine_id || '',
+            l.bound_ip || '',
+            l.bound_country || '',
+            l.last_seen_at || '',
+            l.last_seen_ip || '',
+            l.last_seen_country || '',
+            l.violation_count ?? 0,
             l.status,
             new Date(l.created_at).toLocaleString()
         ]);
@@ -356,7 +386,7 @@ function AdminLicenseManager() {
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search by email, license key, or machine ID..."
+                            placeholder="Search by email, key, machine ID, bound IP, or country..."
                             style={{
                                 width: '100%',
                                 padding: '14px 14px 14px 45px',
@@ -403,6 +433,10 @@ function AdminLicenseManager() {
                                     <th style={{ padding: '16px', textAlign: 'left', color: '#888', fontWeight: '600', fontSize: '0.85rem' }}>EMAIL</th>
                                     <th style={{ padding: '16px', textAlign: 'left', color: '#888', fontWeight: '600', fontSize: '0.85rem' }}>LICENSE KEY</th>
                                     <th style={{ padding: '16px', textAlign: 'left', color: '#888', fontWeight: '600', fontSize: '0.85rem' }}>MACHINE ID</th>
+                                    <th style={{ padding: '16px', textAlign: 'left', color: '#888', fontWeight: '600', fontSize: '0.85rem' }}>BOUND IP</th>
+                                    <th style={{ padding: '16px', textAlign: 'left', color: '#888', fontWeight: '600', fontSize: '0.85rem' }}>COUNTRY</th>
+                                    <th style={{ padding: '16px', textAlign: 'left', color: '#888', fontWeight: '600', fontSize: '0.85rem' }}>LAST SEEN</th>
+                                    <th style={{ padding: '16px', textAlign: 'left', color: '#888', fontWeight: '600', fontSize: '0.85rem' }}>VIOLATION</th>
                                     <th style={{ padding: '16px', textAlign: 'left', color: '#888', fontWeight: '600', fontSize: '0.85rem' }}>STATUS</th>
                                     <th style={{ padding: '16px', textAlign: 'left', color: '#888', fontWeight: '600', fontSize: '0.85rem' }}>CREATED</th>
                                     <th style={{ padding: '16px', textAlign: 'right', color: '#888', fontWeight: '600', fontSize: '0.85rem' }}>ACTIONS</th>
@@ -446,14 +480,35 @@ function AdminLicenseManager() {
                                             </div>
                                         </td>
                                         <td style={{ padding: '16px', color: '#888', fontSize: '0.9rem' }}>
-                                            {license.machine_id ? (
+                                            {license.bound_machine_id || license.machine_id ? (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                     <Monitor size={14} />
-                                                    {license.machine_id.substring(0, 12)}...
+                                                    {(license.bound_machine_id || license.machine_id).substring(0, 12)}...
                                                 </div>
                                             ) : (
                                                 <span style={{ color: '#555' }}>Universal</span>
                                             )}
+                                        </td>
+                                        <td style={{ padding: '16px', color: '#888', fontSize: '0.9rem' }}>
+                                            {license.bound_ip || '-'}
+                                        </td>
+                                        <td style={{ padding: '16px', color: '#888', fontSize: '0.9rem' }}>
+                                            {license.bound_country || '-'}
+                                        </td>
+                                        <td style={{ padding: '16px', color: '#888', fontSize: '0.9rem' }}>
+                                            {formatDateTime(license.last_seen_at)}
+                                        </td>
+                                        <td style={{ padding: '16px' }}>
+                                            <span style={{
+                                                padding: '4px 8px',
+                                                borderRadius: '6px',
+                                                backgroundColor: (license.violation_count || 0) > 0 ? 'rgba(255, 152, 0, 0.2)' : 'rgba(76, 175, 80, 0.2)',
+                                                color: (license.violation_count || 0) > 0 ? '#ff9800' : '#4CAF50',
+                                                fontWeight: '700',
+                                                fontSize: '0.8rem'
+                                            }}>
+                                                {license.violation_count || 0}
+                                            </span>
                                         </td>
                                         <td style={{ padding: '16px' }}>
                                             <select
@@ -475,7 +530,7 @@ function AdminLicenseManager() {
                                             </select>
                                         </td>
                                         <td style={{ padding: '16px', color: '#888', fontSize: '0.9rem' }}>
-                                            {new Date(license.created_at).toLocaleDateString()}
+                                            {formatDateTime(license.created_at)}
                                         </td>
                                         <td style={{ padding: '16px', textAlign: 'right' }}>
                                             <button

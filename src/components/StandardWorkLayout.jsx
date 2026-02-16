@@ -401,6 +401,9 @@ const SpaghettiChartContent = () => {
         isTaktViolated: false
     });
 
+    // Keep React Flow type objects stable across renders
+    const stableNodeTypes = useMemo(() => nodeTypes, []);
+
     const [headerInfo, setHeaderInfo] = useState({
         partName: '',
         partNo: '',
@@ -1251,7 +1254,7 @@ const SpaghettiChartContent = () => {
                             onConnect={onConnect}
                             onNodeClick={(_, node) => setSelectedNodeData(node)}
                             onPaneClick={() => setSelectedNodeData(null)}
-                            nodeTypes={nodeTypes}
+                            nodeTypes={stableNodeTypes}
                             fitView
                             defaultEdgeOptions={{
                                 type: connectorType,

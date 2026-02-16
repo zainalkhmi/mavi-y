@@ -8,6 +8,7 @@ import { getKeypoint } from '../poseDetector';
 import PoseNormalizer from './PoseNormalizer';
 import RuleScriptParser from './RuleScriptParser';
 import { dtwEngine } from './DTWEngine';
+import { RobotKinematicsTracker } from '../robotKinematics';
 
 class InferenceEngine {
     constructor() {
@@ -18,6 +19,7 @@ class InferenceEngine {
         this.nextTrackId = 1;
         this.frameCount = 0;
         this.angleCalculator = new AngleCalculator();
+        this.robotTracker = new RobotKinematicsTracker();
     }
 
     evaluateComparison(val, operator, target, target2 = null) {
@@ -64,6 +66,7 @@ class InferenceEngine {
         this.logs = [];
         this.frameCount = 0;
         this.nextTrackId = 1;
+        this.robotTracker.reset();
     }
 
     /**
@@ -72,8 +75,20 @@ class InferenceEngine {
     processFrame(data) {
         if (!this.model) return { tracks: [], logs: [] };
 
-        const { poses = [], objects = [], hands = [], timestamp } = data;
+        const {
+            poses = [],
+            objects = [],
+            hands = [],
+            timestamp,
+            teachableMachine = {},
+            roboflow = {},
+            robotJoints = null
+        } = data;
         this.frameCount++;
+
+        const robotKinematics = robotJoints
+            ? this.robotTracker.update(robotJoints, timestamp)
+            : null;
 
         // --- MULTI-PERSON TRACKING LOGIC ---
         poses.forEach((pose, index) => {
@@ -108,7 +123,11 @@ class InferenceEngine {
             track.poseBuffer.push({ pose, timestamp });
             if (track.poseBuffer.length > 1800) track.poseBuffer.shift();
 
-            this.updateFSM(track, pose, objects, hands, timestamp, this.activeTracks);
+            this.updateFSM(track, pose, objects, hands, timestamp, this.activeTracks, {
+                teachableMachine,
+                roboflow,
+                robotKinematics
+            });
         });
 
         // Cleanup stale tracks (not seen for > 2 seconds)
@@ -127,7 +146,8 @@ class InferenceEngine {
                 isVA: this.isStateVA(t.currentState)
             })),
             logs: this.logs,
-            timelineEvents: this.timelineEvents
+            timelineEvents: this.timelineEvents,
+            robotKinematics
         };
     }
 
@@ -420,10 +440,36 @@ class InferenceEngine {
             case 'OPERATOR_PROXIMITY': return this.checkOperatorProximity(params, pose, allTracks, track.id);
             case 'TEACHABLE_MACHINE': return this.checkTeachableMachine(params, data.teachableMachine);
             case 'ROBOFLOW_DETECTION': return this.checkRoboflow(params, data.roboflow);
+            case 'ROBOT_JOINT_ANGLE': return this.checkRobotJointMetric(params, data.robotKinematics, 'angle');
+            case 'ROBOT_JOINT_VELOCITY': return this.checkRobotJointMetric(params, data.robotKinematics, 'velocity');
+            case 'ROBOT_JOINT_ACCELERATION': return this.checkRobotJointMetric(params, data.robotKinematics, 'acceleration');
             case 'SEQUENCE_MATCH': return this.checkSequenceMatch(params, track);
-            case 'ADVANCED_SCRIPT': return RuleScriptParser.evaluate(params.script, { pose, objects, hands, allTracks, tm: data.teachableMachine, roboflow: data.roboflow });
+            case 'ADVANCED_SCRIPT':
+                return RuleScriptParser.evaluate(params.script, {
+                    pose,
+                    objects,
+                    hands,
+                    allTracks,
+                    tm: data.teachableMachine,
+                    roboflow: data.roboflow,
+                    robot: data.robotKinematics
+                });
             default: return false;
         }
+    }
+
+    checkRobotJointMetric(params, robotKinematics, metricType = 'angle') {
+        if (!robotKinematics || !robotKinematics.metrics) return false;
+
+        const { joint = 'J1', axis = 'angle', operator = '>', value = 0, value2 = null } = params;
+        const jointMetrics = robotKinematics.metrics[joint];
+        if (!jointMetrics) return false;
+
+        const metricGroup = jointMetrics[metricType] || {};
+        const metricValue = metricGroup[axis];
+        if (!Number.isFinite(metricValue)) return false;
+
+        return this.evaluateComparison(metricValue, operator, value, value2);
     }
 
     checkSequenceMatch(params, track) {

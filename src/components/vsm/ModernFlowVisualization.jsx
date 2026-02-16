@@ -129,6 +129,9 @@ const nodeTypes = {
 const ModernFlowVisualization = ({ nodes: initialNodes, edges: initialEdges, result, loading }) => {
     const { t } = useLanguage();
 
+    // Keep React Flow type objects stable across renders
+    const stableNodeTypes = useMemo(() => nodeTypes, []);
+
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const isInitialized = React.useRef(false);
@@ -222,7 +225,7 @@ const ModernFlowVisualization = ({ nodes: initialNodes, edges: initialEdges, res
                     edges={edges}
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
-                    nodeTypes={nodeTypes}
+                    nodeTypes={stableNodeTypes}
                     fitView
                     nodesDraggable={true}
                     nodesConnectable={false}

@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 
 /**
@@ -20,6 +20,16 @@ export async function generatePDFReport(projectData, options = {}) {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     let yPosition = 20;
+
+    const toNumber = (value) => {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : null;
+    };
+
+    const formatSeconds = (value, decimals = 2) => {
+        const n = toNumber(value);
+        return n === null ? 'N/A' : `${n.toFixed(decimals)}`;
+    };
 
     // Helper function to add new page if needed
     const checkPageBreak = (requiredSpace = 20) => {
@@ -88,9 +98,9 @@ export async function generatePDFReport(projectData, options = {}) {
 
     const summaryLines = [
         `Total Elements: ${measurements.length}`,
-        `Total Duration: ${(measurements.reduce((sum, m) => sum + m.duration, 0)).toFixed(2)} seconds`,
-        `Average Cycle Time: ${statistics.mean ? statistics.mean.toFixed(2) : 'N/A'} seconds`,
-        `Standard Deviation: ${statistics.stdDev ? statistics.stdDev.toFixed(2) : 'N/A'} seconds`
+        `Total Duration: ${(measurements.reduce((sum, m) => sum + (toNumber(m.duration) || 0), 0)).toFixed(2)} seconds`,
+        `Average Cycle Time: ${toNumber(statistics.mean) !== null ? toNumber(statistics.mean).toFixed(2) : 'N/A'} seconds`,
+        `Standard Deviation: ${toNumber(statistics.stdDev) !== null ? toNumber(statistics.stdDev).toFixed(2) : 'N/A'} seconds`
     ];
 
     summaryLines.forEach(line => {
@@ -113,12 +123,12 @@ export async function generatePDFReport(projectData, options = {}) {
             m.elementName || 'N/A',
             m.category || 'N/A',
             m.therblig || 'N/A',
-            m.duration.toFixed(2),
-            m.startTime.toFixed(2),
-            m.endTime.toFixed(2)
+            formatSeconds(m.duration),
+            formatSeconds(m.startTime),
+            formatSeconds(m.endTime)
         ]);
 
-        doc.autoTable({
+        autoTable(doc, {
             startY: yPosition,
             head: [['#', 'Element', 'Category', 'Therblig', 'Duration (s)', 'Start (s)', 'End (s)']],
             body: tableData,
@@ -150,21 +160,21 @@ export async function generatePDFReport(projectData, options = {}) {
         yPosition += 10;
 
         const statsData = [
-            ['Mean', statistics.mean ? statistics.mean.toFixed(3) + ' s' : 'N/A'],
-            ['Median', statistics.median ? statistics.median.toFixed(3) + ' s' : 'N/A'],
-            ['Std Deviation', statistics.stdDev ? statistics.stdDev.toFixed(3) + ' s' : 'N/A'],
-            ['Minimum', statistics.min ? statistics.min.toFixed(3) + ' s' : 'N/A'],
-            ['Maximum', statistics.max ? statistics.max.toFixed(3) + ' s' : 'N/A'],
-            ['Range', statistics.range ? statistics.range.toFixed(3) + ' s' : 'N/A'],
-            ['CV (%)', statistics.cv ? statistics.cv.toFixed(2) + '%' : 'N/A']
+            ['Mean', toNumber(statistics.mean) !== null ? `${toNumber(statistics.mean).toFixed(3)} s` : 'N/A'],
+            ['Median', toNumber(statistics.median) !== null ? `${toNumber(statistics.median).toFixed(3)} s` : 'N/A'],
+            ['Std Deviation', toNumber(statistics.stdDev) !== null ? `${toNumber(statistics.stdDev).toFixed(3)} s` : 'N/A'],
+            ['Minimum', toNumber(statistics.min) !== null ? `${toNumber(statistics.min).toFixed(3)} s` : 'N/A'],
+            ['Maximum', toNumber(statistics.max) !== null ? `${toNumber(statistics.max).toFixed(3)} s` : 'N/A'],
+            ['Range', toNumber(statistics.range) !== null ? `${toNumber(statistics.range).toFixed(3)} s` : 'N/A'],
+            ['CV (%)', toNumber(statistics.cv) !== null ? `${toNumber(statistics.cv).toFixed(2)}%` : 'N/A']
         ];
 
         if (statistics.ci95) {
-            statsData.push(['95% CI Lower', statistics.ci95.lower.toFixed(3) + ' s']);
-            statsData.push(['95% CI Upper', statistics.ci95.upper.toFixed(3) + ' s']);
+            statsData.push(['95% CI Lower', toNumber(statistics.ci95.lower) !== null ? `${toNumber(statistics.ci95.lower).toFixed(3)} s` : 'N/A']);
+            statsData.push(['95% CI Upper', toNumber(statistics.ci95.upper) !== null ? `${toNumber(statistics.ci95.upper).toFixed(3)} s` : 'N/A']);
         }
 
-        doc.autoTable({
+        autoTable(doc, {
             startY: yPosition,
             head: [['Metric', 'Value']],
             body: statsData,
@@ -203,10 +213,10 @@ export async function generatePDFReport(projectData, options = {}) {
             category,
             stats.count,
             stats.totalDuration.toFixed(2),
-            ((stats.totalDuration / measurements.reduce((sum, m) => sum + m.duration, 0)) * 100).toFixed(1) + '%'
+            ((stats.totalDuration / Math.max(measurements.reduce((sum, m) => sum + (toNumber(m.duration) || 0), 0), 1)) * 100).toFixed(1) + '%'
         ]);
 
-        doc.autoTable({
+        autoTable(doc, {
             startY: yPosition,
             head: [['Category', 'Count', 'Total Duration (s)', 'Percentage']],
             body: categoryData,

@@ -16,13 +16,6 @@ import {
 } from '../utils/aiGenerator';
 import AIChatOverlay from './features/AIChatOverlay';
 import jsPDF from 'jspdf';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, ImageRun } from 'docx';
-import { saveAs } from 'file-saver';
-import PptxGenJS from 'pptxgenjs';
-import { QRCodeSVG } from 'qrcode.react';
-import QRCode from 'qrcode';
-import * as XLSX from 'xlsx';
-import mammoth from 'mammoth';
 import {
     FileSpreadsheet, FileText, Upload, Sparkles, MessageSquare,
     Cpu, Loader2, BarChart3, Settings, Book, Layout,
@@ -83,6 +76,7 @@ function ManualCreation() {
     const [isPreviewMode, setIsPreviewMode] = useState(false);
     const [generationLanguage, setGenerationLanguage] = useState('English');
     const [layoutTemplate, setLayoutTemplate] = useState('standard'); // standard, compact, one-per-page
+    const [QRCodePreviewComponent, setQRCodePreviewComponent] = useState(null);
 
     // Advanced AI State
     const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
@@ -95,6 +89,23 @@ function ManualCreation() {
 
     useEffect(() => {
         loadProjects();
+    }, []);
+
+    useEffect(() => {
+        let mounted = true;
+        import('qrcode.react')
+            .then((mod) => {
+                if (mounted) {
+                    setQRCodePreviewComponent(() => mod.QRCodeSVG || null);
+                }
+            })
+            .catch(() => {
+                if (mounted) setQRCodePreviewComponent(null);
+            });
+
+        return () => {
+            mounted = false;
+        };
     }, []);
 
     useEffect(() => {
@@ -126,7 +137,7 @@ function ManualCreation() {
             if (project.measurements) {
                 const newSteps = project.measurements.map(m => ({
                     id: generateId(),
-                    title: m.elementName || 'New Step',
+                    title: m.elementName || tt('manual.untitledStep', 'Untitled Step'),
                     media: { type: 'video', url: null },
                     instructions: m.elementName || '',
                     bullets: [],
@@ -136,7 +147,7 @@ function ManualCreation() {
                 if (guide.steps.length === 0) {
                     setGuide(prev => ({
                         ...prev,
-                        title: project.projectName || 'New Work Instruction',
+                        title: project.projectName || tt('manual.workInstructions', 'Work Instructions'),
                         steps: newSteps
                     }));
                     if (newSteps.length > 0) setActiveStepId(newSteps[0].id);
@@ -264,7 +275,7 @@ function ManualCreation() {
     const handleAddStep = () => {
         const newStep = {
             id: generateId(),
-            title: 'New Step',
+            title: tt('manual.untitledStep', 'Untitled Step'),
             media: null,
             instructions: '',
             bullets: []
@@ -357,7 +368,7 @@ function ManualCreation() {
             if (steps && Array.isArray(steps)) {
                 const formattedSteps = steps.map(s => ({
                     id: generateId(),
-                    title: s.title || 'New Step',
+                    title: s.title || tt('manual.untitledStep', 'Untitled Step'),
                     instructions: `<p>${s.description || ''}</p>`,
                     startTime: s.startTime || 0,
                     endTime: s.endTime || 0,
@@ -488,6 +499,7 @@ function ManualCreation() {
             const manualId = guide.id || generateId();
             const qrUrl = `${baseUrl}/#/manual/${manualId}?doc=${encodeURIComponent(guide.documentNumber || '')}&title=${encodeURIComponent(guide.title || '')}`;
             try {
+                const QRCode = (await import('qrcode')).default;
                 const qrDataUrl = await QRCode.toDataURL(qrUrl, {
                     width: 40,
                     margin: 1,
@@ -685,6 +697,10 @@ function ManualCreation() {
                 return;
             }
 
+            const docx = await import('docx');
+            const { saveAs } = await import('file-saver');
+            const { Document, Packer, Paragraph, HeadingLevel, AlignmentType } = docx;
+
             const children = [];
 
             // Title
@@ -760,6 +776,8 @@ function ManualCreation() {
                 return;
             }
 
+            const PptxGenJSImport = await import('pptxgenjs');
+            const PptxGenJS = PptxGenJSImport.default;
             const pptx = new PptxGenJS();
 
             // Title slide
@@ -855,6 +873,7 @@ function ManualCreation() {
         if (!file) return;
 
         try {
+            const XLSX = await import('xlsx');
             const data = await file.arrayBuffer();
             const workbook = XLSX.read(data);
             const sheetName = workbook.SheetNames[0];
@@ -876,7 +895,7 @@ function ManualCreation() {
 
                 return {
                     id: generateId(),
-                    title: row['Title'] || row['Step'] || 'New Step',
+                    title: row['Title'] || row['Step'] || tt('manual.untitledStep', 'Untitled Step'),
                     media: null,
                     instructions: instructions ? `<p>${instructions}</p>` : '',
                     bullets: bullets
@@ -901,8 +920,9 @@ function ManualCreation() {
         if (!file) return;
 
         try {
+            const mammoth = await import('mammoth');
             const arrayBuffer = await file.arrayBuffer();
-            const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+            const result = await mammoth.default.convertToHtml({ arrayBuffer: arrayBuffer });
             const html = result.value;
 
             // Simple parsing: split by Header tags (h1, h2, etc) if possible
@@ -1227,7 +1247,13 @@ function ManualCreation() {
                                                 borderRadius: '16px',
                                                 boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
                                             }}>
-                                                <QRCodeSVG value={`${window.location.origin}/#/manual/${guide.id}`} size={100} />
+                                                {QRCodePreviewComponent ? (
+                                                    <QRCodePreviewComponent value={`${window.location.origin}/#/manual/${guide.id}`} size={100} />
+                                                ) : (
+                                                    <div style={{ width: '100px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: '0.75rem' }}>
+                                                        QR
+                                                    </div>
+                                                )}
                                             </div>
                                             <span style={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '700' }}>
                                                 {tt('manual.scanForMobile', 'Scan for Digital Access')}
@@ -1559,8 +1585,9 @@ function ManualCreation() {
                             <button
                                 onClick={() => {
                                     // Create scratch manual
-                                    setSelectedProject({ projectName: 'New Manual' }); // Dummy project to enable UI
-                                    setGuide(prev => ({ ...prev, title: 'New Manual', steps: [] }));
+                                    const localizedNewManual = tt('manual.newManual', 'New Manual');
+                                    setSelectedProject({ projectName: localizedNewManual }); // Dummy project to enable UI
+                                    setGuide(prev => ({ ...prev, title: localizedNewManual, steps: [] }));
                                 }}
                                 className="btn-pro"
                                 style={{

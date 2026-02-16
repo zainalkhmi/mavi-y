@@ -12,6 +12,7 @@ import { generatePDFReport, savePDFReport } from '../utils/pdfExport';
 import HelpButton from './HelpButton';
 import { helpContent } from '../utils/helpContent.jsx';
 import { useProject } from '../contexts/ProjectContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getAllProjects } from '../utils/database';
 import {
     TrendingUp,
@@ -33,6 +34,7 @@ import {
 
 function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
     const { currentProject: contextProject } = useProject();
+    const { t } = useLanguage();
     const [allProjects, setAllProjects] = useState([]);
     const [selectedProject, setSelectedProject] = useState(null);
     const [measurements, setMeasurements] = useState(initialMeasurements);
@@ -148,6 +150,11 @@ function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
         (p.projectName || '').toLowerCase().includes((searchTerm || '').toLowerCase())
     );
 
+    const tt = (key, fallback) => {
+        const translated = t(key);
+        return translated === key ? fallback : translated;
+    };
+
     return (
         <div style={{
             height: '100%',
@@ -170,14 +177,14 @@ function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
                     <Database size={20} color="var(--accent-blue)" />
-                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '800' }}>Select Project</h3>
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '800' }}>{tt('statisticalAnalysisPage.selectProject', 'Select Project')}</h3>
                 </div>
 
                 <div style={{ position: 'relative', marginBottom: '20px' }}>
                     <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.2)' }} />
                     <input
                         type="text"
-                        placeholder="Search projects..."
+                        placeholder={tt('statisticalAnalysisPage.searchProjects', 'Search projects...')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         style={{
@@ -221,14 +228,14 @@ function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
                                     textOverflow: 'ellipsis'
                                 }}>{project.projectName}</div>
                                 <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.65rem', marginTop: '2px' }}>
-                                    {project.measurements?.length || 0} measurements
+                                    {project.measurements?.length || 0} {tt('statisticalAnalysisPage.measurements', 'measurements')}
                                 </div>
                             </div>
                         </div>
                     ))}
                     {filteredProjects.length === 0 && (
                         <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.2)', fontSize: '0.85rem' }}>
-                            No projects found
+                            {tt('statisticalAnalysisPage.noProjectsFound', 'No projects found')}
                         </div>
                     )}
                 </div>
@@ -247,11 +254,11 @@ function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
                             <LayoutDashboard size={56} />
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '800', color: '#fff' }}>No statistical data available</h3>
+                            <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '800', color: '#fff' }}>{tt('statisticalAnalysisPage.noDataTitle', 'No statistical data available')}</h3>
                             <p style={{ margin: '10px 0 0 0', fontSize: '1rem', color: 'rgba(255,255,255,0.4)', maxWidth: '400px' }}>
                                 {selectedProject
-                                    ? `Project "${selectedProject.projectName}" doesn't have any measurements yet.`
-                                    : "Please select a project from the sidebar to view its detailed statistical analysis."}
+                                    ? tt('statisticalAnalysisPage.projectNoMeasurements', 'Project "{{name}}" doesn\'t have any measurements yet.').replace('{{name}}', selectedProject.projectName)
+                                    : tt('statisticalAnalysisPage.selectProjectInstruction', 'Please select a project from the sidebar to view its detailed statistical analysis.')}
                             </p>
                         </div>
                     </div>
@@ -260,10 +267,10 @@ function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
                             <div>
                                 <h2 style={{ margin: 0, color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <TrendingUp size={28} /> Statistical Analysis
+                                    <TrendingUp size={28} /> {tt('statisticalAnalysisPage.title', 'Statistical Analysis')}
                                 </h2>
                                 <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                    Analysis for <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>{selectedProject.projectName}</span>
+                                    {tt('statisticalAnalysisPage.analysisFor', 'Analysis for')} <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>{selectedProject.projectName}</span>
                                 </p>
                             </div>
                             <div style={{ display: 'flex', gap: '12px' }}>
@@ -276,7 +283,7 @@ function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
                                     className="btn"
                                     style={{ backgroundColor: 'var(--accent-blue)', color: 'white' }}
                                 >
-                                    <FileText size={18} /> Export PDF Report
+                                    <FileText size={18} /> {tt('statisticalAnalysisPage.exportPdf', 'Export PDF Report')}
                                 </button>
                             </div>
                         </div>
@@ -284,14 +291,14 @@ function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
                         {/* Summary Statistics */}
                         {stats && (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '40px' }}>
-                                <StatCard icon={<Info size={16} />} title="Observation Count" value={stats.count} />
-                                <StatCard icon={<TrendingUp size={16} />} title="Mean Duration" value={`${stats.mean.toFixed(3)}s`} />
-                                <StatCard icon={<Activity size={16} />} title="Median" value={`${stats.median.toFixed(3)}s`} />
-                                <StatCard icon={<Activity size={16} />} title="Std Deviation" value={`${stats.stdDev.toFixed(3)}s`} />
-                                <StatCard icon={<TrendingUp size={16} />} title="Minimum" value={`${stats.min.toFixed(3)}s`} />
-                                <StatCard icon={<TrendingUp size={16} />} title="Maximum" value={`${stats.max.toFixed(3)}s`} />
-                                <StatCard icon={<Target size={16} />} title="Range" value={`${stats.range.toFixed(3)}s`} />
-                                <StatCard icon={<Activity size={16} />} title="Coefficient of Var" value={`${stats.cv.toFixed(2)}%`} />
+                                <StatCard icon={<Info size={16} />} title={tt('statisticalAnalysisPage.observationCount', 'Observation Count')} value={stats.count} />
+                                <StatCard icon={<TrendingUp size={16} />} title={tt('statisticalAnalysisPage.meanDuration', 'Mean Duration')} value={`${stats.mean.toFixed(3)}s`} />
+                                <StatCard icon={<Activity size={16} />} title={tt('statistics.median', 'Median')} value={`${stats.median.toFixed(3)}s`} />
+                                <StatCard icon={<Activity size={16} />} title={tt('statistics.stdDev', 'Std Deviation')} value={`${stats.stdDev.toFixed(3)}s`} />
+                                <StatCard icon={<TrendingUp size={16} />} title={tt('statistics.min', 'Minimum')} value={`${stats.min.toFixed(3)}s`} />
+                                <StatCard icon={<TrendingUp size={16} />} title={tt('statistics.max', 'Maximum')} value={`${stats.max.toFixed(3)}s`} />
+                                <StatCard icon={<Target size={16} />} title={tt('statistics.range', 'Range')} value={`${stats.range.toFixed(3)}s`} />
+                                <StatCard icon={<Activity size={16} />} title={tt('statisticalAnalysisPage.coefficientVar', 'Coefficient of Var')} value={`${stats.cv.toFixed(2)}%`} />
                             </div>
                         )}
 
@@ -299,10 +306,10 @@ function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
                         <section className="glass-card" style={{ padding: '25px', marginBottom: '25px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                                 <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <Target size={20} color="var(--accent-blue)" /> Confidence Interval
+                                    <Target size={20} color="var(--accent-blue)" /> {tt('statistics.confidence', 'Confidence Interval')}
                                 </h3>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Confidence Level:</span>
+                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{tt('statisticalAnalysisPage.confidenceLevel', 'Confidence Level:')}</span>
                                     <select
                                         value={confidenceLevel}
                                         onChange={(e) => setConfidenceLevel(parseFloat(e.target.value))}
@@ -315,30 +322,30 @@ function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
                                             outline: 'none'
                                         }}
                                     >
-                                        <option value={0.90}>90% Confidence</option>
-                                        <option value={0.95}>95% Confidence</option>
-                                        <option value={0.99}>99% Confidence</option>
+                                        <option value={0.90}>{tt('statisticalAnalysisPage.confidence90', '90% Confidence')}</option>
+                                        <option value={0.95}>{tt('statisticalAnalysisPage.confidence95', '95% Confidence')}</option>
+                                        <option value={0.99}>{tt('statisticalAnalysisPage.confidence99', '99% Confidence')}</option>
                                     </select>
                                 </div>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '20px', alignItems: 'center' }}>
-                                <StatCard title="Lower Bound" value={`${ci.lower.toFixed(3)}s`} color="#f87171" style={{ border: 'none', background: 'rgba(248, 113, 113, 0.1)' }} />
+                                <StatCard title={tt('statisticalAnalysisPage.lowerBound', 'Lower Bound')} value={`${ci.lower.toFixed(3)}s`} color="#f87171" style={{ border: 'none', background: 'rgba(248, 113, 113, 0.1)' }} />
                                 <ArrowRight size={24} color="var(--text-secondary)" />
-                                <StatCard title="Upper Bound" value={`${ci.upper.toFixed(3)}s`} color="#f87171" style={{ border: 'none', background: 'rgba(248, 113, 113, 0.1)' }} />
+                                <StatCard title={tt('statisticalAnalysisPage.upperBound', 'Upper Bound')} value={`${ci.upper.toFixed(3)}s`} color="#f87171" style={{ border: 'none', background: 'rgba(248, 113, 113, 0.1)' }} />
                             </div>
                             <p style={{ marginTop: '15px', fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
-                                Margin of Error: <span style={{ color: 'var(--text-primary)' }}>±{ci.margin.toFixed(3)}s</span>
+                                {tt('statisticalAnalysisPage.marginOfError', 'Margin of Error:')} <span style={{ color: 'var(--text-primary)' }}>±{ci.margin.toFixed(3)}s</span>
                             </p>
                         </section>
 
                         {/* Process Capability */}
                         <section className="glass-card" style={{ padding: '25px', marginBottom: '25px' }}>
                             <h3 style={{ margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <Activity size={20} color="var(--accent-blue)" /> Process Capability (Cp/Cpk)
+                                <Activity size={20} color="var(--accent-blue)" /> {tt('statisticalAnalysisPage.processCapability', 'Process Capability (Cp/Cpk)')}
                             </h3>
                             <div style={{ display: 'flex', gap: '30px', marginBottom: '25px', borderBottom: '1px solid var(--border-color)', paddingBottom: '20px' }}>
                                 <div>
-                                    <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>Lower Spec Limit (LSL)</label>
+                                    <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>{tt('statisticalAnalysisPage.lowerSpecLimit', 'Lower Spec Limit (LSL)')}</label>
                                     <input
                                         type="number"
                                         step="0.1"
@@ -355,7 +362,7 @@ function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
                                     />
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>Upper Spec Limit (USL)</label>
+                                    <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>{tt('statisticalAnalysisPage.upperSpecLimit', 'Upper Spec Limit (USL)')}</label>
                                     <input
                                         type="number"
                                         step="0.1"
@@ -373,8 +380,8 @@ function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
                                 </div>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
-                                <StatCard title="Cp Index" value={processCapability.cp.toFixed(3)} color={processCapability.cp >= 1.33 ? '#4ade80' : '#f87171'} />
-                                <StatCard title="Cpk Index" value={processCapability.cpk.toFixed(3)} color={processCapability.cpk >= 1.33 ? '#4ade80' : '#f87171'} />
+                                <StatCard title={tt('statisticalAnalysisPage.cpIndex', 'Cp Index')} value={processCapability.cp.toFixed(3)} color={processCapability.cp >= 1.33 ? '#4ade80' : '#f87171'} />
+                                <StatCard title={tt('statisticalAnalysisPage.cpkIndex', 'Cpk Index')} value={processCapability.cpk.toFixed(3)} color={processCapability.cpk >= 1.33 ? '#4ade80' : '#f87171'} />
                                 <StatCard title="Cpl" value={processCapability.cpl.toFixed(3)} />
                                 <StatCard title="Cpu" value={processCapability.cpu.toFixed(3)} />
                             </div>
@@ -390,7 +397,9 @@ function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
                                 gap: '10px'
                             }}>
                                 {processCapability.cpk >= 1.33 ? <Activity size={16} /> : <AlertCircle size={16} />}
-                                {processCapability.cpk >= 1.33 ? 'Process is statistically capable and centered.' : 'Process variation is too high or not centered relative to specs.'}
+                                {processCapability.cpk >= 1.33
+                                    ? tt('statisticalAnalysisPage.processCapable', 'Process is statistically capable and centered.')
+                                    : tt('statisticalAnalysisPage.processNotCapable', 'Process variation is too high or not centered relative to specs.')}
                             </div>
                         </section>
 
@@ -398,7 +407,7 @@ function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px', marginBottom: '25px' }}>
                             {/* Histogram */}
                             <section className="glass-card" style={{ padding: '25px' }}>
-                                <h3 style={{ margin: '0 0 20px 0' }}>Distribution Histogram</h3>
+                                <h3 style={{ margin: '0 0 20px 0' }}>{tt('statisticalAnalysisPage.distributionHistogram', 'Distribution Histogram')}</h3>
                                 <ResponsiveContainer width="100%" height={300}>
                                     <BarChart data={histogramData}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -415,7 +424,7 @@ function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
 
                             {/* Control Chart */}
                             <section className="glass-card" style={{ padding: '25px' }}>
-                                <h3 style={{ margin: '0 0 20px 0' }}>Control Chart (Individual)</h3>
+                                <h3 style={{ margin: '0 0 20px 0' }}>{tt('statisticalAnalysisPage.controlChart', 'Control Chart (Individual)')}</h3>
                                 <ResponsiveContainer width="100%" height={300}>
                                     <LineChart data={controlChartData}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -445,10 +454,10 @@ function StatisticalAnalysis({ measurements: initialMeasurements = [] }) {
                         {showOutliers && outlierInfo.outliers.length > 0 && (
                             <section className="glass-card" style={{ padding: '25px', borderColor: 'rgba(248, 113, 113, 0.3)' }}>
                                 <h3 style={{ margin: '0 0 15px 0', color: '#f87171', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <AlertCircle size={20} /> Outliers Detected
+                                    <AlertCircle size={20} /> {tt('statisticalAnalysisPage.outliersDetected', 'Outliers Detected')}
                                 </h3>
                                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '15px' }}>
-                                    The following {outlierInfo.outliers.length} measurements are statistically significantly different from the rest of the data set (IQR method).
+                                    {tt('statisticalAnalysisPage.outliersDescription', 'The following {{count}} measurements are statistically significantly different from the rest of the data set (IQR method).').replace('{{count}}', outlierInfo.outliers.length)}
                                 </p>
                                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                     {outlierInfo.outliers.map((val, idx) => (

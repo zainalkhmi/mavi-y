@@ -1,17 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Key, AlertCircle } from 'lucide-react';
-import { validateKeyFormat } from '../../utils/licenseUtils';
-import { getLicenseByKey } from '../../utils/tursoAPI';
+import { getMachineId, validateKeyFormat } from '../../utils/licenseUtils';
+import { getClientNetworkContext, validateAndBindLicense } from '../../utils/tursoAPI';
 import LandingPage from '../LandingPage';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const LICENSE_STORAGE_KEY = 'mavi_app_license';
 const DAILY_USAGE_KEY = 'mavi_daily_usage';
 const DAILY_DATE_KEY = 'mavi_last_active_date';
 const DAILY_LIMIT_MS = 30 * 60 * 1000; // 30 Minutes per day
 
+const getValidationContext = async () => {
+    const machineId = getMachineId();
+    const network = await getClientNetworkContext();
+
+    return {
+        machineId,
+        ip: network.ip,
+        country: network.country
+    };
+};
+
 const LicenseGuard = ({ children }) => {
     const { userRole } = useAuth();
+    const { t } = useLanguage();
     const [isAuthenticated, setIsAuthenticated] = useState(() => {
         // Quick initialization from localStorage
         const storedKey = localStorage.getItem(LICENSE_STORAGE_KEY);
@@ -30,6 +43,22 @@ const LicenseGuard = ({ children }) => {
     const [isTrialActive, setIsTrialActive] = useState(false);
     const [trialTimeLeft, setTrialTimeLeft] = useState(0);
 
+    const getLicenseErrorMessage = (status, fallbackMessage = '') => {
+        const message = String(fallbackMessage || '').toLowerCase();
+
+        if (status === 'blocked_new_device') return t('license.errors.blockedNewDevice');
+        if (status === 'not_found') return t('license.errors.notFound');
+        if (status === 'inactive') return t('license.errors.inactive');
+
+        if (message.includes('no such column') && message.includes('bound_machine_id')) {
+            return t('license.errors.serverSyncInProgress');
+        }
+
+        if (status === 'error') return t('license.errors.genericValidation');
+
+        return fallbackMessage || t('license.errors.notFoundOrInactive');
+    };
+
     const checkLicense = async () => {
         if (userRole === 'admin') {
             setIsAuthenticated(true);
@@ -39,35 +68,39 @@ const LicenseGuard = ({ children }) => {
         const storedKey = localStorage.getItem(LICENSE_STORAGE_KEY);
         if (!storedKey) return false;
 
-        // 1. Quick format check
         const format = validateKeyFormat(storedKey);
 
-        if (format.valid) {
-            // Hardware lock matches, we are good and offline-safe
-            setIsAuthenticated(true);
-            return true;
-        }
-
-        // 2. If it's a Cloud license (format mismatch but might be in Turso)
-        // We check Turso in the background or briefly wait
         try {
-            console.log("Checking Cloud License in background...");
-            const remoteLicense = await getLicenseByKey(storedKey);
-            if (remoteLicense && remoteLicense.status === 'active') {
+            const context = await getValidationContext();
+            const result = await validateAndBindLicense(storedKey, context);
+
+            if (result.ok) {
                 setIsAuthenticated(true);
                 return true;
-            } else {
-                // If definitely invalid, clear it
+            }
+
+            if (result.status === 'blocked_new_device') {
+                setError(getLicenseErrorMessage(result.status, result.message));
                 localStorage.removeItem(LICENSE_STORAGE_KEY);
                 setIsAuthenticated(false);
                 return false;
             }
+
+            if (result.status === 'not_found' || result.status === 'inactive') {
+                localStorage.removeItem(LICENSE_STORAGE_KEY);
+                setIsAuthenticated(false);
+                return false;
+            }
+
+            // Unknown API failure case: fallback for hardware-locked local key
+            if (format.valid && format.status === 'hardware_locked') {
+                setIsAuthenticated(true);
+                return true;
+            }
+
+            return false;
         } catch (err) {
-            // If offline, and we have a stored key, we trust it for now 
-            // but only IF it was previously authenticated or matches hardware.
-            // Since format.valid was false (hardware mismatch), and we are offline,
-            // we should probably be careful, but to satisfy the user's request for "not back to landing page",
-            // we will trust the presence of a key if Turso is unreachable.
+            // If Turso is unreachable, trust existing local key to avoid lockout while offline.
             console.warn("Turso unreachable, trusting stored key to prevent landing page redirect.");
             setIsAuthenticated(true);
             return true;
@@ -145,27 +178,25 @@ const LicenseGuard = ({ children }) => {
         setError('');
         setVerifying(true);
 
-        // 1. Check Format (Basic Sanity Check)
         const formatResult = validateKeyFormat(licenseKey);
-        // Note: We ignore status 'machine_mismatch' because we now allow cross-browser keys via Turso
 
         try {
-            // 2. Check Turso Database (Source of Truth)
-            const remoteLicense = await getLicenseByKey(licenseKey);
+            const context = await getValidationContext();
+            const result = await validateAndBindLicense(licenseKey, context);
 
-            if (remoteLicense && remoteLicense.status === 'active') {
-                // Success!
+            if (result.ok) {
                 localStorage.setItem(LICENSE_STORAGE_KEY, licenseKey);
                 setIsAuthenticated(true);
                 setShowActivation(false);
-            } else if (formatResult.valid) {
-                // Fallback: If network fails but local key is valid (same machine)
-                console.warn("Turso check failed/empty, falling back to local validation");
+            } else if (result.status === 'blocked_new_device') {
+                setError(getLicenseErrorMessage(result.status, result.message));
+            } else if (result.status === 'error' && formatResult.valid && formatResult.status === 'hardware_locked') {
+                // Fallback: cloud unavailable but local hardware lock is valid
                 localStorage.setItem(LICENSE_STORAGE_KEY, licenseKey);
                 setIsAuthenticated(true);
                 setShowActivation(false);
             } else {
-                setError('License key not found or inactive.');
+                setError(getLicenseErrorMessage(result.status, result.message));
             }
         } catch (err) {
             console.error("License check error:", err);
@@ -175,7 +206,7 @@ const LicenseGuard = ({ children }) => {
                 setIsAuthenticated(true);
                 setShowActivation(false);
             } else {
-                setError('Connection failed. Only hardware-locked keys work offline.');
+                setError(t('license.errors.connectionOfflineOnly'));
             }
         } finally {
             setVerifying(false);
@@ -200,7 +231,7 @@ const LicenseGuard = ({ children }) => {
 
     if (loading) return (
         <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050505', color: '#fff' }}>
-            Initializing Security...
+            {t('license.initializing')}
         </div>
     );
 
@@ -217,7 +248,7 @@ const LicenseGuard = ({ children }) => {
                     }}>
                         <ShieldCheck size={18} color="#00d2ff" />
                         <span style={{ fontFamily: 'monospace' }}>
-                            Trial Active: {formatTimeLeft(trialTimeLeft)} left
+                            {t('license.trialActive', { time: formatTimeLeft(trialTimeLeft) })}
                         </span>
                     </div>
                 )}
@@ -261,15 +292,15 @@ const LicenseGuard = ({ children }) => {
                         }}>
                             <Key size={32} color="#fff" />
                         </div>
-                        <h1 style={{ color: '#fff', margin: '0 0 8px 0', fontSize: '1.8rem' }}>Product Activation</h1>
+                        <h1 style={{ color: '#fff', margin: '0 0 8px 0', fontSize: '1.8rem' }}>{t('license.productActivationTitle')}</h1>
                         <p style={{ color: '#888', margin: 0 }}>
-                            Enter your MAVI license key for lifetime access
+                            {t('license.activationSubtitle')}
                         </p>
                     </div>
 
                     <form onSubmit={handleSubmit}>
                         <div style={{ marginBottom: '24px' }}>
-                            <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem', fontWeight: '500' }}>License Key</label>
+                            <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem', fontWeight: '500' }}>{t('license.licenseKeyLabel')}</label>
                             <div style={{ position: 'relative' }}>
                                 <div style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#666' }}>
                                     <Key size={18} />
@@ -329,7 +360,7 @@ const LicenseGuard = ({ children }) => {
                                 marginBottom: '15px'
                             }}
                         >
-                            {verifying ? 'Verifying...' : 'Activate Now'}
+                            {verifying ? t('license.verifying') : t('license.activateNow')}
                         </button>
 
                         <button
@@ -340,7 +371,7 @@ const LicenseGuard = ({ children }) => {
                                 color: '#888', borderRadius: '12px', cursor: 'pointer', fontSize: '0.9rem'
                             }}
                         >
-                            Back to Landing Page
+                            {t('license.backToLanding')}
                         </button>
                     </form>
                 </div>

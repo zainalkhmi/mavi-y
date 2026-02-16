@@ -9,6 +9,9 @@ export const RULE_TYPES = {
     TEACHABLE_MACHINE: { label: 'Teachable Machine', description: 'Custom classification model (Image or Pose)' },
     CVAT_MODEL: { label: 'CVAT / Custom Model', description: 'Industrial model trained via CVAT.ai' },
     ROBOFLOW_DETECTION: { label: 'Roboflow Detection', description: 'Custom object detection via Roboflow' },
+    ROBOT_JOINT_ANGLE: { label: 'Robot Joint Angle', description: 'Check robot joint angle per axis (e.g. J2 angle > 45°)' },
+    ROBOT_JOINT_VELOCITY: { label: 'Robot Joint Velocity', description: 'Check robot joint angular/linear speed per axis' },
+    ROBOT_JOINT_ACCELERATION: { label: 'Robot Joint Acceleration', description: 'Check robot joint acceleration per axis' },
     SEQUENCE_MATCH: { label: 'Motion Sequence Match (DTW)', description: 'Match dynamic motion patterns over time' },
     ADVANCED_SCRIPT: { label: 'Advanced Script (DSL)', description: 'Write custom logic in text (e.g. hand.y < eye.y)' }
 };

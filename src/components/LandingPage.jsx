@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { getMachineId } from '../utils/licenseUtils';
 import { createLicenseRequest, getLatestCloudInstaller } from '../utils/tursoAPI';
 import { getTursoStatus } from '../utils/tursoClient';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const TRIAL_DURATION_MS = 30 * 60 * 1000;
 
@@ -18,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 function LandingPage({ onActivateTrial, onShowLicenseInput }) {
     const { showAlert } = useDialog();
     const { t } = useTranslation();
+    const { currentLanguage, changeLanguage } = useLanguage();
     const { adminLogin } = useAuth();
     const navigate = useNavigate();
 
@@ -29,6 +31,17 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
     const [errorMsg, setErrorMsg] = useState('');
     const [machineId, setMachineId] = useState('');
     const [dbStatus, setDbStatus] = useState({ connected: false, configured: false });
+
+    const tr = (key, enFallback, idFallback = enFallback) => {
+        const fallback = currentLanguage === 'id' ? idFallback : enFallback;
+        return t(key, { defaultValue: fallback });
+    };
+
+    const languageButtons = [
+        { code: 'ja', label: 'JP' },
+        { code: 'en', label: 'EN' },
+        { code: 'id', label: 'ID' }
+    ];
 
     useEffect(() => {
         setMachineId(getMachineId());
@@ -206,7 +219,37 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '15px' }}>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        padding: '6px',
+                        borderRadius: '10px',
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.08)'
+                    }}>
+                        {languageButtons.map((lang) => (
+                            <button
+                                key={lang.code}
+                                onClick={() => changeLanguage(lang.code)}
+                                style={{
+                                    background: currentLanguage === lang.code ? '#00d2ff' : 'transparent',
+                                    color: currentLanguage === lang.code ? '#001018' : '#aaa',
+                                    border: currentLanguage === lang.code ? '1px solid #00d2ff' : '1px solid rgba(255,255,255,0.12)',
+                                    padding: '6px 10px',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '700',
+                                    letterSpacing: '0.5px',
+                                    minWidth: '42px'
+                                }}
+                                title={lang.code}
+                            >
+                                {lang.label}
+                            </button>
+                        ))}
+                    </div>
                     <button
                         onClick={() => setShowAdminLogin(true)}
                         style={{
@@ -222,7 +265,7 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                             gap: '8px'
                         }}
                     >
-                        <Lock size={14} /> {t('landing.nav.admin')}
+                        <Lock size={14} /> {tr('landing.nav.admin', 'Admin', 'Admin')}
                     </button>
                     <button
                         onClick={onShowLicenseInput}
@@ -237,7 +280,7 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                             fontWeight: 'bold'
                         }}
                     >
-                        {t('landing.nav.activate')}
+                        {tr('landing.nav.activate', 'Activate Key', 'Aktivasi Key')}
                     </button>
                 </div>
             </header>
@@ -309,7 +352,7 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                         onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
                         onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                     >
-                        <Download size={20} /> {t('landing.hero.ctaDownload')}
+                        <Download size={20} /> {tr('landing.hero.ctaDownload', 'Download Desktop (.exe)', 'Download Desktop (.exe)')}
                     </a>
 
                     <button
@@ -336,7 +379,7 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                             e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
                         }}
                     >
-                        <ShieldCheck size={20} color="#00d2ff" /> {t('landing.hero.ctaCloud')}
+                        <ShieldCheck size={20} color="#00d2ff" /> {tr('landing.hero.ctaCloud', 'Cloud Access', 'Akses Cloud')}
                     </button>
 
                     <button
@@ -363,7 +406,7 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                             e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
                         }}
                     >
-                        <Clock size={20} color="#00d2ff" /> {t('landing.hero.ctaTrial')}
+                        <Clock size={20} color="#00d2ff" /> {tr('landing.hero.ctaTrial', 'Start 30-Min Trial', 'Mulai Trial 30 Menit')}
                     </button>
                 </div>
             </main>
@@ -387,9 +430,9 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                     gap: '60px'
                 }}>
                     <div>
-                        <h2 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '16px' }}>{t('landing.request.title')}</h2>
+                        <h2 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '16px' }}>{tr('landing.request.title', 'Request License Key', 'Minta License Key')}</h2>
                         <p style={{ color: '#888', marginBottom: '32px', lineHeight: '1.5' }}>
-                            {t('landing.request.desc')}
+                            {tr('landing.request.desc', 'Need a professional license for your organization? Submit your request and our admin will issue your key.', 'Butuh lisensi profesional untuk organisasi Anda? Kirim permintaan dan admin kami akan menerbitkan key.')}
                         </p>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -400,7 +443,7 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                                 }}>
                                     <CheckCircle2 size={18} color="#00d2ff" />
                                 </div>
-                                <span style={{ color: '#aaa', fontSize: '0.95rem' }}>{t('landing.request.benefit1')}</span>
+                                <span style={{ color: '#aaa', fontSize: '0.95rem' }}>{tr('landing.request.benefit1', 'Unlimited access to all features', 'Akses tanpa batas ke semua fitur')}</span>
                             </div>
                             <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                                 <div style={{
@@ -409,7 +452,7 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                                 }}>
                                     <CheckCircle2 size={18} color="#00d2ff" />
                                 </div>
-                                <span style={{ color: '#aaa', fontSize: '0.95rem' }}>{t('landing.request.benefit2')}</span>
+                                <span style={{ color: '#aaa', fontSize: '0.95rem' }}>{tr('landing.request.benefit2', 'Priority support and updates', 'Prioritas support dan update')}</span>
                             </div>
                         </div>
                     </div>
@@ -428,24 +471,26 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                                     <CheckCircle2 size={32} color="white" />
                                 </div>
                                 <h3 style={{ fontSize: '1.5rem', marginBottom: '12px' }}>
-                                    {requestStatus === 'success' ? t('landing.request.successTitle') : t('landing.request.offlineTitle')}
+                                    {requestStatus === 'success'
+                                        ? tr('landing.request.successTitle', 'Request Sent Successfully!', 'Permintaan Berhasil Dikirim!')
+                                        : tr('landing.request.offlineTitle', 'Request Saved Locally!', 'Permintaan Disimpan Lokal!')}
                                 </h3>
                                 <p style={{ color: '#888' }}>
                                     {requestStatus === 'success'
-                                        ? t('landing.request.successDesc')
-                                        : t('landing.request.offlineDesc')}
+                                        ? tr('landing.request.successDesc', 'Our team will review your request and send your license key by email.', 'Tim kami akan meninjau permintaan Anda dan mengirim license key melalui email.')
+                                        : tr('landing.request.offlineDesc', 'Connection failed. Your request has been saved locally on this computer. Please contact admin manually or try again with internet connection.', 'Koneksi gagal. Permintaan Anda disimpan lokal di komputer ini. Silakan hubungi admin atau coba lagi saat internet tersedia.')}
                                 </p>
                                 <button
                                     onClick={() => setRequestStatus(null)}
                                     style={{ marginTop: '24px', background: 'none', border: '1px solid #333', color: '#888', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer' }}
                                 >
-                                    {t('landing.request.back')}
+                                    {tr('landing.request.back', 'Back', 'Kembali')}
                                 </button>
                             </div>
                         ) : (
                             <form onSubmit={handleRequestLicense} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 <div>
-                                    <label style={{ display: 'block', color: '#666', marginBottom: '8px', fontSize: '0.85rem' }}>{t('landing.request.deviceId')}</label>
+                                    <label style={{ display: 'block', color: '#666', marginBottom: '8px', fontSize: '0.85rem' }}>{tr('landing.request.deviceId', 'Device ID (Hardware Lock)', 'Device ID (Hardware Lock)')}</label>
                                     <input
                                         type="text"
                                         value={machineId}
@@ -457,7 +502,7 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                                     />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', color: '#666', marginBottom: '8px', fontSize: '0.85rem' }}>{t('landing.request.email')}</label>
+                                    <label style={{ display: 'block', color: '#666', marginBottom: '8px', fontSize: '0.85rem' }}>{tr('landing.request.email', 'Email Address', 'Alamat Email')}</label>
                                     <input
                                         type="email"
                                         required
@@ -471,11 +516,11 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                                     />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', color: '#666', marginBottom: '8px', fontSize: '0.85rem' }}>{t('landing.request.notes')}</label>
+                                    <label style={{ display: 'block', color: '#666', marginBottom: '8px', fontSize: '0.85rem' }}>{tr('landing.request.notes', 'Notes (Optional)', 'Catatan (Opsional)')}</label>
                                     <textarea
                                         value={requestNote}
                                         onChange={(e) => setRequestNote(e.target.value)}
-                                        placeholder={t('landing.request.notesPlaceholder')}
+                                        placeholder={tr('landing.request.notesPlaceholder', 'Tell us about your organization...', 'Ceritakan tentang organisasi Anda...')}
                                         rows={4}
                                         style={{
                                             width: '100%', padding: '14px', background: '#0a0a0a', border: '1px solid #333',
@@ -508,7 +553,9 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px'
                                     }}
                                 >
-                                    {requestStatus === 'sending' ? t('landing.request.sending') : <>{t('landing.request.submit')} <ArrowRight size={18} /></>}
+                                    {requestStatus === 'sending'
+                                        ? tr('landing.request.sending', 'Sending...', 'Mengirim...')
+                                        : <>{tr('landing.request.submit', 'Submit Request', 'Kirim Permintaan')} <ArrowRight size={18} /></>}
                                 </button>
                             </form>
                         )}

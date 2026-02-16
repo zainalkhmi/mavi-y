@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useDialog } from '../contexts/DialogContext';
-import { Bot, X, CheckCircle, Eye, EyeOff, Settings } from 'lucide-react';
+import { Bot, X, Eye, EyeOff } from 'lucide-react';
 import { exportToExcel } from '../utils/excelExport';
 import { THERBLIGS } from '../constants/therbligs.jsx';
 import { chatWithAI } from '../utils/aiGenerator';
@@ -16,29 +16,16 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
     const [editCycle, setEditCycle] = useState(1);
     const [editManual, setEditManual] = useState(0);
     const [editAuto, setEditAuto] = useState(0);
-    const [editWalk, setEditWalk] = useState(0);
     const [editWait, setEditWait] = useState(0);
-    const [editRating, setEditRating] = useState(100);
+    const [editOmega, setEditOmega] = useState(0);
+    const [editAcceleration, setEditAcceleration] = useState(0);
+    const [editJerk, setEditJerk] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
     const [exportProgress, setExportProgress] = useState(0); // 0 = idle, 1-100 = progress, -1 = error
 
     const [sortBy, setSortBy] = useState('order');
 
-    // Standard Time State
-    const [allowances, setAllowances] = useState({
-        personal: 5,
-        fatigue: 4,
-        delay: 2
-    });
-    const [showAllowanceModal, setShowAllowanceModal] = useState(false);
-
-    const calculateStandardTime = (duration, rating) => {
-        const ratingFactor = (rating || 100) / 100;
-        const normalTime = duration * ratingFactor;
-        const totalAllowance = allowances.personal + allowances.fatigue + allowances.delay;
-        const standardTime = normalTime * (1 + totalAllowance / 100);
-        return { normalTime, standardTime };
-    };
+    const allowances = { personal: 0, fatigue: 0, delay: 0 };
 
     // AI Chat State
     const [showChat, setShowChat] = useState(false);
@@ -139,8 +126,6 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
     const nonValueAddedTime = measurements.filter(m => m.category === 'Non value-added').reduce((sum, m) => sum + m.duration, 0);
     const wasteTime = measurements.filter(m => m.category === 'Waste').reduce((sum, m) => sum + m.duration, 0);
 
-
-
     const handleExport = () => {
         setExportProgress(1); // Show progress bar
         exportToExcel(measurements, videoName, allowances, (progress) => {
@@ -166,20 +151,55 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
         cycle: true,
         process: true,
         category: true,
-        manual: true,
-        auto: true,
-        walk: true,
-        loss: true,
-        therblig: true,
         start: true,
         finish: true,
+        manual: true,
+        auto: true,
+        waiting: true,
         duration: true,
-        rating: true,
-        normalTime: true,
-        standardTime: true,
         actions: true
     });
     const [showColumnMenu, setShowColumnMenu] = useState(false);
+    const processHeaderRef = useRef(null);
+    const resizeStateRef = useRef({ isResizing: false, startX: 0, startWidth: 0 });
+    const [processColumnWidth, setProcessColumnWidth] = useState(null);
+
+    useEffect(() => {
+        if (!visibleColumns.process || processColumnWidth !== null || !processHeaderRef.current) return;
+        const currentWidth = processHeaderRef.current.offsetWidth;
+        if (currentWidth > 0) {
+            // Default: 50% dari kondisi lebar saat ini
+            setProcessColumnWidth(Math.max(140, Math.round(currentWidth * 0.5)));
+        }
+    }, [visibleColumns.process, processColumnWidth, measurements.length]);
+
+    const handleProcessResizeStart = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const startWidth = processHeaderRef.current?.offsetWidth || processColumnWidth || 240;
+        resizeStateRef.current = {
+            isResizing: true,
+            startX: e.clientX,
+            startWidth
+        };
+
+        const handleMouseMove = (moveEvent) => {
+            if (!resizeStateRef.current.isResizing) return;
+            const deltaX = moveEvent.clientX - resizeStateRef.current.startX;
+            const newWidth = resizeStateRef.current.startWidth + deltaX;
+            setProcessColumnWidth(Math.max(140, Math.round(newWidth)));
+        };
+
+        const handleMouseUp = () => {
+            resizeStateRef.current.isResizing = false;
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+    };
 
     const toggleColumn = (column) => {
         setVisibleColumns(prev => ({
@@ -194,12 +214,14 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
         setEditCategory(element.category);
         setEditTherblig(element.therblig || '');
         setEditCycle(element.cycle || 1);
-        setEditManual(element.manualTime || 0);
+        setEditManual(element.manualTime ?? element.duration ?? 0);
         setEditAuto(element.autoTime || 0);
-        setEditWalk(element.walkTime || 0);
+        setEditWait(element.waitingTime || 0);
+        setEditOmega(element.angularVelocity || 0);
+        setEditAcceleration(element.angularAcceleration || 0);
+        setEditJerk(element.jerk || 0);
         setEditStartTime(element.startTime);
         setEditEndTime(element.endTime);
-        setEditRating(element.rating || 100);
     };
 
     const handleSaveEdit = async () => {
@@ -216,12 +238,14 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
             return;
         }
 
-        const manual = parseFloat(editManual) || 0;
         const auto = parseFloat(editAuto) || 0;
-        const walk = parseFloat(editWalk) || 0;
+        const manual = parseFloat(editManual) || 0;
         const waiting = parseFloat(editWait) || 0;
+        const omega = parseFloat(editOmega) || 0;
+        const acceleration = parseFloat(editAcceleration) || 0;
+        const jerk = parseFloat(editJerk) || 0;
         const duration = endTime - startTime;
-        const totalSplit = manual + auto + walk + waiting;
+        const totalSplit = auto + waiting;
 
         if (totalSplit > duration + 0.01) { // 0.01 tolerance for floating point
             await showAlert(t('common.error'), t('elementEditor.errors.totalSplitExceeds'));
@@ -241,12 +265,13 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
             cycle: parseInt(editCycle) || 1,
             manualTime: manual,
             autoTime: auto,
-            walkTime: walk,
             waitingTime: waiting,
+            angularVelocity: omega,
+            angularAcceleration: acceleration,
+            jerk: jerk,
             startTime: startTime,
             endTime: endTime,
-            duration: duration,
-            rating: parseFloat(editRating) || 100
+            duration: duration
         } : m));
         setEditingId(null);
     };
@@ -259,8 +284,10 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
         setEditCycle(1);
         setEditManual(0);
         setEditAuto(0);
-        setEditWalk(0);
         setEditWait(0);
+        setEditOmega(0);
+        setEditAcceleration(0);
+        setEditJerk(0);
         setEditStartTime(0);
         setEditEndTime(0);
     };
@@ -349,7 +376,7 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
 
     const visibleColumnCount = Object.values(visibleColumns).filter(Boolean).length;
     // Columns that appear before the 'Duration' column
-    const columnsBeforeDuration = ['no', 'cycle', 'process', 'category', 'manual', 'auto', 'walk', 'loss', 'therblig', 'start', 'finish'];
+    const columnsBeforeDuration = ['no', 'cycle', 'process', 'category', 'start', 'finish', 'manual', 'auto', 'waiting'];
     const visibleBeforeDuration = columnsBeforeDuration.filter(c => visibleColumns[c]).length;
 
     const handleSendMessage = async () => {
@@ -435,10 +462,6 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
                             ⛶
                         </button>
                     )}
-                    <button onClick={() => setShowAllowanceModal(true)} style={{ width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', backgroundColor: '#333', cursor: 'pointer', border: 'none', borderRadius: '4px', color: 'white' }} title={t('elementEditor.allowanceSettings')}>
-                        <Settings size={16} />
-                    </button>
-
                     {/* Column Visibility Toggle */}
                     <div style={{ position: 'relative', display: 'inline-block' }}>
                         <button
@@ -566,26 +589,48 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
                             {visibleColumns.actions && <th style={{ padding: '4px', border: '1px solid #444', width: '80px', fontSize: '0.7rem', minWidth: '80px', maxWidth: '80px' }}>{t('elementEditor.actions')}</th>}
                             {visibleColumns.no && <th style={{ padding: '4px', border: '1px solid #444', width: '40px', fontSize: '0.7rem' }}>{t('swcs.table.no')}</th>}
                             {visibleColumns.cycle && <th style={{ padding: '4px', border: '1px solid #444', width: '60px', fontSize: '0.7rem' }}>{t('elementEditor.cycle')}</th>}
-                            {visibleColumns.process && <th style={{ padding: '4px', border: '1px solid #444', fontSize: '0.7rem' }}>{t('swcs.header.process')}</th>}
+                            {visibleColumns.process && (
+                                <th
+                                    ref={processHeaderRef}
+                                    style={{
+                                        padding: '4px',
+                                        border: '1px solid #444',
+                                        fontSize: '0.7rem',
+                                        width: processColumnWidth ? `${processColumnWidth}px` : undefined,
+                                        minWidth: processColumnWidth ? `${processColumnWidth}px` : undefined,
+                                        maxWidth: processColumnWidth ? `${processColumnWidth}px` : undefined,
+                                        position: 'relative'
+                                    }}
+                                >
+                                    {t('swcs.header.process')}
+                                    <div
+                                        onMouseDown={handleProcessResizeStart}
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            right: '-3px',
+                                            width: '6px',
+                                            height: '100%',
+                                            cursor: 'col-resize',
+                                            userSelect: 'none'
+                                        }}
+                                        title="Drag untuk atur lebar kolom"
+                                    />
+                                </th>
+                            )}
                             {visibleColumns.category && <th style={{ padding: '4px', border: '1px solid #444', width: '150px', fontSize: '0.7rem' }}>{t('elementEditor.category')}</th>}
-                            {visibleColumns.manual && <th style={{ padding: '4px', border: '1px solid #444', width: '60px', fontSize: '0.7rem', color: '#ffd700' }}>{t('swcs.table.man')}</th>}
-                            {visibleColumns.auto && <th style={{ padding: '4px', border: '1px solid #444', width: '60px', fontSize: '0.7rem', color: '#00ff00' }}>{t('swcs.table.auto')}</th>}
-                            {visibleColumns.walk && <th style={{ padding: '4px', border: '1px solid #444', width: '60px', fontSize: '0.7rem', color: '#ff4d4d' }}>{t('swcs.table.walk')}</th>}
-                            {visibleColumns.loss && <th style={{ padding: '4px', border: '1px solid #444', width: '60px', fontSize: '0.7rem', color: '#f97316' }}>{t('elementEditor.loss')}</th>}
-                            {visibleColumns.therblig && <th style={{ padding: '4px', border: '1px solid #444', width: '100px', fontSize: '0.7rem' }}>{t('elementEditor.therbligType')}</th>}
-
                             {visibleColumns.start && <th style={{ padding: '4px', border: '1px solid #444', width: '70px', fontSize: '0.7rem' }}>{t('elementEditor.startTime')} (s)</th>}
                             {visibleColumns.finish && <th style={{ padding: '4px', border: '1px solid #444', width: '70px', fontSize: '0.7rem' }}>{t('elementEditor.endTime')} (s)</th>}
+                            {visibleColumns.manual && <th style={{ padding: '4px', border: '1px solid #444', width: '80px', fontSize: '0.7rem', color: '#facc15' }}>{t('elementEditor.manual', 'Manual')}</th>}
+                            {visibleColumns.auto && <th style={{ padding: '4px', border: '1px solid #444', width: '80px', fontSize: '0.7rem', color: '#22c55e' }}>{t('elementEditor.auto', 'Auto')}</th>}
+                            {visibleColumns.waiting && <th style={{ padding: '4px', border: '1px solid #444', width: '80px', fontSize: '0.7rem', color: '#f97316' }}>{t('elementEditor.loss', 'Waiting')}</th>}
                             {visibleColumns.duration && <th style={{ padding: '4px', border: '1px solid #444', width: '80px', fontSize: '0.7rem' }}>{t('elementEditor.duration')} (s)</th>}
-                            {visibleColumns.rating && <th style={{ padding: '4px', border: '1px solid #444', width: '60px', fontSize: '0.7rem', color: '#00a6ff' }}>{t('elementEditor.rating')}</th>}
-                            {visibleColumns.normalTime && <th style={{ padding: '4px', border: '1px solid #444', width: '70px', fontSize: '0.7rem', color: '#00a6ff' }}>{t('elementEditor.normalTime')}</th>}
-                            {visibleColumns.standardTime && <th style={{ padding: '4px', border: '1px solid #444', width: '70px', fontSize: '0.7rem', color: '#00d4ff' }}>{t('elementEditor.standardTime')}</th>}
                         </tr>
                     </thead>
                     <tbody>
                         {filteredMeasurements.length === 0 ? (
                             <tr>
-                                <td colSpan={16} style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+                                <td colSpan={visibleColumnCount} style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
                                     {measurements.length === 0 ? t('elementEditor.emptyElements') : t('elementEditor.noFilterMatch')}
                                 </td>
                             </tr>
@@ -610,9 +655,6 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
                                                 </div>
                                             ) : (
                                                 <div style={{ display: 'flex', gap: '3px', justifyContent: 'center', flexWrap: 'wrap' }}>
-
-                                                    {/* Quick Categorize Buttons (Stopwatch Style) */}
-                                                    <div style={{ display: 'none' }}></div>
 
                                                     <button onClick={() => handleStartEdit(el)} style={{ padding: '3px 6px', fontSize: '0.7rem', backgroundColor: '#05a', border: 'none', color: 'white', cursor: 'pointer', borderRadius: '3px' }} title={t('common.edit')}>✎</button>
                                                     <button onClick={() => handleDelete(el.id)} style={{ padding: '3px 6px', fontSize: '0.7rem', backgroundColor: '#a00', border: 'none', color: 'white', cursor: 'pointer', borderRadius: '3px' }} title={t('common.delete')}>🗑</button>
@@ -642,7 +684,14 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
                                         </td>}
                                         {visibleColumns.process && <td
                                             onClick={() => editingId !== el.id && handleStartEdit(el)}
-                                            style={{ padding: '6px', border: '1px solid #444', cursor: editingId !== el.id ? 'pointer' : 'default' }}
+                                            style={{
+                                                padding: '6px',
+                                                border: '1px solid #444',
+                                                cursor: editingId !== el.id ? 'pointer' : 'default',
+                                                width: processColumnWidth ? `${processColumnWidth}px` : undefined,
+                                                minWidth: processColumnWidth ? `${processColumnWidth}px` : undefined,
+                                                maxWidth: processColumnWidth ? `${processColumnWidth}px` : undefined
+                                            }}
                                         >
                                             {editingId === el.id ? (
                                                 <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()} style={{ width: '100%', padding: '4px', backgroundColor: '#222', border: '1px solid #555', color: 'white', fontSize: '0.85rem' }} />
@@ -662,95 +711,6 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
                                                 </span>
                                             )}
                                         </td>}
-                                        {visibleColumns.manual && <td
-                                            onClick={() => editingId !== el.id && handleStartEdit(el)}
-                                            style={{ padding: '6px', border: '1px solid #444', textAlign: 'center', cursor: editingId !== el.id ? 'pointer' : 'default' }}
-                                        >
-                                            {editingId === el.id ? (
-                                                <input
-                                                    type="number"
-                                                    step="0.01"
-                                                    value={editManual}
-                                                    onChange={(e) => setEditManual(e.target.value)}
-                                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
-                                                    style={{ width: '100%', padding: '4px', backgroundColor: '#222', border: '1px solid #555', color: '#ffd700', fontSize: '0.85rem', textAlign: 'center' }}
-                                                />
-                                            ) : (
-                                                <span style={{ color: '#ffd700' }}>{el.manualTime ? el.manualTime.toFixed(2) : '-'}</span>
-                                            )}
-                                        </td>}
-                                        {visibleColumns.auto && <td
-                                            onClick={() => editingId !== el.id && handleStartEdit(el)}
-                                            style={{ padding: '6px', border: '1px solid #444', textAlign: 'center', cursor: editingId !== el.id ? 'pointer' : 'default' }}
-                                        >
-                                            {editingId === el.id ? (
-                                                <input
-                                                    type="number"
-                                                    step="0.01"
-                                                    value={editAuto}
-                                                    onChange={(e) => setEditAuto(e.target.value)}
-                                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
-                                                    style={{ width: '100%', padding: '4px', backgroundColor: '#222', border: '1px solid #555', color: '#00ff00', fontSize: '0.85rem', textAlign: 'center' }}
-                                                />
-                                            ) : (
-                                                <span style={{ color: '#00ff00' }}>{el.autoTime ? el.autoTime.toFixed(2) : '-'}</span>
-                                            )}
-                                        </td>}
-                                        {visibleColumns.walk && <td
-                                            onClick={() => editingId !== el.id && handleStartEdit(el)}
-                                            style={{ padding: '6px', border: '1px solid #444', textAlign: 'center', cursor: editingId !== el.id ? 'pointer' : 'default' }}
-                                        >
-                                            {editingId === el.id ? (
-                                                <input
-                                                    type="number"
-                                                    step="0.01"
-                                                    value={editWalk}
-                                                    onChange={(e) => setEditWalk(e.target.value)}
-                                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
-                                                    style={{ width: '100%', padding: '4px', backgroundColor: '#222', border: '1px solid #555', color: '#ff4d4d', fontSize: '0.85rem', textAlign: 'center' }}
-                                                />
-                                            ) : (
-                                                <span style={{ color: '#ff4d4d' }}>{el.walkTime ? el.walkTime.toFixed(2) : '-'}</span>
-                                            )}
-                                        </td>}
-                                        {visibleColumns.loss && <td
-                                            onClick={() => editingId !== el.id && handleStartEdit(el)}
-                                            style={{ padding: '6px', border: '1px solid #444', textAlign: 'center', cursor: editingId !== el.id ? 'pointer' : 'default' }}
-                                        >
-                                            {editingId === el.id ? (
-                                                <input
-                                                    type="number"
-                                                    step="0.01"
-                                                    value={editWait}
-                                                    onChange={(e) => setEditWait(e.target.value)}
-                                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
-                                                    style={{ width: '100%', padding: '4px', backgroundColor: '#222', border: '1px solid #555', color: '#f97316', fontSize: '0.85rem', textAlign: 'center' }}
-                                                />
-                                            ) : (
-                                                <span style={{ color: '#f97316' }}>{el.waitingTime ? el.waitingTime.toFixed(2) : '-'}</span>
-                                            )}
-                                        </td>}
-                                        {visibleColumns.therblig && <td
-                                            onClick={() => editingId !== el.id && handleStartEdit(el)}
-                                            style={{ padding: '6px', border: '1px solid #444', cursor: editingId !== el.id ? 'pointer' : 'default' }}
-                                        >
-                                            {editingId === el.id ? (
-                                                <select value={editTherblig} onChange={(e) => setEditTherblig(e.target.value)} style={{ width: '100%', padding: '4px', backgroundColor: '#222', border: '1px solid #555', color: 'white', fontSize: '0.85rem' }}>
-                                                    <option value="">{t('elementEditor.selectOption')}</option>
-                                                    {Object.entries(THERBLIGS).map(([code, { name }]) => (
-                                                        <option key={code} value={code}>{code} - {name}</option>
-                                                    ))}
-                                                </select>
-                                            ) : (
-                                                el.therblig && THERBLIGS[el.therblig] ? (
-                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 8px', backgroundColor: THERBLIGS[el.therblig].color + '40', border: `1px solid ${THERBLIGS[el.therblig].color}`, borderRadius: '3px', fontSize: '0.8rem', color: '#fff' }}>
-                                                        {renderTherbligIcon(el.therblig)}
-                                                        <span>{el.therblig}</span>
-                                                    </span>
-                                                ) : '-'
-                                            )}
-                                        </td>}
-
                                         {visibleColumns.start && <td
                                             style={{ padding: '6px', border: '1px solid #444', textAlign: 'right', fontSize: '0.8rem', color: '#888' }}
                                         >
@@ -761,29 +721,65 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
                                         >
                                             {el.endTime.toFixed(2)}
                                         </td>}
-                                        {visibleColumns.duration && <td style={{ padding: '6px', border: '1px solid #444', textAlign: 'right', fontWeight: 'bold' }}>
-                                            {(el.endTime - el.startTime).toFixed(2)}
-                                        </td>}
-                                        {visibleColumns.rating && <td style={{ padding: '6px', border: '1px solid #444', textAlign: 'center' }}>
+                                        {visibleColumns.manual && <td
+                                            style={{
+                                                padding: '6px',
+                                                border: '1px solid #444',
+                                                textAlign: 'right',
+                                                color: '#facc15',
+                                                backgroundColor: stopwatches?.[el.id]?.manual !== undefined ? 'rgba(250, 204, 21, 0.18)' : 'transparent'
+                                            }}
+                                        >
                                             {editingId === el.id ? (
                                                 <input
                                                     type="number"
-                                                    value={editRating}
-                                                    onChange={(e) => setEditRating(e.target.value)}
-                                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
-                                                    min="0"
-                                                    max="200"
-                                                    style={{ width: '50px', padding: '4px', backgroundColor: '#222', border: '1px solid #555', color: '#00a6ff', fontSize: '0.85rem', textAlign: 'center' }}
+                                                    step="0.01"
+                                                    value={editManual}
+                                                    onChange={(e) => setEditManual(e.target.value)}
+                                                    style={{ width: '72px', padding: '4px', backgroundColor: '#222', border: '1px solid #555', color: '#facc15', fontSize: '0.8rem', textAlign: 'right' }}
                                                 />
-                                            ) : (
-                                                <span style={{ color: '#00a6ff' }}>{el.rating || 100}%</span>
-                                            )}
+                                            ) : ((Number(el.manualTime) || 0).toFixed(2))}
                                         </td>}
-                                        {visibleColumns.normalTime && <td style={{ padding: '6px', border: '1px solid #444', textAlign: 'right', color: '#888' }}>
-                                            {calculateStandardTime(el.duration, el.rating).normalTime.toFixed(2)}
+                                        {visibleColumns.auto && <td
+                                            style={{
+                                                padding: '6px',
+                                                border: '1px solid #444',
+                                                textAlign: 'right',
+                                                color: '#22c55e',
+                                                backgroundColor: stopwatches?.[el.id]?.auto !== undefined ? 'rgba(34, 197, 94, 0.18)' : 'transparent'
+                                            }}
+                                        >
+                                            {editingId === el.id ? (
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={editAuto}
+                                                    onChange={(e) => setEditAuto(e.target.value)}
+                                                    style={{ width: '72px', padding: '4px', backgroundColor: '#222', border: '1px solid #555', color: '#22c55e', fontSize: '0.8rem', textAlign: 'right' }}
+                                                />
+                                            ) : ((Number(el.autoTime) || 0).toFixed(2))}
                                         </td>}
-                                        {visibleColumns.standardTime && <td style={{ padding: '6px', border: '1px solid #444', textAlign: 'right', fontWeight: 'bold', color: '#00d4ff' }}>
-                                            {calculateStandardTime(el.duration, el.rating).standardTime.toFixed(2)}
+                                        {visibleColumns.waiting && <td
+                                            style={{
+                                                padding: '6px',
+                                                border: '1px solid #444',
+                                                textAlign: 'right',
+                                                color: '#f97316',
+                                                backgroundColor: stopwatches?.[el.id]?.waiting !== undefined ? 'rgba(249, 115, 22, 0.18)' : 'transparent'
+                                            }}
+                                        >
+                                            {editingId === el.id ? (
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={editWait}
+                                                    onChange={(e) => setEditWait(e.target.value)}
+                                                    style={{ width: '72px', padding: '4px', backgroundColor: '#222', border: '1px solid #555', color: '#f97316', fontSize: '0.8rem', textAlign: 'right' }}
+                                                />
+                                            ) : ((Number(el.waitingTime) || 0).toFixed(2))}
+                                        </td>}
+                                        {visibleColumns.duration && <td style={{ padding: '6px', border: '1px solid #444', textAlign: 'right', fontWeight: 'bold' }}>
+                                            {(el.endTime - el.startTime).toFixed(2)}
                                         </td>}
 
                                     </tr>
@@ -975,81 +971,6 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
                     50% { height: 12px; }
                 }
             `}</style>
-            {/* Allowance Modal */}
-            {showAllowanceModal && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.7)',
-                    zIndex: 2000,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                }} onClick={() => setShowAllowanceModal(false)}>
-                    <div style={{
-                        backgroundColor: '#1e1e1e',
-                        padding: '20px',
-                        borderRadius: '8px',
-                        width: '300px',
-                        border: '1px solid #444',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
-                    }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                            <h3 style={{ margin: 0, color: 'white' }}>⚙️ {t('allowance.title')}</h3>
-                            <button onClick={() => setShowAllowanceModal(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            <div>
-                                <label style={{ display: 'block', color: '#ccc', marginBottom: '5px', fontSize: '0.9rem' }}>{t('allowance.personal')}</label>
-                                <input
-                                    type="number"
-                                    value={allowances.personal}
-                                    onChange={(e) => setAllowances({ ...allowances, personal: parseFloat(e.target.value) || 0 })}
-                                    style={{ width: '100%', padding: '8px', backgroundColor: '#333', border: '1px solid #555', color: 'white', borderRadius: '4px' }}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', color: '#ccc', marginBottom: '5px', fontSize: '0.9rem' }}>{t('allowance.basicFatigue')}</label>
-                                <input
-                                    type="number"
-                                    value={allowances.fatigue}
-                                    onChange={(e) => setAllowances({ ...allowances, fatigue: parseFloat(e.target.value) || 0 })}
-                                    style={{ width: '100%', padding: '8px', backgroundColor: '#333', border: '1px solid #555', color: 'white', borderRadius: '4px' }}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', color: '#ccc', marginBottom: '5px', fontSize: '0.9rem' }}>{t('allowance.delay')}</label>
-                                <input
-                                    type="number"
-                                    value={allowances.delay}
-                                    onChange={(e) => setAllowances({ ...allowances, delay: parseFloat(e.target.value) || 0 })}
-                                    style={{ width: '100%', padding: '8px', backgroundColor: '#333', border: '1px solid #555', color: 'white', borderRadius: '4px' }}
-                                />
-                            </div>
-
-                            <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#2a2a2a', borderRadius: '4px', fontSize: '0.9rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#888' }}>
-                                    <span>{t('allowance.total')}</span>
-                                    <span style={{ color: '#00d4ff', fontWeight: 'bold' }}>
-                                        {allowances.personal + allowances.fatigue + allowances.delay}%
-                                    </span>
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={() => setShowAllowanceModal(false)}
-                                style={{ width: '100%', padding: '10px', backgroundColor: '#0078d4', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                            >
-                                {t('allowance.done')}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

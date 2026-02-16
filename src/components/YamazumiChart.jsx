@@ -1,13 +1,12 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 import {
-    BarChart3, Scale, Zap, Brain, Layout, Activity, ChevronDown,
+    BarChart3, Scale, Zap, Layout, Activity, ChevronDown,
     RefreshCcw, Trash2, Users, CheckCircle, TrendingUp, Target,
     Search, Filter, Info, AlertTriangle, Play
 } from 'lucide-react';
 import { getAllProjects, getProjectByName, updateProject } from '../utils/database';
 import LineBalancingBoard from './LineBalancingBoard';
-import AIChatOverlay from './features/AIChatOverlay';
 import { useProject } from '../contexts/ProjectContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -30,8 +29,36 @@ function YamazumiChart({ measurements: propMeasurements = [] }) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
 
-    const [showChat, setShowChat] = useState(false);
     const dropdownRef = useRef(null);
+
+    const getStationNumber = (stationLabel) => {
+        if (!stationLabel) return Number.POSITIVE_INFINITY;
+        const match = String(stationLabel).match(/station\s*(\d+)/i);
+        return match ? parseInt(match[1], 10) : Number.POSITIVE_INFINITY;
+    };
+
+    const sortByStationNumber = (a, b) => {
+        const stationA = getStationNumber(a.station);
+        const stationB = getStationNumber(b.station);
+
+        if (stationA !== stationB) {
+            return stationA - stationB;
+        }
+
+        return String(a.station).localeCompare(String(b.station), undefined, {
+            numeric: true,
+            sensitivity: 'base'
+        });
+    };
+
+    // Map selected project order to fixed station labels (first = Station 1, next = Station 2, etc.)
+    const projectStationMap = useMemo(() => {
+        const map = {};
+        selectedProjects.forEach((projectName, index) => {
+            map[projectName] = `Station ${index + 1}`;
+        });
+        return map;
+    }, [selectedProjects]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -65,13 +92,12 @@ function YamazumiChart({ measurements: propMeasurements = [] }) {
             // Use composite key if multiple projects are selected to avoid collisions
             // But for display, we might want to show "Project - Station"
             const stationName = m.station || t('yamazumi.defaultStation');
-            const projectPrefix = m.projectName ? `${m.projectName} - ` : '';
             const uniqueStation = m.projectName ? `${m.projectName}::${stationName}` : stationName;
 
             if (!acc[uniqueStation]) {
                 acc[uniqueStation] = {
                     items: [],
-                    displayName: projectPrefix + stationName,
+                    displayName: stationName,
                     projectName: m.projectName
                 };
             }
@@ -175,7 +201,7 @@ function YamazumiChart({ measurements: propMeasurements = [] }) {
             stationData.isBottleneck = totalTime > taktTime;
 
             return stationData;
-        }).sort((a, b) => a.station.localeCompare(b.station));
+        }).sort(sortByStationNumber);
     }, [measurements, taktTime, isSimulating, eliminateWaste, simplifyNNVA]);
 
     // Get unique categories for stacking
@@ -353,12 +379,15 @@ function YamazumiChart({ measurements: propMeasurements = [] }) {
                 try {
                     const project = await getProjectByName(projectName);
                     if (project && project.measurements) {
+                        const mappedStation = projectStationMap[projectName] || 'Station 1';
                         // Tag measurements with project name
                         const tagged = project.measurements.map(m => ({
                             ...m,
                             projectName: projectName,
-                            // Ensure station has a value
-                            station: m.station || m.operator || 'Station 1'
+                            // Force station by selected project order:
+                            // first selected project => Station 1, second => Station 2, etc.
+                            station: mappedStation,
+                            operator: mappedStation
                         }));
                         combinedMeasurements = [...combinedMeasurements, ...tagged];
                     }
@@ -370,7 +399,7 @@ function YamazumiChart({ measurements: propMeasurements = [] }) {
         };
 
         fetchProjectMeasurements();
-    }, [selectedProjects, propMeasurements]);
+    }, [selectedProjects, propMeasurements, projectStationMap]);
 
     const loadProjects = async () => {
         try {
@@ -737,27 +766,6 @@ function YamazumiChart({ measurements: propMeasurements = [] }) {
                             </div>
                         )}
                     </div>
-
-                    <button
-                        onClick={() => setShowChat(!showChat)}
-                        style={{
-                            padding: '8px 16px',
-                            backgroundColor: showChat ? '#2563eb' : 'rgba(255, 255, 255, 0.05)',
-                            color: '#fff',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            borderRadius: '10px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            fontWeight: '600',
-                            fontSize: '0.9rem',
-                            transition: 'all 0.2s ease'
-                        }}
-                    >
-                        <Brain size={16} />
-                        {t('yamazumi.aiAnalysis')}
-                    </button>
 
                     <button
                         onClick={() => {
@@ -1157,19 +1165,6 @@ function YamazumiChart({ measurements: propMeasurements = [] }) {
                     </table>
                 </div>
             </div>
-
-            <AIChatOverlay
-                visible={showChat}
-                onClose={() => setShowChat(false)}
-                contextData={{
-                    projects: selectedProjects,
-                    measurements: measurements,
-                    stats: stats,
-                    chartData: chartData
-                }}
-                title={t('yamazumi.aiEngineer')}
-                subtitle={t('yamazumi.aiSubtitle')}
-            />
 
             <style>{`
                 @keyframes fadeIn {

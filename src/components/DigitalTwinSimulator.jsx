@@ -4,6 +4,27 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 const DigitalTwinSimulator = ({ stationsData, isRunning, onStop }) => {
     const { t } = useLanguage();
+
+    const getStationNumber = (value) => {
+        if (!value) return Number.POSITIVE_INFINITY;
+        const match = String(value).match(/station\s*(\d+)/i);
+        return match ? parseInt(match[1], 10) : Number.POSITIVE_INFINITY;
+    };
+
+    const sortByStationNumber = (a, b) => {
+        const stationA = getStationNumber(a);
+        const stationB = getStationNumber(b);
+
+        if (stationA !== stationB) {
+            return stationA - stationB;
+        }
+
+        return String(a).localeCompare(String(b), undefined, {
+            numeric: true,
+            sensitivity: 'base'
+        });
+    };
+
     // Simulation State
     const [simState, setSimState] = useState({
         stations: [],
@@ -19,7 +40,7 @@ const DigitalTwinSimulator = ({ stationsData, isRunning, onStop }) => {
     // Initialize Simulation
     useEffect(() => {
         // Transform incoming data to simulation model
-        const initStations = Object.keys(stationsData).sort().map((id, index) => {
+        const initStations = Object.keys(stationsData).sort(sortByStationNumber).map((id, index) => {
             const tasks = stationsData[id];
             const avgTime = tasks.reduce((sum, t) => {
                 let tTime = parseFloat(t.manualTime) || 0;

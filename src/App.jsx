@@ -9,8 +9,11 @@ import OpenProjectDialog from './components/OpenProjectDialog';
 import SaveAsDialog from './components/SaveAsDialog';
 import YamazumiChart from './components/YamazumiChart';
 import ValueStreamMap from './components/ValueStreamMap';
+import RealtimeCompliance from './components/RealtimeCompliance';
 
 import BroadcastControls from './components/features/BroadcastControls';
+import BroadcastManager from './components/features/BroadcastManager';
+import TourGuide from './components/features/TourGuide';
 import LicenseGuard from './components/features/LicenseGuard';
 import { saveProject, getProjectByName, updateProject } from './utils/database';
 import { importProject } from './utils/projectExport';
@@ -21,6 +24,44 @@ import { initializePoseDetector } from './utils/poseDetector';
 import { ProjectProvider, useProject } from './contexts/ProjectContext';
 import { DialogProvider, useDialog } from './contexts/DialogContext';
 import './index.css';
+
+// Helps recover from transient/stale dynamic import failures
+const lazyWithRetry = (importer, componentName = 'component', devImportPath = null) =>
+  React.lazy(async () => {
+    const storageKey = `lazy-retry-${componentName}`;
+    const hasRefreshed = sessionStorage.getItem(storageKey) === 'true';
+
+    try {
+      const mod = await importer();
+      sessionStorage.setItem(storageKey, 'false');
+      return mod;
+    } catch (error) {
+      // Typical error: "Failed to fetch dynamically imported module"
+      const message = String(error?.message || error || '');
+      const isDynamicImportFetchError =
+        message.includes('Failed to fetch dynamically imported module') ||
+        message.includes('Importing a module script failed');
+
+      // In dev mode, try a direct cache-busted import before forcing full reload.
+      if (import.meta.env.DEV && isDynamicImportFetchError && devImportPath) {
+        try {
+          const sep = devImportPath.includes('?') ? '&' : '?';
+          const cacheBustedPath = `${devImportPath}${sep}t=${Date.now()}`;
+          const mod = await import(/* @vite-ignore */ cacheBustedPath);
+          sessionStorage.setItem(storageKey, 'false');
+          return mod;
+        } catch {
+          // Ignore and continue to one-time hard reload fallback below.
+        }
+      }
+
+      if (!hasRefreshed) {
+        sessionStorage.setItem(storageKey, 'true');
+        window.location.reload();
+      }
+      throw error;
+    }
+  });
 
 // Lazy load components
 const AnalysisDashboard = React.lazy(() => import('./components/AnalysisDashboard'));
@@ -40,13 +81,17 @@ const MTMCalculator = React.lazy(() => import('./components/MTMCalculator'));
 const AllowanceCalculator = React.lazy(() => import('./components/AllowanceCalculator'));
 const MultiAxialAnalysis = React.lazy(() => import('./components/MultiAxialAnalysis'));
 const MultiCameraFusion = React.lazy(() => import('./components/MultiCameraFusion'));
-const ManualCreation = React.lazy(() => import('./components/ManualCreation'));
+const ManualCreation = lazyWithRetry(
+  () => import('./components/ManualCreation'),
+  'ManualCreation',
+  '/src/components/ManualCreation.jsx'
+);
 const VRTrainingMode = React.lazy(() => import('./components/VRTrainingMode'));
 const KnowledgeBase = React.lazy(() => import('./components/KnowledgeBase'));
 const ObjectTracking = React.lazy(() => import('./components/ObjectTracking'));
 const PredictiveMaintenance = React.lazy(() => import('./components/PredictiveMaintenance'));
-const BroadcastManager = React.lazy(() => import('./components/features/BroadcastManager'));
 const BroadcastViewer = React.lazy(() => import('./components/features/BroadcastViewer'));
+const JitsiConference = React.lazy(() => import('./components/features/JitsiConference'));
 const MachineLearningData = React.lazy(() => import('./components/MachineLearningData'));
 const ActionRecognition = React.lazy(() => import('./components/ActionRecognition'));
 const SpaghettiChart = React.lazy(() => import('./components/SpaghettiChart'));
@@ -61,13 +106,9 @@ const AIProcessWorkspace = React.lazy(() => import('./components/AIProcessWorksp
 const StandardDataBuilder = React.lazy(() => import('./components/StandardDataBuilder'));
 const ErgoCopilot = React.lazy(() => import('./components/ErgoCopilot'));
 
-const RealtimeCompliance = React.lazy(() => import('./components/RealtimeCompliance'));
 const StudioModel = React.lazy(() => import('./components/studio/StudioModel'));
 const PitchDeck = React.lazy(() => import('./components/PitchDeck'));
 const MainMenu = React.lazy(() => import('./components/MainMenu'));
-const TourGuide = React.lazy(() => import('./components/features/TourGuide'));
-
-
 // Loading component
 const LoadingSpinner = () => (
   <div style={{
@@ -136,6 +177,7 @@ function AppContent() {
   const [isWebcamOn, setIsWebcamOn] = useState(false);
   const [connectedPeers, setConnectedPeers] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
+  const [broadcastMode, setBroadcastMode] = useState('jitsi');
   const broadcastManagerRef = useRef(null);
 
   const handleToggleWebcam = () => broadcastManagerRef.current?.toggleWebcam();
@@ -171,9 +213,14 @@ function AppContent() {
   const [showOpenProjectDialog, setShowOpenProjectDialog] = useState(false);
   const [showSaveAsDialog, setShowSaveAsDialog] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const startupInitializedRef = useRef(false);
 
   // Pre-load pose detector in background after startup
   useEffect(() => {
+    // Guard against React StrictMode double-invocation in development
+    if (startupInitializedRef.current) return;
+    startupInitializedRef.current = true;
+
     const timer = setTimeout(() => {
       // Initialize Turso Client
       import('./utils/tursoClient').then(({ initTursoClient }) => {
@@ -190,7 +237,13 @@ function AppContent() {
       }).catch(err => console.error('❌ Failed to load Turso client module:', err));
 
       initializePoseDetector()
-        .then(() => console.log('✅ Pose detector pre-loaded at app startup'))
+        .then((detector) => {
+          if (detector) {
+            console.log('✅ Pose detector pre-loaded at app startup');
+          } else {
+            console.warn('⚠️ Pose detector preload skipped/unavailable');
+          }
+        })
         .catch(err => console.warn('Pose detector preload failed:', err));
     }, 2000);
     return () => clearTimeout(timer);
@@ -488,38 +541,86 @@ function AppContent() {
                 <Route path="/broadcast" element={
                   <div style={{
                     padding: '10px',
-                    paddingLeft: isBroadcasting ? '420px' : '10px',
-                    overflowY: 'auto',
+                    paddingLeft: isBroadcasting && broadcastMode === 'legacy' ? '420px' : '10px',
+                    overflowY: broadcastMode === 'jitsi' ? 'hidden' : 'auto',
                     height: '100%',
                     transition: 'padding-left 0.3s ease'
                   }}>
-                    <div style={{ maxWidth: '600px', margin: isBroadcasting ? '0' : '0 auto' }}>
+                    <div style={{
+                      width: '100%',
+                      maxWidth: broadcastMode === 'jitsi' ? 'none' : '600px',
+                      margin: isBroadcasting ? '0' : '0 auto',
+                      height: broadcastMode === 'jitsi' ? '100%' : 'auto',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      minHeight: 0
+                    }}>
                       <h2 style={{ color: 'var(--text-primary)' }}>📡 Broadcast Video</h2>
-                      <p style={{ color: 'var(--text-secondary)' }}>Share your video stream with other devices in real-time.</p>
-                      {/* UI Portal for BroadcastManager */}
-                      <div id="broadcast-manager-ui-portal"></div>
-                      {!isBroadcasting && (
-                        <div style={{
-                          padding: '20px',
-                          backgroundColor: 'var(--bg-secondary)',
-                          borderRadius: '8px',
-                          border: '1px solid var(--border-color)',
-                          textAlign: 'center'
-                        }}>
-                          <p>Broadcast is not active.</p>
-                          <button
-                            onClick={() => broadcastManagerRef.current?.startBroadcast()}
-                            style={{
-                              padding: '10px 20px',
-                              backgroundColor: 'var(--accent-blue)',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            Start New Broadcast
-                          </button>
+                      <p style={{ color: 'var(--text-secondary)' }}>
+                        Pilih mode: Legacy Broadcast (PeerJS) atau Jitsi Video Conference (meeting + screen share).
+                      </p>
+
+                      <div style={{ display: 'flex', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => setBroadcastMode('legacy')}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--border-color)',
+                            background: broadcastMode === 'legacy' ? 'var(--accent-blue)' : 'var(--bg-secondary)',
+                            color: 'white',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Legacy Broadcast
+                        </button>
+                        <button
+                          onClick={() => setBroadcastMode('jitsi')}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--border-color)',
+                            background: broadcastMode === 'jitsi' ? 'var(--accent-blue)' : 'var(--bg-secondary)',
+                            color: 'white',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Jitsi Conference
+                        </button>
+                      </div>
+
+                      {broadcastMode === 'legacy' ? (
+                        <>
+                          {/* UI Portal for BroadcastManager */}
+                          <div id="broadcast-manager-ui-portal"></div>
+                          {!isBroadcasting && (
+                            <div style={{
+                              padding: '20px',
+                              backgroundColor: 'var(--bg-secondary)',
+                              borderRadius: '8px',
+                              border: '1px solid var(--border-color)',
+                              textAlign: 'center'
+                            }}>
+                              <p>Broadcast is not active.</p>
+                              <button
+                                onClick={() => broadcastManagerRef.current?.startBroadcast()}
+                                style={{
+                                  padding: '10px 20px',
+                                  backgroundColor: 'var(--accent-blue)',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Start New Broadcast
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div style={{ flex: 1, minHeight: 0 }}>
+                          <JitsiConference />
                         </div>
                       )}
                     </div>

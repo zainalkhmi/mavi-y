@@ -10,14 +10,32 @@ export default defineConfig({
     port: 1420,
     strictPort: true,
     headers: {
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Embedder-Policy': 'require-corp',
+      // Jitsi iframe (meet.jit.si) can fail/blank when dev server is
+      // cross-origin isolated. Keep COOP/COEP relaxed in dev so external
+      // conferencing iframe can be embedded reliably.
+      'Cross-Origin-Opener-Policy': 'unsafe-none',
+      'Cross-Origin-Embedder-Policy': 'unsafe-none',
     },
   },
   optimizeDeps: {
-    // Prevent stale pre-bundled dep hash errors ("Outdated Optimize Dep")
-    // on heavy modules used by VSM route.
-    exclude: ['@sqlite.org/sqlite-wasm', 'reactflow', 'html2canvas'],
+    // Keep sqlite wasm out of pre-bundling due worker/runtime specifics.
+    exclude: ['@sqlite.org/sqlite-wasm'],
+    // Explicitly pre-bundle packages that benefit from optimization,
+    // including MediaPipe modules required by tfjs pose-detection.
+    include: [
+      'reactflow',
+      'html2canvas',
+      'zustand',
+      'use-sync-external-store/shim/with-selector',
+      'driver.js',
+      'peerjs',
+      '@mediapipe/hands',
+      '@mediapipe/pose',
+      // Studio Model state machine dependencies; pre-bundle to prevent
+      // transient "Outdated Optimize Dep" fetch errors in dev.
+      'xstate',
+      '@xstate/react',
+    ],
   },
   worker: {
     format: 'es',

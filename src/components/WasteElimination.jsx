@@ -315,43 +315,45 @@ function WasteElimination() {
                                     <BarChart3 size={16} color="#94a3b8" />
                                     <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '800' }}>Before vs After Comparison</h3>
                                 </div>
-                                <ResponsiveContainer width="100%" height="80%">
-                                    <BarChart
-                                        data={chartData}
-                                        margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
-                                        barSize={40}
-                                    >
-                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
-                                        <XAxis
-                                            dataKey="name"
-                                            stroke="#64748b"
-                                            fontSize={12}
-                                            fontWeight={700}
-                                            axisLine={false}
-                                            tickLine={false}
-                                        />
-                                        <YAxis
-                                            stroke="#64748b"
-                                            fontSize={11}
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tickFormatter={(value) => `${value}s`}
-                                        />
-                                        <Tooltip
-                                            cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }}
-                                            contentStyle={{
-                                                backgroundColor: '#111114',
-                                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                                borderRadius: '8px',
-                                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)'
-                                            }}
-                                        />
-                                        <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                                        <Bar dataKey="Value Added" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
-                                        <Bar dataKey="Non Value Added" stackId="a" fill="#eab308" radius={[0, 0, 0, 0]} />
-                                        <Bar dataKey="Waste" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
+                                <div style={{ height: 'calc(100% - 46px)', minHeight: 260 }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart
+                                            data={chartData}
+                                            margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
+                                            barSize={40}
+                                        >
+                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
+                                            <XAxis
+                                                dataKey="name"
+                                                stroke="#64748b"
+                                                fontSize={12}
+                                                fontWeight={700}
+                                                axisLine={false}
+                                                tickLine={false}
+                                            />
+                                            <YAxis
+                                                stroke="#64748b"
+                                                fontSize={11}
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tickFormatter={(value) => `${value}s`}
+                                            />
+                                            <Tooltip
+                                                cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }}
+                                                contentStyle={{
+                                                    backgroundColor: '#111114',
+                                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                    borderRadius: '8px',
+                                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)'
+                                                }}
+                                            />
+                                            <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                                            <Bar dataKey="Value Added" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+                                            <Bar dataKey="Non Value Added" stackId="a" fill="#eab308" radius={[0, 0, 0, 0]} />
+                                            <Bar dataKey="Waste" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </div>
 
                             {/* Waste Elements Table */}

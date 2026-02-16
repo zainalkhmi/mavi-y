@@ -7,6 +7,10 @@
 class PoseSmoother {
     constructor(alpha = 0.5) {
         this.alpha = alpha;
+        this.minAlpha = 0.25;
+        this.maxAlpha = 0.82;
+        this.motionLow = 0.002;
+        this.motionHigh = 0.03;
         this.prevKeypoints = null;
         this.velocities = {}; // Track velocity (dx, dy) for each joint
         this.persistence = {}; // Track missing frames
@@ -96,15 +100,18 @@ class PoseSmoother {
 
             const dx = currentKp.x - prevKp.x;
             const dy = currentKp.y - prevKp.y;
+            const motionMagnitude = Math.sqrt(dx * dx + dy * dy);
+            const adaptiveAlpha = this.getAdaptiveAlpha(motionMagnitude);
+
             // Smooth velocity too
             this.velocities[name] = {
-                dx: this.alpha * dx + (1 - this.alpha) * (this.velocities[name].dx || 0),
-                dy: this.alpha * dy + (1 - this.alpha) * (this.velocities[name].dy || 0)
+                dx: adaptiveAlpha * dx + (1 - adaptiveAlpha) * (this.velocities[name].dx || 0),
+                dy: adaptiveAlpha * dy + (1 - adaptiveAlpha) * (this.velocities[name].dy || 0)
             };
 
             // Standard EMA Smoothing
-            const smoothX = this.alpha * currentKp.x + (1 - this.alpha) * prevKp.x;
-            const smoothY = this.alpha * currentKp.y + (1 - this.alpha) * prevKp.y;
+            const smoothX = adaptiveAlpha * currentKp.x + (1 - adaptiveAlpha) * prevKp.x;
+            const smoothY = adaptiveAlpha * currentKp.y + (1 - adaptiveAlpha) * prevKp.y;
 
             return {
                 ...currentKp,
@@ -117,6 +124,17 @@ class PoseSmoother {
 
         this.prevKeypoints = smoothedKeypoints;
         return smoothedKeypoints;
+    }
+
+    getAdaptiveAlpha(motionMagnitude) {
+        if (!Number.isFinite(motionMagnitude)) return this.alpha;
+
+        const normalized = (motionMagnitude - this.motionLow) / (this.motionHigh - this.motionLow);
+        const clamped = Math.max(0, Math.min(1, normalized));
+        const motionAlpha = this.minAlpha + clamped * (this.maxAlpha - this.minAlpha);
+
+        // Keep user-defined alpha as baseline but allow responsiveness increase when movement is fast
+        return Math.max(this.alpha, motionAlpha);
     }
 
     /**

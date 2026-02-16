@@ -8,6 +8,9 @@ import ScriptAutoComplete from './ScriptAutoComplete';
 import LogicTreeBuilder from './LogicTreeBuilder';
 import { Sparkles, Loader2 } from 'lucide-react';
 
+const ROBOT_JOINTS = ['J1', 'J2', 'J3', 'J4', 'J5', 'J6'];
+const ROBOT_AXES = ['angle', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'rx', 'ry', 'rz'];
+
 const getOperators = (t) => [
     { value: '<', label: '<' },
     { value: '>', label: '>' },
@@ -412,7 +415,8 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
 
     // Helper to calculate raw value for a rule
     const calculateRuleValue = (rule) => {
-        if (!activePose || !activePose.keypoints) return null;
+        const isRobotRule = rule.type === 'ROBOT_JOINT_ANGLE' || rule.type === 'ROBOT_JOINT_VELOCITY' || rule.type === 'ROBOT_JOINT_ACCELERATION';
+        if (!isRobotRule && (!activePose || !activePose.keypoints)) return null;
         const getKP = (name) => activePose.keypoints.find(k => k.name === name);
         const params = rule.params;
 
@@ -510,6 +514,11 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                     // This will be populated by the inference loop in ModelBuilder
                     return rule.lastValue || null;
                 }
+                case 'ROBOT_JOINT_ANGLE':
+                case 'ROBOT_JOINT_VELOCITY':
+                case 'ROBOT_JOINT_ACCELERATION': {
+                    return Number.isFinite(rule.lastValue) ? rule.lastValue : null;
+                }
                 default: return null;
             }
         } catch (e) { return null; }
@@ -523,7 +532,8 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
         const params = rule.params;
 
         if (rule.type === 'POSE_ANGLE' || rule.type === 'POSE_VELOCITY' ||
-            rule.type === 'HAND_PROXIMITY' || rule.type === 'OBJECT_PROXIMITY' || rule.type === 'OPERATOR_PROXIMITY') {
+            rule.type === 'HAND_PROXIMITY' || rule.type === 'OBJECT_PROXIMITY' || rule.type === 'OPERATOR_PROXIMITY' ||
+            rule.type === 'ROBOT_JOINT_ANGLE' || rule.type === 'ROBOT_JOINT_VELOCITY' || rule.type === 'ROBOT_JOINT_ACCELERATION') {
             return evaluateComparison(val, params.operator, params.value, params.value2);
         }
 
@@ -744,6 +754,9 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
         if (rule.type === 'POSE_ANGLE') {
             displayVal = val.toFixed(1);
             suffix = '°';
+        } else if (rule.type === 'ROBOT_JOINT_ANGLE' || rule.type === 'ROBOT_JOINT_VELOCITY' || rule.type === 'ROBOT_JOINT_ACCELERATION') {
+            displayVal = Number.isFinite(val) ? val.toFixed(3) : val;
+            suffix = '';
         } else if (rule.type === 'POSE_RELATION') {
             displayVal = val.toFixed(2);
             suffix = '';
@@ -955,6 +968,9 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                         <option value="POSE_RELATION">{t('studioModel.modelBuilder.rules.types.POSE_RELATION')}</option>
                         <option value="POSE_VELOCITY">{t('studioModel.modelBuilder.rules.types.POSE_VELOCITY')}</option>
                         <option value="OPERATOR_PROXIMITY">{t('studioModel.modelBuilder.rules.types.OPERATOR_PROXIMITY')}</option>
+                        <option value="ROBOT_JOINT_ANGLE">Robot Joint Angle</option>
+                        <option value="ROBOT_JOINT_VELOCITY">Robot Joint Velocity</option>
+                        <option value="ROBOT_JOINT_ACCELERATION">Robot Joint Acceleration</option>
                         <option value="POSE_MATCHING">{t('studioModel.modelBuilder.rules.types.POSE_MATCHING')}</option>
                         <option value="SEQUENCE_MATCH">{t('studioModel.modelBuilder.rules.types.SEQUENCE_MATCH')}</option>
                         <option value="ADVANCED_SCRIPT">{t('studioModel.modelBuilder.rules.types.ADVANCED_SCRIPT')}</option>
@@ -1164,6 +1180,54 @@ const RuleEditor = ({ states, transitions, onAddTransition, onDeleteTransition, 
                                         type="number"
                                         style={styles.input}
                                         value={rule.params.value2 || rule.params.value}
+                                        onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, value2: parseFloat(e.target.value) } })}
+                                    />
+                                </>
+                            )}
+                            {renderLiveValue(rule)}
+                        </div>
+                    </div>
+                )}
+
+                {(rule.type === 'ROBOT_JOINT_ANGLE' || rule.type === 'ROBOT_JOINT_VELOCITY' || rule.type === 'ROBOT_JOINT_ACCELERATION') && (
+                    <div style={styles.paramRow}>
+                        <select
+                            style={styles.paramSelect}
+                            value={rule.params.joint || 'J1'}
+                            onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, joint: e.target.value } })}
+                        >
+                            {ROBOT_JOINTS.map(j => <option key={j} value={j}>{j}</option>)}
+                        </select>
+                        <select
+                            style={styles.paramSelect}
+                            value={rule.params.axis || 'angle'}
+                            onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, axis: e.target.value } })}
+                        >
+                            {ROBOT_AXES.map(axis => <option key={axis} value={axis}>{axis}</option>)}
+                        </select>
+                        <select
+                            style={{ ...styles.paramSelect, width: '90px' }}
+                            value={rule.params.operator || '>'}
+                            onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, operator: e.target.value } })}
+                        >
+                            {OPERATORS.map(op => <option key={op.value} value={op.value}>{op.label}</option>)}
+                        </select>
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <input
+                                type="number"
+                                step="0.01"
+                                style={styles.input}
+                                value={rule.params.value ?? 0}
+                                onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, value: parseFloat(e.target.value) } })}
+                            />
+                            {rule.params.operator === 'BETWEEN' && (
+                                <>
+                                    <span style={{ color: '#9ca3af' }}>-</span>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        style={styles.input}
+                                        value={rule.params.value2 ?? rule.params.value ?? 0}
                                         onChange={(e) => handleUpdateRule(transitionId, rule.id, { params: { ...rule.params, value2: parseFloat(e.target.value) } })}
                                     />
                                 </>

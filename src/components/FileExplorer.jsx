@@ -40,6 +40,7 @@ import {
     Maximize2,
     ChevronRight,
     Settings,
+    Cloud,
     GanttChart,
     BarChart3,
     Network,
@@ -48,6 +49,15 @@ import {
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useDialog } from '../contexts/DialogContext';
+import {
+    isGoogleDriveEnabled,
+    listGoogleDriveProjectFiles,
+    uploadProjectZipToGoogleDrive,
+    downloadGoogleDriveFileBlob,
+    importProjectFromGoogleDriveFile,
+    shareGoogleDriveFileWithEmail,
+    createGoogleDriveShareLink
+} from '../utils/googleDrive';
 
 const FileExplorer = () => {
     const { t } = useLanguage();
@@ -71,6 +81,9 @@ const FileExplorer = () => {
     const [viewMode, setViewMode] = useState('grid');
     const [isDragging, setIsDragging] = useState(false);
     const [contextMenu, setContextMenu] = useState(null);
+    const [showDrivePanel, setShowDrivePanel] = useState(false);
+    const [driveFiles, setDriveFiles] = useState([]);
+    const [driveBusy, setDriveBusy] = useState(false);
 
     // API Editor States
     const [apis, setApis] = useState([]);
@@ -352,6 +365,122 @@ const FileExplorer = () => {
         setIsApiModalOpen(true);
     };
 
+    const loadDriveFiles = async () => {
+        if (!isGoogleDriveEnabled()) {
+            setDriveFiles([]);
+            return;
+        }
+
+        setDriveBusy(true);
+        try {
+            const files = await listGoogleDriveProjectFiles();
+            setDriveFiles(files || []);
+        } catch (error) {
+            console.error('Failed to load Google Drive files:', error);
+            await showAlert('Google Drive', error.message || 'Failed to load files from Google Drive.');
+        } finally {
+            setDriveBusy(false);
+        }
+    };
+
+    const handleUploadProjectToDrive = async (project, e) => {
+        e.stopPropagation();
+        if (!isGoogleDriveEnabled()) {
+            await showAlert('Google Drive', 'Enable Google Drive first in Global Settings > Cloud Storage.');
+            return;
+        }
+
+        try {
+            setDriveBusy(true);
+            const zipBlob = await generateProjectZip(project);
+            const filename = `${project.projectName}.zip`;
+            await uploadProjectZipToGoogleDrive(zipBlob, filename);
+            await showAlert('Success', `Project uploaded to Google Drive: ${filename}`);
+            await loadDriveFiles();
+        } catch (error) {
+            console.error('Upload to Drive failed:', error);
+            await showAlert('Google Drive', error.message || 'Failed to upload project to Google Drive.');
+        } finally {
+            setDriveBusy(false);
+        }
+    };
+
+    const handleDownloadFromDrive = async (file, e) => {
+        e.stopPropagation();
+        try {
+            setDriveBusy(true);
+            const blob = await downloadGoogleDriveFileBlob(file.id);
+            saveAs(blob, file.name || `${file.id}.zip`);
+        } catch (error) {
+            console.error('Drive download failed:', error);
+            await showAlert('Google Drive', error.message || 'Failed to download file from Drive.');
+        } finally {
+            setDriveBusy(false);
+        }
+    };
+
+    const handleImportFromDrive = async (file, e) => {
+        e.stopPropagation();
+        try {
+            setDriveBusy(true);
+            const imported = await importProjectFromGoogleDriveFile(file.id);
+            const importedName = `${imported.projectName} (Drive ${new Date().toLocaleString('sv-SE').replace(' ', '_')})`;
+
+            await saveProject(
+                importedName,
+                imported.videoBlob,
+                imported.videoName,
+                imported.measurements || [],
+                imported.swcsData || null,
+                imported.standardWorkLayoutData || null,
+                currentFolderId
+            );
+
+            await showAlert('Success', `Project imported from Drive as "${importedName}"`);
+            await loadData();
+        } catch (error) {
+            console.error('Drive import failed:', error);
+            await showAlert('Google Drive', error.message || 'Failed to import project from Drive.');
+        } finally {
+            setDriveBusy(false);
+        }
+    };
+
+    const handleShareDriveFileToEmail = async (file, e) => {
+        e.stopPropagation();
+        const email = await showPrompt('Share to Email', 'Enter recipient email:', '');
+        if (!email || !email.trim()) return;
+
+        try {
+            setDriveBusy(true);
+            await shareGoogleDriveFileWithEmail(file.id, email.trim(), 'reader');
+            await showAlert('Success', `Access granted to ${email}`);
+        } catch (error) {
+            console.error('Drive share failed:', error);
+            await showAlert('Google Drive', error.message || 'Failed to share file.');
+        } finally {
+            setDriveBusy(false);
+        }
+    };
+
+    const handleCreateDriveLink = async (file, e) => {
+        e.stopPropagation();
+        try {
+            setDriveBusy(true);
+            const res = await createGoogleDriveShareLink(file.id, 'reader');
+            const link = res.webViewLink || res.webContentLink;
+            if (link && navigator?.clipboard?.writeText) {
+                await navigator.clipboard.writeText(link);
+            }
+            await showAlert('Share Link', link ? `Link copied:\n${link}` : 'Link generated but unavailable.');
+        } catch (error) {
+            console.error('Drive link failed:', error);
+            await showAlert('Google Drive', error.message || 'Failed to create share link.');
+        } finally {
+            setDriveBusy(false);
+        }
+    };
+
     const handleSaveApi = () => {
         if (!editingApi) return;
 
@@ -621,6 +750,18 @@ const FileExplorer = () => {
                         {categories.find(c => c.id === activeCategory)?.label || activeCategory}
                     </h2>
                     <div style={{ display: 'flex', gap: '12px' }}>
+                        {activeCategory === 'projects' && (
+                            <button
+                                onClick={async () => {
+                                    const next = !showDrivePanel;
+                                    setShowDrivePanel(next);
+                                    if (next) await loadDriveFiles();
+                                }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'rgba(59,130,246,0.15)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.4)', borderRadius: '10px', fontSize: '0.9rem', fontWeight: '600', cursor: 'pointer' }}
+                            >
+                                <Cloud size={18} /> {showDrivePanel ? 'Hide Drive' : 'Google Drive'}
+                            </button>
+                        )}
                         {(activeCategory === 'projects' || activeCategory === 'manuals') && (
                             <button
                                 onClick={handleCreateFolder}
@@ -659,6 +800,46 @@ const FileExplorer = () => {
                 </div>
 
                 <div style={styles.scrollArea}>
+                    {activeCategory === 'projects' && showDrivePanel && (
+                        <div style={{ marginBottom: '16px', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '12px', padding: '12px', background: 'rgba(59,130,246,0.06)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                <div style={{ fontWeight: 700, color: '#bfdbfe' }}>Google Drive Files</div>
+                                <button
+                                    onClick={loadDriveFiles}
+                                    disabled={driveBusy}
+                                    style={{ ...styles.viewBtn(false), padding: '8px 10px', backgroundColor: 'rgba(255,255,255,0.08)', color: '#fff' }}
+                                >
+                                    {driveBusy ? '...' : 'Refresh'}
+                                </button>
+                            </div>
+
+                            {driveFiles.length === 0 ? (
+                                <div style={{ color: '#93a4b8', fontSize: '0.85rem' }}>
+                                    No project zip files found on Drive (or not connected yet).
+                                </div>
+                            ) : (
+                                <div style={{ display: 'grid', gap: '8px' }}>
+                                    {driveFiles.map(file => (
+                                        <div key={file.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '10px' }}>
+                                            <div>
+                                                <div style={{ color: 'white', fontWeight: 600, fontSize: '0.9rem' }}>{file.name}</div>
+                                                <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
+                                                    {file.modifiedTime ? new Date(file.modifiedTime).toLocaleString() : '-'}
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                                <button onClick={(e) => handleImportFromDrive(file, e)} style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#2563eb', color: 'white', cursor: 'pointer' }}>Import</button>
+                                                <button onClick={(e) => handleDownloadFromDrive(file, e)} style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#0f766e', color: 'white', cursor: 'pointer' }}>Download</button>
+                                                <button onClick={(e) => handleShareDriveFileToEmail(file, e)} style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#7c3aed', color: 'white', cursor: 'pointer' }}>Share</button>
+                                                <button onClick={(e) => handleCreateDriveLink(file, e)} style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#374151', color: 'white', cursor: 'pointer' }}>Link</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Breadcrumbs */}
                     {(currentFolderId || breadcrumbs.length > 0) && (
                         <div style={styles.breadcrumb}>
@@ -767,6 +948,13 @@ const FileExplorer = () => {
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <button
+                                            onClick={(e) => handleUploadProjectToDrive(project, e)}
+                                            style={{ padding: '6px 12px', backgroundColor: 'rgba(30, 64, 175, 0.35)', color: '#dbeafe', border: '1px solid rgba(59,130,246,0.4)', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '600' }}
+                                            title="Upload project ZIP to Google Drive"
+                                        >
+                                            <Cloud size={14} style={{ display: 'inline', marginRight: '6px' }} />Drive
+                                        </button>
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();

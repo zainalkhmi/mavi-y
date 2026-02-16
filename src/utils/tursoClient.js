@@ -5,6 +5,8 @@ import { createClient } from '@libsql/client';
 
 let tursoClient = null;
 let isInitialized = false;
+let hasLoggedCredentialSource = false;
+let initializationPromise = null;
 
 // Database schema queries
 const SCHEMA_QUERIES = [
@@ -14,6 +16,14 @@ const SCHEMA_QUERIES = [
     key_string TEXT UNIQUE NOT NULL,
     email TEXT,
     machine_id TEXT,
+    bound_machine_id TEXT,
+    bound_ip TEXT,
+    bound_country TEXT,
+    bound_at TEXT,
+    last_seen_at TEXT,
+    last_seen_ip TEXT,
+    last_seen_country TEXT,
+    violation_count INTEGER DEFAULT 0,
     status TEXT DEFAULT 'active',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
@@ -35,6 +45,8 @@ const SCHEMA_QUERIES = [
     // Create indexes for better performance
     `CREATE INDEX IF NOT EXISTS idx_licenses_email ON licenses(email)`,
     `CREATE INDEX IF NOT EXISTS idx_licenses_status ON licenses(status)`,
+    `CREATE INDEX IF NOT EXISTS idx_licenses_bound_machine_id ON licenses(bound_machine_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_licenses_bound_ip ON licenses(bound_ip)`,
     `CREATE INDEX IF NOT EXISTS idx_youtube_category ON youtube_links(category)`,
     `CREATE INDEX IF NOT EXISTS idx_youtube_module ON youtube_links(module_id)`,
 
@@ -58,7 +70,17 @@ const SCHEMA_QUERIES = [
     version TEXT NOT NULL,
     uploaded_at TEXT NOT NULL,
     size INTEGER NOT NULL
-  )`
+  )`,
+
+    // Menu visibility control table
+    `CREATE TABLE IF NOT EXISTS menu_visibility (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    menu_path TEXT UNIQUE NOT NULL,
+    is_visible INTEGER NOT NULL DEFAULT 1,
+    updated_by TEXT,
+    updated_at TEXT NOT NULL
+  )`,
+    `CREATE INDEX IF NOT EXISTS idx_menu_visibility_path ON menu_visibility(menu_path)`
 ];
 
 /**
@@ -72,10 +94,14 @@ export const getDefaultCredentials = () => {
     const dbUrl = import.meta.env.VITE_TURSO_DATABASE_URL || DEFAULT_URL;
     const authToken = import.meta.env.VITE_TURSO_AUTH_TOKEN || DEFAULT_TOKEN;
 
-    if (dbUrl === DEFAULT_URL) {
-        console.log('💡 Using built-in default Turso credentials.');
-    } else {
-        console.log('💡 Using environment-provided Turso credentials.');
+    // Avoid repeating the same info log on every caller invocation
+    if (!hasLoggedCredentialSource) {
+        if (dbUrl === DEFAULT_URL) {
+            console.log('💡 Using built-in default Turso credentials.');
+        } else {
+            console.log('💡 Using environment-provided Turso credentials.');
+        }
+        hasLoggedCredentialSource = true;
     }
 
     return { dbUrl, authToken };
@@ -113,6 +139,8 @@ export const saveTursoCredentials = (url, token) => {
     // Force re-init on next call
     tursoClient = null;
     isInitialized = false;
+    hasLoggedCredentialSource = false;
+    initializationPromise = null;
 };
 
 /**
@@ -125,6 +153,8 @@ export const clearTursoCredentials = () => {
     // Force re-init on next call
     tursoClient = null;
     isInitialized = false;
+    hasLoggedCredentialSource = false;
+    initializationPromise = null;
 };
 
 /**
@@ -136,54 +166,68 @@ export const initTursoClient = async (retries = 3, backoff = 1000) => {
         return tursoClient;
     }
 
-    let lastError = null;
-    const { dbUrl, authToken } = getCredentials();
-
-    if (!dbUrl || !authToken) {
-        console.warn('Turso credentials not found');
-        return createMockClient();
+    // Prevent duplicate initialization from concurrent callers.
+    // All callers await the same in-flight promise.
+    if (initializationPromise) {
+        return initializationPromise;
     }
 
-    for (let attempt = 0; attempt <= retries; attempt++) {
-        try {
-            // Create Turso client (if not already created OR if previous attempt failed)
-            // Note: createClient itself is synchronous, it's the .execute that fails
-            if (!tursoClient) {
-                tursoClient = createClient({
-                    url: dbUrl,
-                    authToken: authToken,
-                });
-            }
+    initializationPromise = (async () => {
+        let lastError = null;
+        const { dbUrl, authToken } = getCredentials();
 
-            // Test connection
-            await tursoClient.execute('SELECT 1');
-            console.log(`✅ Turso database connected successfully (attempt ${attempt + 1})`);
-
-            // Initialize schema
-            await initializeSchema();
-            isInitialized = true;
-
-            return tursoClient;
-        } catch (error) {
-            lastError = error;
-            const isNetworkError = error.message?.includes('Failed to fetch') ||
-                error.message?.includes('network changed') ||
-                error.code === 'ERR_NETWORK_CHANGED';
-
-            if (isNetworkError && attempt < retries) {
-                console.warn(`⚠️ Turso connection attempt ${attempt + 1} failed (Network Error). Retrying in ${backoff}ms...`);
-                await new Promise(res => setTimeout(res, backoff));
-                backoff *= 2; // Exponential backoff
-                continue;
-            }
-
-            console.error(`❌ Turso initialization failed after ${attempt + 1} attempts:`, error);
-            break; // Non-network error or out of retries
+        if (!dbUrl || !authToken) {
+            console.warn('Turso credentials not found');
+            return createMockClient();
         }
-    }
 
-    // Return mock client as fallback if all retries fail
-    return createMockClient();
+        let currentBackoff = backoff;
+
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                // Create Turso client (if not already created OR if previous attempt failed)
+                // Note: createClient itself is synchronous, it's the .execute that fails
+                if (!tursoClient) {
+                    tursoClient = createClient({
+                        url: dbUrl,
+                        authToken: authToken,
+                    });
+                }
+
+                // Test connection
+                await tursoClient.execute('SELECT 1');
+                console.log(`✅ Turso database connected successfully (attempt ${attempt + 1})`);
+
+                // Initialize schema
+                await initializeSchema();
+                isInitialized = true;
+
+                return tursoClient;
+            } catch (error) {
+                lastError = error;
+                const isNetworkError = error.message?.includes('Failed to fetch') ||
+                    error.message?.includes('network changed') ||
+                    error.code === 'ERR_NETWORK_CHANGED';
+
+                if (isNetworkError && attempt < retries) {
+                    console.warn(`⚠️ Turso connection attempt ${attempt + 1} failed (Network Error). Retrying in ${currentBackoff}ms...`);
+                    await new Promise(res => setTimeout(res, currentBackoff));
+                    currentBackoff *= 2; // Exponential backoff
+                    continue;
+                }
+
+                console.error(`❌ Turso initialization failed after ${attempt + 1} attempts:`, error);
+                break; // Non-network error or out of retries
+            }
+        }
+
+        // Return mock client as fallback if all retries fail
+        return createMockClient();
+    })().finally(() => {
+        initializationPromise = null;
+    });
+
+    return initializationPromise;
 };
 
 /**
@@ -203,6 +247,78 @@ const initializeSchema = async () => {
 
         // --- MIGRATIONS ---
         // Handle cases where tables were created in older versions without newer columns
+        try {
+            await tursoClient.execute('ALTER TABLE licenses ADD COLUMN bound_machine_id TEXT');
+            console.log('✅ Migration: Added bound_machine_id to licenses');
+        } catch (e) {
+            if (!e.message.includes('duplicate column name')) {
+                console.warn('⚠️ Migration notice (licenses.bound_machine_id):', e.message);
+            }
+        }
+
+        try {
+            await tursoClient.execute('ALTER TABLE licenses ADD COLUMN bound_ip TEXT');
+            console.log('✅ Migration: Added bound_ip to licenses');
+        } catch (e) {
+            if (!e.message.includes('duplicate column name')) {
+                console.warn('⚠️ Migration notice (licenses.bound_ip):', e.message);
+            }
+        }
+
+        try {
+            await tursoClient.execute('ALTER TABLE licenses ADD COLUMN bound_country TEXT');
+            console.log('✅ Migration: Added bound_country to licenses');
+        } catch (e) {
+            if (!e.message.includes('duplicate column name')) {
+                console.warn('⚠️ Migration notice (licenses.bound_country):', e.message);
+            }
+        }
+
+        try {
+            await tursoClient.execute('ALTER TABLE licenses ADD COLUMN bound_at TEXT');
+            console.log('✅ Migration: Added bound_at to licenses');
+        } catch (e) {
+            if (!e.message.includes('duplicate column name')) {
+                console.warn('⚠️ Migration notice (licenses.bound_at):', e.message);
+            }
+        }
+
+        try {
+            await tursoClient.execute('ALTER TABLE licenses ADD COLUMN last_seen_at TEXT');
+            console.log('✅ Migration: Added last_seen_at to licenses');
+        } catch (e) {
+            if (!e.message.includes('duplicate column name')) {
+                console.warn('⚠️ Migration notice (licenses.last_seen_at):', e.message);
+            }
+        }
+
+        try {
+            await tursoClient.execute('ALTER TABLE licenses ADD COLUMN last_seen_ip TEXT');
+            console.log('✅ Migration: Added last_seen_ip to licenses');
+        } catch (e) {
+            if (!e.message.includes('duplicate column name')) {
+                console.warn('⚠️ Migration notice (licenses.last_seen_ip):', e.message);
+            }
+        }
+
+        try {
+            await tursoClient.execute('ALTER TABLE licenses ADD COLUMN last_seen_country TEXT');
+            console.log('✅ Migration: Added last_seen_country to licenses');
+        } catch (e) {
+            if (!e.message.includes('duplicate column name')) {
+                console.warn('⚠️ Migration notice (licenses.last_seen_country):', e.message);
+            }
+        }
+
+        try {
+            await tursoClient.execute('ALTER TABLE licenses ADD COLUMN violation_count INTEGER NOT NULL DEFAULT 0');
+            console.log('✅ Migration: Added violation_count to licenses');
+        } catch (e) {
+            if (!e.message.includes('duplicate column name')) {
+                console.warn('⚠️ Migration notice (licenses.violation_count):', e.message);
+            }
+        }
+
         try {
             // Add uploaded_at to cloud_installers if missing
             await tursoClient.execute('ALTER TABLE cloud_installers ADD COLUMN uploaded_at TEXT NOT NULL DEFAULT ""');

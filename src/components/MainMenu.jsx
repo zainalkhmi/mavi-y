@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { getMenuVisibilitySettings } from '../utils/tursoAPI';
 import {
     LayoutGrid,
     Cpu,
@@ -251,7 +252,29 @@ function MainMenu() {
     const { currentLanguage } = useLanguage();
     const { userRole } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
+    const [menuVisibilityMap, setMenuVisibilityMap] = useState({});
     const isId = currentLanguage === 'id';
+
+    const loadMenuVisibility = async () => {
+        try {
+            const settings = await getMenuVisibilitySettings();
+            setMenuVisibilityMap(settings || {});
+        } catch (error) {
+            console.error('Failed to load menu visibility settings:', error);
+            setMenuVisibilityMap({});
+        }
+    };
+
+    useEffect(() => {
+        loadMenuVisibility();
+
+        const handleVisibilityUpdated = () => {
+            loadMenuVisibility();
+        };
+
+        window.addEventListener('menu-visibility-updated', handleVisibilityUpdated);
+        return () => window.removeEventListener('menu-visibility-updated', handleVisibilityUpdated);
+    }, []);
 
     // Premium Animations and Dynamic Styles
     useEffect(() => {
@@ -300,8 +323,8 @@ function MainMenu() {
     }, []);
 
     const menuItemsWithAdmin = useMemo(() => {
-        return [...MENU_ITEMS];
-    }, []);
+        return MENU_ITEMS.filter(item => menuVisibilityMap[item.path] !== false);
+    }, [menuVisibilityMap]);
 
     const filteredItems = useMemo(() => {
         if (!searchQuery.trim()) return menuItemsWithAdmin;

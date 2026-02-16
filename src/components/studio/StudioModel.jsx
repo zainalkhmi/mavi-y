@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
+import { useMachine } from '@xstate/react';
 import { Plus, Search, Edit3, Trash2, Video, Activity, Box, X } from 'lucide-react';
 import ModelBuilder from './ModelBuilder';
+import { createStudioModelMachine } from './machines/studioModel.machine';
 
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useDialog } from '../../contexts/DialogContext';
@@ -28,59 +30,49 @@ const MOCK_MODELS = [
 const StudioModel = () => {
     const { t } = useLanguage();
     const { showConfirm, showPrompt } = useDialog();
-    // Load from localStorage or default to MOCK
-    const [models, setModels] = useState(() => {
+
+    const initialModels = useMemo(() => {
         const saved = localStorage.getItem('motionModels');
         return saved ? JSON.parse(saved) : MOCK_MODELS;
+    }, []);
+
+    const studioModelMachine = useMemo(() => createStudioModelMachine(), []);
+
+    const [state, send] = useMachine(studioModelMachine, {
+        input: { initialModels }
     });
+
+    const { models, searchTerm, selectedModel, showHelp } = state.context;
+    const isBuilderActive = state.matches('building');
 
     // Persist changes
     useEffect(() => {
         localStorage.setItem('motionModels', JSON.stringify(models));
     }, [models]);
 
-    const [searchTerm, setSearchTerm] = useState('');
-    const [isBuilderActive, setIsBuilderActive] = useState(false);
-    const [selectedModel, setSelectedModel] = useState(null);
-    const [showHelp, setShowHelp] = useState(false);
-
     const handleCreateModel = () => {
-        const newModel = {
-            id: `model_${Date.now()}`,
-            name: 'New Motion Model',
-            description: 'Description of the new model',
-            created: new Date().toISOString().split('T')[0],
-            states: 0,
-            rules: 0,
-            statesList: [], // Initialize empty arrays
-            transitions: [],
-            isNew: true
-        };
-        setSelectedModel(newModel);
-        setIsBuilderActive(true);
+        send({ type: 'CREATE_MODEL' });
     };
 
     const handleEditModel = (model) => {
-        setSelectedModel(model);
-        setIsBuilderActive(true);
+        send({ type: 'EDIT_MODEL', model });
     };
 
     const handleDeleteModel = async (id) => {
         if (await showConfirm('Delete Model', t('studioModel.deleteConfirm'))) {
-            setModels(models.filter(m => m.id !== id));
+            send({ type: 'CONFIRM_DELETE', id });
         }
     };
 
     const handleRenameModel = async (id, currentName) => {
         const newName = await showPrompt('Rename Model', t('studioModel.renamePrompt'), currentName);
         if (newName && newName !== currentName) {
-            setModels(models.map(m => m.id === id ? { ...m, name: newName } : m));
+            send({ type: 'CONFIRM_RENAME', id, newName });
         }
     };
 
     const handleCloseBuilder = () => {
-        setIsBuilderActive(false);
-        setSelectedModel(null);
+        send({ type: 'CLOSE_BUILDER' });
     };
 
     // Reuse HelpModal text/content
@@ -110,7 +102,7 @@ const StudioModel = () => {
                         {t('studioModel.helpModal.title')}
                     </h2>
                     <button
-                        onClick={() => setShowHelp(false)}
+                        onClick={() => send({ type: 'CLOSE_HELP' })}
                         style={{
                             background: 'rgba(255,255,255,0.05)',
                             border: '1px solid #374151',
@@ -246,7 +238,7 @@ const StudioModel = () => {
                 {/* Footer Action */}
                 <div style={{ padding: '20px 30px', borderTop: '1px solid #374151' }}>
                     <button
-                        onClick={() => setShowHelp(false)}
+                        onClick={() => send({ type: 'CLOSE_HELP' })}
                         style={{
                             padding: '12px 24px',
                             background: '#2563eb',
@@ -272,12 +264,7 @@ const StudioModel = () => {
                 model={selectedModel}
                 onClose={handleCloseBuilder}
                 onSave={(updatedModel) => {
-                    if (updatedModel.isNew) {
-                        setModels([...models, { ...updatedModel, isNew: false }]);
-                    } else {
-                        setModels(models.map(m => m.id === updatedModel.id ? updatedModel : m));
-                    }
-                    setIsBuilderActive(false);
+                    send({ type: 'SAVE_MODEL', updatedModel });
                 }}
             />
         );
@@ -453,7 +440,7 @@ const StudioModel = () => {
                 <div style={{ display: 'flex' }}>
                     <button
                         style={styles.helpButton}
-                        onClick={() => setShowHelp(true)}
+                        onClick={() => send({ type: 'OPEN_HELP' })}
                         onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#4b5563'}
                         onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#374151'}
                     >
@@ -481,7 +468,7 @@ const StudioModel = () => {
                         placeholder={t('studioModel.searchPlaceholder')}
                         style={styles.searchInput}
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e) => send({ type: 'SEARCH_CHANGED', value: e.target.value })}
                         onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
                         onBlur={(e) => e.target.style.borderColor = '#374151'}
                     />
@@ -547,7 +534,7 @@ const StudioModel = () => {
                                     e.stopPropagation();
                                     const newDesc = await showPrompt('Edit Description', t('studioModel.descPrompt'), model.description);
                                     if (newDesc !== null) {
-                                        setModels(models.map(m => m.id === model.id ? { ...m, description: newDesc } : m));
+                                        send({ type: 'UPDATE_DESCRIPTION', id: model.id, description: newDesc });
                                     }
                                 }}
 

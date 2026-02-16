@@ -8,15 +8,25 @@ function AIChatOverlay({
     onClose,
     onOpenSettings,
     contextData,
+    context,
+    chatHistory: externalChatHistory,
+    setChatHistory: externalSetChatHistory,
     systemPrompt = null,
     title = "Mavi Engineer",
     subtitle = "AI Assistant"
 }) {
-    const [chatHistory, setChatHistory] = useState([]);
+    const [localChatHistory, setLocalChatHistory] = useState([]);
     const [chatInput, setChatInput] = useState('');
     const [isAiThinking, setIsAiThinking] = useState(false);
     const [isChatFullscreen, setIsChatFullscreen] = useState(false);
     const [hasApiKey, setHasApiKey] = useState(false);
+
+    // Backward compatibility:
+    // - some modules pass `context` (not `contextData`)
+    // - some modules pass external chat history handlers
+    const mergedContextData = contextData || context || {};
+    const chatHistory = externalChatHistory || localChatHistory;
+    const setChatHistory = externalSetChatHistory || setLocalChatHistory;
 
     const messagesEndRef = useRef(null);
 
@@ -47,7 +57,7 @@ function AIChatOverlay({
     }, [visible, chatHistory]);
 
     const getGlobalContext = () => {
-        const globalContext = { ...contextData };
+        const globalContext = { ...mergedContextData };
 
         // Add active module metadata so AI can prioritize current menu analysis
         const path = window.location?.pathname || '';
@@ -57,7 +67,7 @@ function AIChatOverlay({
         globalContext.analysisMode = 'data-first';
 
         if (!globalContext.moduleData) {
-            globalContext.moduleData = { ...contextData };
+            globalContext.moduleData = { ...mergedContextData };
         }
 
         // Proactively try to gather context from known places if not already in contextData

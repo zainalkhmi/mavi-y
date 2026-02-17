@@ -102,6 +102,32 @@ const dbDataToBlob = (data, type = 'video/mp4') => {
     }
 };
 
+// Normalize legacy project rows where folderId was accidentally saved
+// into standardWorkLayoutData (older argument order bug).
+const normalizeProjectRow = (row) => {
+    const parsedSwcs = row.swcsData ? JSON.parse(row.swcsData) : null;
+    const parsedLayout = row.standardWorkLayoutData ? JSON.parse(row.standardWorkLayoutData) : null;
+
+    let normalizedFolderId = row.folderId;
+    let normalizedLayout = parsedLayout;
+
+    // Legacy recovery: if folderId is empty but layout is a number,
+    // treat that number as folderId.
+    if ((normalizedFolderId === null || normalizedFolderId === undefined) && typeof parsedLayout === 'number') {
+        normalizedFolderId = parsedLayout;
+        normalizedLayout = null;
+    }
+
+    return {
+        ...row,
+        folderId: normalizedFolderId,
+        videoBlob: dbDataToBlob(row.videoBlob),
+        measurements: JSON.parse(row.measurements || '[]'),
+        swcsData: parsedSwcs,
+        standardWorkLayoutData: normalizedLayout
+    };
+};
+
 // ===== PROJECT MANAGEMENT FUNCTIONS =====
 
 // Save new project
@@ -129,13 +155,7 @@ export const saveProject = async (projectName, videoBlob, videoName, measurement
 export const getAllProjects = async () => {
     const db = await initDB();
     const rows = await db.select('SELECT * FROM projects ORDER BY lastModified DESC');
-    return rows.map(r => ({
-        ...r,
-        videoBlob: dbDataToBlob(r.videoBlob),
-        measurements: JSON.parse(r.measurements || '[]'),
-        swcsData: r.swcsData ? JSON.parse(r.swcsData) : null,
-        standardWorkLayoutData: r.standardWorkLayoutData ? JSON.parse(r.standardWorkLayoutData) : null
-    }));
+    return rows.map(normalizeProjectRow);
 };
 
 // Get project by name
@@ -143,13 +163,7 @@ export const getProjectByName = async (projectName) => {
     const db = await initDB();
     const rows = await db.select('SELECT * FROM projects WHERE projectName = ?', [projectName]);
     if (rows.length === 0) return null;
-    return {
-        ...rows[0],
-        videoBlob: dbDataToBlob(rows[0].videoBlob),
-        measurements: JSON.parse(rows[0].measurements || '[]'),
-        swcsData: rows[0].swcsData ? JSON.parse(rows[0].swcsData) : null,
-        standardWorkLayoutData: rows[0].standardWorkLayoutData ? JSON.parse(rows[0].standardWorkLayoutData) : null
-    };
+    return normalizeProjectRow(rows[0]);
 };
 
 // Update project
@@ -211,13 +225,7 @@ export const getProjectById = async (id) => {
     const db = await initDB();
     const rows = await db.select('SELECT * FROM projects WHERE id = ?', [id]);
     if (rows.length === 0) return null;
-    return {
-        ...rows[0],
-        videoBlob: dbDataToBlob(rows[0].videoBlob),
-        measurements: JSON.parse(rows[0].measurements || '[]'),
-        swcsData: rows[0].swcsData ? JSON.parse(rows[0].swcsData) : null,
-        standardWorkLayoutData: rows[0].standardWorkLayoutData ? JSON.parse(rows[0].standardWorkLayoutData) : null
-    };
+    return normalizeProjectRow(rows[0]);
 };
 
 // Delete project by ID

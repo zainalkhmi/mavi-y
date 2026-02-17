@@ -15,6 +15,7 @@ import {
 import { getAllKnowledgeBaseItems, deleteKnowledgeBaseItem } from '../utils/knowledgeBaseDB';
 import { getAllVSMItems, deleteVSM } from '../utils/vsmDB';
 import { useNavigate } from 'react-router-dom';
+import { invoke } from '@tauri-apps/api/core';
 import { importProject, generateProjectZip } from '../utils/projectExport';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -41,6 +42,7 @@ import {
     ChevronRight,
     Settings,
     Cloud,
+    Plus,
     GanttChart,
     BarChart3,
     Network,
@@ -49,6 +51,7 @@ import {
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useDialog } from '../contexts/DialogContext';
+import NewProjectDialog from './NewProjectDialog';
 import {
     isGoogleDriveEnabled,
     listGoogleDriveProjectFiles,
@@ -84,6 +87,10 @@ const FileExplorer = () => {
     const [showDrivePanel, setShowDrivePanel] = useState(false);
     const [driveFiles, setDriveFiles] = useState([]);
     const [driveBusy, setDriveBusy] = useState(false);
+    const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
+    const [webSaveDirHandle, setWebSaveDirHandle] = useState(null);
+    const [webSaveDirName, setWebSaveDirName] = useState('');
+    const [isFsApiSupported, setIsFsApiSupported] = useState(false);
 
     // API Editor States
     const [apis, setApis] = useState([]);
@@ -93,6 +100,10 @@ const FileExplorer = () => {
     useEffect(() => {
         loadData();
     }, [currentFolderId, activeCategory]);
+
+    useEffect(() => {
+        setIsFsApiSupported(typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function');
+    }, []);
 
 
     const loadData = async () => {
@@ -309,6 +320,30 @@ const FileExplorer = () => {
         await openProject(project.projectName);
     };
 
+    const handleCreateProject = async (projectName, videoFile, folderId = null) => {
+        try {
+            const selectedFolderId = folderId ?? currentFolderId;
+            const videoBlob = new Blob([await videoFile.arrayBuffer()], { type: videoFile.type });
+
+            await saveProject(
+                projectName,
+                videoBlob,
+                videoFile.name,
+                [],
+                null,
+                null,
+                selectedFolderId
+            );
+
+            setShowNewProjectDialog(false);
+            await loadData();
+            await showAlert('Success', `Project "${projectName}" created successfully.`);
+        } catch (error) {
+            console.error('Failed to create project from File Explorer:', error);
+            await showAlert('Error', `Failed to create project: ${error.message}`);
+        }
+    };
+
     const handleOpenManual = (manual) => {
         // We navigate to manual creation and passing the manual ID
         navigate('/manual-creation', { state: { manualId: manual.id } });
@@ -402,6 +437,75 @@ const FileExplorer = () => {
             await showAlert('Google Drive', error.message || 'Failed to upload project to Google Drive.');
         } finally {
             setDriveBusy(false);
+        }
+    };
+
+    const handlePickWebSaveFolder = async () => {
+        if (!isFsApiSupported) {
+            await showAlert('Folder Access', 'Browser ini belum mendukung akses folder lokal. Gunakan Chrome/Edge terbaru.');
+            return;
+        }
+
+        try {
+            const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+            setWebSaveDirHandle(dirHandle);
+            setWebSaveDirName(dirHandle?.name || 'Selected Folder');
+            await showAlert('Folder Connected', `Folder lokal terpilih: ${dirHandle?.name || 'Unknown'}`);
+        } catch (error) {
+            if (error?.name === 'AbortError') return;
+            console.error('Failed to pick web folder:', error);
+            await showAlert('Error', error.message || 'Gagal memilih folder lokal.');
+        }
+    };
+
+    const saveBlobToWebSelectedFolder = async (blob, fileName) => {
+        if (!webSaveDirHandle) {
+            throw new Error('Folder lokal belum dipilih. Klik tombol "Pilih Folder Lokal" terlebih dahulu.');
+        }
+
+        const fileHandle = await webSaveDirHandle.getFileHandle(fileName, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+    };
+
+    const handleSaveProjectToDocuments = async (project, e) => {
+        e.stopPropagation();
+
+        try {
+            const zipBlob = await generateProjectZip(project);
+            const fileName = `${project.projectName}.zip`;
+
+            // Try native Tauri save to Documents\MAVI_Projects
+            try {
+                const uint8 = new Uint8Array(await zipBlob.arrayBuffer());
+                const savedPath = await invoke('save_project_to_documents', {
+                    fileName,
+                    data: Array.from(uint8)
+                });
+
+                await showAlert('Saved', `Project berhasil disimpan ke:\n${savedPath}`);
+                return;
+            } catch (nativeErr) {
+                // Fallback for web mode/non-Tauri runtime
+                console.warn('Native Documents save unavailable, fallback to browser download:', nativeErr);
+            }
+
+            if (isFsApiSupported && webSaveDirHandle) {
+                await saveBlobToWebSelectedFolder(zipBlob, fileName);
+                await showAlert('Saved', `Project berhasil disimpan ke folder lokal: ${webSaveDirName || 'Selected Folder'}\\${fileName}`);
+                return;
+            }
+
+            saveAs(zipBlob, fileName);
+            if (isFsApiSupported) {
+                await showAlert('Saved', `Mode web: file diunduh sebagai ${fileName}.\nTip: klik "Pilih Folder Lokal" agar save berikutnya langsung ke folder terpilih.`);
+            } else {
+                await showAlert('Saved', `Mode web terdeteksi. File diunduh sebagai ${fileName}.`);
+            }
+        } catch (error) {
+            console.error('Save to Documents failed:', error);
+            await showAlert('Error', error.message || 'Gagal menyimpan project ke Documents.');
         }
     };
 
@@ -752,6 +856,23 @@ const FileExplorer = () => {
                     <div style={{ display: 'flex', gap: '12px' }}>
                         {activeCategory === 'projects' && (
                             <button
+                                onClick={() => setShowNewProjectDialog(true)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '0.9rem', fontWeight: '600', cursor: 'pointer' }}
+                            >
+                                <Plus size={18} /> {t('project.newProject') || 'New Project'}
+                            </button>
+                        )}
+                        {activeCategory === 'projects' && (
+                            <button
+                                onClick={handlePickWebSaveFolder}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: isFsApiSupported ? 'rgba(16,185,129,0.15)' : 'rgba(107,114,128,0.2)', color: isFsApiSupported ? '#86efac' : '#9ca3af', border: `1px solid ${isFsApiSupported ? 'rgba(16,185,129,0.45)' : 'rgba(107,114,128,0.35)'}`, borderRadius: '10px', fontSize: '0.9rem', fontWeight: '600', cursor: 'pointer' }}
+                                title={isFsApiSupported ? 'Pilih folder lokal untuk save langsung (Web File System Access API)' : 'Browser tidak mendukung File System Access API'}
+                            >
+                                <Folder size={18} /> {webSaveDirName ? `Folder: ${webSaveDirName}` : 'Pilih Folder Lokal'}
+                            </button>
+                        )}
+                        {activeCategory === 'projects' && (
+                            <button
                                 onClick={async () => {
                                     const next = !showDrivePanel;
                                     setShowDrivePanel(next);
@@ -948,6 +1069,13 @@ const FileExplorer = () => {
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <button
+                                            onClick={(e) => handleSaveProjectToDocuments(project, e)}
+                                            style={{ padding: '6px 12px', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#86efac', border: '1px solid rgba(16,185,129,0.4)', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '600' }}
+                                            title="Save project ZIP (Desktop: Documents/MAVI_Projects, Web: folder terpilih/download)"
+                                        >
+                                            <Download size={14} style={{ display: 'inline', marginRight: '6px' }} />Docs
+                                        </button>
                                         <button
                                             onClick={(e) => handleUploadProjectToDrive(project, e)}
                                             style={{ padding: '6px 12px', backgroundColor: 'rgba(30, 64, 175, 0.35)', color: '#dbeafe', border: '1px solid rgba(59,130,246,0.4)', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '600' }}
@@ -1539,6 +1667,12 @@ const FileExplorer = () => {
                         </div>
                     </div>
                 )}
+
+                <NewProjectDialog
+                    isOpen={showNewProjectDialog}
+                    onClose={() => setShowNewProjectDialog(false)}
+                    onSubmit={handleCreateProject}
+                />
             </div>
 
             <style>{`

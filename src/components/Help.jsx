@@ -465,7 +465,7 @@ Standard Time = Normal Time × (1 + Allowances)
 **Video tidak muncul:**
 ✅ Cek format: MP4, WebM, Ogg supported
 ✅ Cek ukuran file (max ~500MB)
-✅ Refresh browser (Ctrl+F5)
+✅ Klik tombol Refresh di sidebar (ikon 🔄)
 
 **Data hilang setelah refresh:**
 ⚠️ Data belum disimpan ke database

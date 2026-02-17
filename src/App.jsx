@@ -682,6 +682,7 @@ function AppContent() {
           isOpen={showOpenProjectDialog}
           onClose={() => setShowOpenProjectDialog(false)}
           onOpenProject={handleOpenProject}
+          onImportProject={handleImportProject}
         />
 
         <SaveAsDialog

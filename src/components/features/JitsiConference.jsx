@@ -192,7 +192,7 @@ function JitsiConference() {
 
             if (!containerRef.current?.querySelector('iframe')) {
                 setError(
-                    'Iframe Jitsi belum muncul. Coba tunggu beberapa detik atau klik Rejoin. Jika tetap blank, refresh browser (Ctrl+F5) lalu join lagi.'
+                    'Iframe Jitsi belum muncul. Coba tunggu beberapa detik atau klik Rejoin. Jika tetap blank, klik tombol Refresh (ikon 🔄) di sidebar lalu join lagi.'
                 );
             }
         } catch (err) {

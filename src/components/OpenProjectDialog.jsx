@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDialog } from '../contexts/DialogContext';
 import { getAllProjects, deleteProject } from '../utils/database';
 import { exportProject } from '../utils/projectExport';
 import { useLanguage } from '../contexts/LanguageContext';
 
-function OpenProjectDialog({ isOpen, onClose, onOpenProject }) {
+function OpenProjectDialog({ isOpen, onClose, onOpenProject, onImportProject }) {
     const { showAlert, showConfirm } = useDialog();
     const { t } = useLanguage();
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
+    const importInputRef = useRef(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -88,6 +89,52 @@ function OpenProjectDialog({ isOpen, onClose, onOpenProject }) {
         }
     };
 
+    const handleImportZipClick = () => {
+        if (importInputRef.current) {
+            importInputRef.current.removeAttribute('webkitdirectory');
+            importInputRef.current.removeAttribute('directory');
+            importInputRef.current.value = '';
+            importInputRef.current.click();
+        }
+    };
+
+    const handleImportFolderClick = () => {
+        if (importInputRef.current) {
+            importInputRef.current.setAttribute('webkitdirectory', '');
+            importInputRef.current.setAttribute('directory', '');
+            importInputRef.current.value = '';
+            importInputRef.current.click();
+        }
+    };
+
+    const handleImportInputChange = async (e) => {
+        if (!onImportProject) return;
+
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        const zipFiles = files.filter(file => file.name.toLowerCase().endsWith('.zip'));
+
+        if (zipFiles.length === 0) {
+            await showAlert('Info', 'Tidak ditemukan file .zip pada pilihan Anda.');
+            return;
+        }
+
+        if (zipFiles.length > 1) {
+            const confirmed = await showConfirm(
+                'Import Banyak Proyek',
+                `Ditemukan ${zipFiles.length} file ZIP. Import semua proyek sekarang?`
+            );
+            if (!confirmed) return;
+        }
+
+        for (const zipFile of zipFiles) {
+            await onImportProject(zipFile);
+        }
+
+        await loadProjects();
+    };
+
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('id-ID', {
@@ -128,6 +175,34 @@ function OpenProjectDialog({ isOpen, onClose, onOpenProject }) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                         <h2 style={{ margin: 0, color: 'white' }}>{t('project.openProject')}</h2>
                         <button
+                            onClick={handleImportZipClick}
+                            style={{
+                                padding: '6px 12px',
+                                backgroundColor: 'rgba(30, 64, 175, 0.25)',
+                                color: '#dbeafe',
+                                border: '1px solid rgba(59, 130, 246, 0.55)',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '0.8rem'
+                            }}
+                        >
+                            📥 Import .zip
+                        </button>
+                        <button
+                            onClick={handleImportFolderClick}
+                            style={{
+                                padding: '6px 12px',
+                                backgroundColor: 'rgba(16, 185, 129, 0.14)',
+                                color: '#86efac',
+                                border: '1px solid rgba(16, 185, 129, 0.45)',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '0.8rem'
+                            }}
+                        >
+                            📁 Load folder lokal
+                        </button>
+                        <button
                             onClick={handleCleanup}
                             style={{
                                 padding: '6px 12px',
@@ -163,6 +238,9 @@ function OpenProjectDialog({ isOpen, onClose, onOpenProject }) {
                 ) : projects.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
                         {t('project.noProjects')}
+                        <div style={{ marginTop: '14px', color: '#666', fontSize: '0.9rem' }}>
+                            Gunakan tombol <strong>Import .zip</strong> atau <strong>Load folder lokal</strong> untuk memuat proyek dari PC.
+                        </div>
                     </div>
                 ) : (
                     <div style={{ display: 'grid', gap: '15px' }}>
@@ -249,6 +327,15 @@ function OpenProjectDialog({ isOpen, onClose, onOpenProject }) {
                         ))}
                     </div>
                 )}
+
+                <input
+                    ref={importInputRef}
+                    type="file"
+                    accept=".zip"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={handleImportInputChange}
+                />
             </div>
         </div>
     );

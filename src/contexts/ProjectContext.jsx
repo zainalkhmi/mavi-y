@@ -77,7 +77,15 @@ export const ProjectProvider = ({ children }) => {
         setIsLoading(true);
         try {
             const videoBlob = new Blob([await videoFile.arrayBuffer()], { type: videoFile.type });
-            const projectId = await saveProjectToDb(name, videoBlob, videoFile.name, initialMeasurements, null, folderId);
+            const projectId = await saveProjectToDb(
+                name,
+                videoBlob,
+                videoFile.name,
+                initialMeasurements,
+                null,
+                null,
+                folderId
+            );
 
             setCurrentProject({ id: projectId, projectName: name, folderId: folderId });
             setVideoSrc(URL.createObjectURL(videoBlob));
@@ -150,7 +158,15 @@ export const ProjectProvider = ({ children }) => {
             const videoBlob = currentProject.videoBlob || new Blob([await fetch(videoSrc).then(r => r.arrayBuffer())], { type: 'video/mp4' });
 
             // Save as new project
-            const projectId = await saveProjectToDb(newName.trim(), videoBlob, videoName, measurements, null, currentProject.folderId);
+            const projectId = await saveProjectToDb(
+                newName.trim(),
+                videoBlob,
+                videoName,
+                measurements,
+                null,
+                null,
+                currentProject.folderId
+            );
 
             // Switch to the new project
             setCurrentProject({ id: projectId, projectName: newName.trim(), folderId: currentProject.folderId });

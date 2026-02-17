@@ -20,6 +20,28 @@ fn get_machine_id() -> String {
 }
 
 #[tauri::command]
+fn save_project_to_documents(file_name: String, data: Vec<u8>) -> Result<String, String> {
+    use std::env;
+    use std::fs;
+    use std::path::PathBuf;
+
+    let user_profile = env::var("USERPROFILE").map_err(|e| format!("USERPROFILE not found: {}", e))?;
+
+    let mut dir = PathBuf::from(user_profile);
+    dir.push("Documents");
+    dir.push("MAVI_Projects");
+
+    fs::create_dir_all(&dir).map_err(|e| format!("Failed to create directory: {}", e))?;
+
+    let mut file_path = dir;
+    file_path.push(file_name);
+
+    fs::write(&file_path, data).map_err(|e| format!("Failed to save file: {}", e))?;
+
+    Ok(file_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
 async fn run_playwright_tests(handle: tauri::AppHandle, tags: Option<String>) -> Result<String, String> {
     use std::process::Command;
     use std::env;
@@ -60,7 +82,7 @@ async fn run_playwright_tests(handle: tauri::AppHandle, tags: Option<String>) ->
 fn main() {
   tauri::Builder::default()
     .plugin(tauri_plugin_sql::Builder::default().build())
-    .invoke_handler(tauri::generate_handler![get_machine_id, run_playwright_tests])
+    .invoke_handler(tauri::generate_handler![get_machine_id, run_playwright_tests, save_project_to_documents])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

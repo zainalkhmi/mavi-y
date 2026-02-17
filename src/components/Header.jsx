@@ -32,7 +32,8 @@ import {
     Rocket,
     Shield,
     Sparkles,
-    Zap
+    Zap,
+    RefreshCw
 } from 'lucide-react';
 
 const MENU_CATEGORIES = {
@@ -89,6 +90,7 @@ const MENU_ITEMS = [
 function Header({ videoName, onUpload, onLogout, sidebarCollapsed }) {
     const { t } = useLanguage();
     const { userRole } = useAuth();
+    const navigate = useNavigate();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [dbStatus, setDbStatus] = useState({ isConfigured: false, isOnline: true, mode: 'Local' });
     const [menuVisibilityMap, setMenuVisibilityMap] = useState({});
@@ -260,6 +262,46 @@ function Header({ videoName, onUpload, onLogout, sidebarCollapsed }) {
             {!sidebarCollapsed && (
                 <div id="header-tools" style={{ marginTop: 'auto', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', alignItems: 'center', padding: '0 12px' }}>
                     {/* Admin Panel button removed as per user request */}
+
+                    <button
+                        className="btn"
+                        onClick={() => navigate('/')}
+                        title="Video"
+                        style={{
+                            padding: '0',
+                            fontSize: '1.2rem',
+                            width: '80%',
+                            height: '50px',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            backgroundColor: '#333',
+                            border: '1px solid #555',
+                            borderRadius: '10px'
+                        }}
+                    >
+                        <Film size={20} />
+                    </button>
+
+                    <button
+                        className="btn"
+                        onClick={() => window.location.reload()}
+                        title="Refresh"
+                        style={{
+                            padding: '0',
+                            fontSize: '1.2rem',
+                            width: '80%',
+                            height: '50px',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            backgroundColor: '#333',
+                            border: '1px solid #555',
+                            borderRadius: '10px'
+                        }}
+                    >
+                        <RefreshCw size={20} />
+                    </button>
 
 
 

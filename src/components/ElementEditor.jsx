@@ -16,6 +16,7 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
     const [editCycle, setEditCycle] = useState(1);
     const [editManual, setEditManual] = useState(0);
     const [editAuto, setEditAuto] = useState(0);
+    const [editWalk, setEditWalk] = useState(0);
     const [editWait, setEditWait] = useState(0);
     const [editOmega, setEditOmega] = useState(0);
     const [editAcceleration, setEditAcceleration] = useState(0);
@@ -155,6 +156,7 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
         finish: true,
         manual: true,
         auto: true,
+        walk: true,
         waiting: true,
         duration: true,
         actions: true
@@ -216,6 +218,7 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
         setEditCycle(element.cycle || 1);
         setEditManual(element.manualTime ?? element.duration ?? 0);
         setEditAuto(element.autoTime || 0);
+        setEditWalk(element.walkTime || 0);
         setEditWait(element.waitingTime || 0);
         setEditOmega(element.angularVelocity || 0);
         setEditAcceleration(element.angularAcceleration || 0);
@@ -239,13 +242,14 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
         }
 
         const auto = parseFloat(editAuto) || 0;
+        const walk = parseFloat(editWalk) || 0;
         const manual = parseFloat(editManual) || 0;
         const waiting = parseFloat(editWait) || 0;
         const omega = parseFloat(editOmega) || 0;
         const acceleration = parseFloat(editAcceleration) || 0;
         const jerk = parseFloat(editJerk) || 0;
         const duration = endTime - startTime;
-        const totalSplit = auto + waiting;
+        const totalSplit = auto + walk + waiting;
 
         if (totalSplit > duration + 0.01) { // 0.01 tolerance for floating point
             await showAlert(t('common.error'), t('elementEditor.errors.totalSplitExceeds'));
@@ -265,6 +269,7 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
             cycle: parseInt(editCycle) || 1,
             manualTime: manual,
             autoTime: auto,
+            walkTime: walk,
             waitingTime: waiting,
             angularVelocity: omega,
             angularAcceleration: acceleration,
@@ -284,6 +289,7 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
         setEditCycle(1);
         setEditManual(0);
         setEditAuto(0);
+        setEditWalk(0);
         setEditWait(0);
         setEditOmega(0);
         setEditAcceleration(0);
@@ -376,7 +382,7 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
 
     const visibleColumnCount = Object.values(visibleColumns).filter(Boolean).length;
     // Columns that appear before the 'Duration' column
-    const columnsBeforeDuration = ['no', 'cycle', 'process', 'category', 'start', 'finish', 'manual', 'auto', 'waiting'];
+    const columnsBeforeDuration = ['no', 'cycle', 'process', 'category', 'start', 'finish', 'manual', 'auto', 'walk', 'waiting'];
     const visibleBeforeDuration = columnsBeforeDuration.filter(c => visibleColumns[c]).length;
 
     const handleSendMessage = async () => {
@@ -623,6 +629,7 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
                             {visibleColumns.finish && <th style={{ padding: '4px', border: '1px solid #444', width: '70px', fontSize: '0.7rem' }}>{t('elementEditor.endTime')} (s)</th>}
                             {visibleColumns.manual && <th style={{ padding: '4px', border: '1px solid #444', width: '80px', fontSize: '0.7rem', color: '#facc15' }}>{t('elementEditor.manual', 'Manual')}</th>}
                             {visibleColumns.auto && <th style={{ padding: '4px', border: '1px solid #444', width: '80px', fontSize: '0.7rem', color: '#22c55e' }}>{t('elementEditor.auto', 'Auto')}</th>}
+                            {visibleColumns.walk && <th style={{ padding: '4px', border: '1px solid #444', width: '80px', fontSize: '0.7rem', color: '#ef4444' }}>{t('elementEditor.walk', 'Walk')}</th>}
                             {visibleColumns.waiting && <th style={{ padding: '4px', border: '1px solid #444', width: '80px', fontSize: '0.7rem', color: '#f97316' }}>{t('elementEditor.loss', 'Waiting')}</th>}
                             {visibleColumns.duration && <th style={{ padding: '4px', border: '1px solid #444', width: '80px', fontSize: '0.7rem' }}>{t('elementEditor.duration')} (s)</th>}
                         </tr>
@@ -758,6 +765,25 @@ function ElementEditor({ measurements = [], videoName = 'Untitled', onUpdateMeas
                                                     style={{ width: '72px', padding: '4px', backgroundColor: '#222', border: '1px solid #555', color: '#22c55e', fontSize: '0.8rem', textAlign: 'right' }}
                                                 />
                                             ) : ((Number(el.autoTime) || 0).toFixed(2))}
+                                        </td>}
+                                        {visibleColumns.walk && <td
+                                            style={{
+                                                padding: '6px',
+                                                border: '1px solid #444',
+                                                textAlign: 'right',
+                                                color: '#ef4444',
+                                                backgroundColor: stopwatches?.[el.id]?.walk !== undefined ? 'rgba(239, 68, 68, 0.18)' : 'transparent'
+                                            }}
+                                        >
+                                            {editingId === el.id ? (
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={editWalk}
+                                                    onChange={(e) => setEditWalk(e.target.value)}
+                                                    style={{ width: '72px', padding: '4px', backgroundColor: '#222', border: '1px solid #555', color: '#ef4444', fontSize: '0.8rem', textAlign: 'right' }}
+                                                />
+                                            ) : ((Number(el.walkTime) || 0).toFixed(2))}
                                         </td>}
                                         {visibleColumns.waiting && <td
                                             style={{

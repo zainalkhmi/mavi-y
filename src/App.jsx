@@ -98,7 +98,11 @@ const SpaghettiChart = React.lazy(() => import('./components/SpaghettiChart'));
 const WorkflowGuide = React.lazy(() => import('./components/WorkflowGuide'));
 const MaviClass = React.lazy(() => import('./components/MaviClass'));
 const MotionLaboratory = React.lazy(() => import('./components/studio/MotionLaboratory'));
-const FileExplorer = React.lazy(() => import('./components/FileExplorer'));
+const FileExplorer = lazyWithRetry(
+  () => import('./components/FileExplorer'),
+  'FileExplorer',
+  '/src/components/FileExplorer.jsx'
+);
 const PublicManualViewer = React.lazy(() => import('./components/PublicManualViewer'));
 const SystemDiagnostics = React.lazy(() => import('./components/SystemDiagnostics'));
 const AdminPanel = React.lazy(() => import('./components/AdminPanel'));

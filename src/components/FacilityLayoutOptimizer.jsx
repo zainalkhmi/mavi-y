@@ -4,7 +4,7 @@ import { useDialog } from '../contexts/DialogContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getAllProjects, saveFacilityLayoutData } from '../utils/database';
 import { evaluateFacilityLayout, generateFacilityScenarios } from '../utils/layoutOptimizationEngine';
-import { Save, Sparkles, Plus, Trash2, RefreshCw, Lock, Unlock, Move, MousePointer2, Image as ImageIcon, FileCog } from 'lucide-react';
+import { Save, Sparkles, Plus, Trash2, RefreshCw, Lock, Unlock, Move, MousePointer2, Image as ImageIcon, FileCog, Network, ArrowRight } from 'lucide-react';
 import AIChatOverlay from './features/AIChatOverlay';
 
 const DEFAULT_CANVAS = { width: 980, height: 620 };
@@ -367,39 +367,6 @@ function FacilityLayoutOptimizer() {
                     </div>
                 </div>
 
-                <div style={{ border: '1px solid #374151', borderRadius: 8, padding: 10, marginBottom: 12 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
-                        {t('facilityLayout.options.title') || 'Options'}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 6 }}>
-                        {(t('facilityLayout.options.detectedStructure') || 'Detected Structure')}: <strong>{detectedStructure === 'line' ? (t('facilityLayout.options.lineDetected') || 'Line structure detected.') : (t('facilityLayout.options.networkDetected') || 'Network structure detected.')}</strong>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        <button
-                            onClick={() => setOptimizationMode('network')}
-                            style={{ flex: 1, background: optimizationMode === 'network' ? '#1d4ed8' : '#1f2937' }}
-                        >
-                            {t('facilityLayout.options.calculateForNetwork') || 'Calculate for Network Structure'}
-                        </button>
-                        <button
-                            onClick={() => setOptimizationMode('line')}
-                            style={{ flex: 1, background: optimizationMode === 'line' ? '#1d4ed8' : '#1f2937' }}
-                        >
-                            {t('facilityLayout.options.calculateForLine') || 'Calculate for Line Structure'}
-                        </button>
-                    </div>
-                    {optimizationMode === 'line' && detectedStructure === 'network' && (
-                        <div style={{ marginTop: 8, fontSize: 11, color: '#fbbf24' }}>
-                            {t('facilityLayout.options.warningLinearization') || 'Line optimization may not fit detected network structure.'}
-                        </div>
-                    )}
-                    {optimizationMode === 'network' && detectedStructure === 'line' && (
-                        <div style={{ marginTop: 8, fontSize: 11, color: '#fbbf24' }}>
-                            {t('facilityLayout.options.warningNetworkForLine') || 'Network optimization may not fit detected line structure.'}
-                        </div>
-                    )}
-                </div>
-
                 <label style={{ fontSize: 12, color: '#9ca3af' }}>{t('facilityLayout.project') || 'Project'}</label>
                 <select value={selectedProjectId || ''} onChange={(e) => setSelectedProjectId(e.target.value ? Number(e.target.value) : null)} style={{ width: '100%', marginTop: 6, marginBottom: 16 }}>
                     <option value="">{t('facilityLayout.selectProject') || 'Select Project'}</option>
@@ -475,6 +442,68 @@ function FacilityLayoutOptimizer() {
             </div>
 
             <div style={{ padding: 12, display: 'flex', flexDirection: 'column' }}>
+                <div
+                    style={{
+                        marginBottom: 10,
+                        border: '1px solid rgba(59,130,246,0.35)',
+                        background: 'linear-gradient(135deg, rgba(15,23,42,0.95), rgba(30,41,59,0.88))',
+                        borderRadius: 12,
+                        padding: '10px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        boxShadow: '0 10px 24px rgba(2,6,23,0.35)'
+                    }}
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ fontSize: 11, color: '#93c5fd', fontWeight: 700, letterSpacing: 0.3 }}>
+                            {t('facilityLayout.options.detectedStructure') || 'Detected Structure'}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 700 }}>
+                            {detectedStructure === 'line'
+                                ? (t('facilityLayout.options.lineDetected') || 'Line structure detected.')
+                                : (t('facilityLayout.options.networkDetected') || 'Network structure detected.')}
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                            onClick={() => setOptimizationMode('network')}
+                            style={{
+                                minWidth: 170,
+                                background: optimizationMode === 'network' ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : '#1f2937',
+                                border: optimizationMode === 'network' ? '1px solid rgba(147,197,253,0.9)' : '1px solid #334155',
+                                fontWeight: 700
+                            }}
+                        >
+                            <Network size={14} /> {t('facilityLayout.options.calculateForNetwork') || 'Calculate for Network Structure'}
+                        </button>
+                        <button
+                            onClick={() => setOptimizationMode('line')}
+                            style={{
+                                minWidth: 150,
+                                background: optimizationMode === 'line' ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : '#1f2937',
+                                border: optimizationMode === 'line' ? '1px solid rgba(147,197,253,0.9)' : '1px solid #334155',
+                                fontWeight: 700
+                            }}
+                        >
+                            <ArrowRight size={14} /> {t('facilityLayout.options.calculateForLine') || 'Calculate for Line Structure'}
+                        </button>
+                    </div>
+                </div>
+
+                {(optimizationMode === 'line' && detectedStructure === 'network') && (
+                    <div style={{ marginBottom: 8, fontSize: 11, color: '#fbbf24' }}>
+                        {t('facilityLayout.options.warningLinearization') || 'Line optimization may not fit detected network structure.'}
+                    </div>
+                )}
+                {(optimizationMode === 'network' && detectedStructure === 'line') && (
+                    <div style={{ marginBottom: 8, fontSize: 11, color: '#fbbf24' }}>
+                        {t('facilityLayout.options.warningNetworkForLine') || 'Network optimization may not fit detected line structure.'}
+                    </div>
+                )}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, color: '#9ca3af' }}>
                     <div>Mouse: {mousePos.x}, {mousePos.y} {scaleUnit}</div>
                     <div>Zoom: {(zoom * 100).toFixed(0)}% | Pan: {pan.x.toFixed(0)}, {pan.y.toFixed(0)}</div>

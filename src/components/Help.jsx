@@ -62,6 +62,7 @@ function Help() {
 🥽 **VR Training** - Mode pelatihan immersive untuk operator baru
 📚 **Knowledge Base** - Repository templates & best practices
 🗺️ **VSM Pro** - Value Stream Mapping dengan fitur TPS lanjut
+🏭 **Layout Optimizer** - Optimasi tata letak area/fasilitas berbasis aliran material
 ❓ **Help** - Panduan penggunaan aplikasi
 
 **Advanced TPS Tools:**
@@ -411,6 +412,120 @@ Visualisasi Therblig flow diagram untuk analisis gerakan dan layout workstation.
 • Banyak garis merah = banyak waste
 • Crossing lines = layout kurang optimal
 • Sequence panjang = perlu simplifikasi
+            `
+        },
+        layoutoptimizer: {
+            title: '🏭 Facility Layout Optimizer',
+            content: `
+**Fungsi:**
+Merancang dan mengoptimasi tata letak area produksi/fasilitas berdasarkan aliran material, jarak perpindahan, biaya transport, serta constraint proses.
+
+**Tujuan Utama:**
+• Menurunkan total biaya perpindahan material (transport cost)
+• Mengurangi jarak perpindahan antar area (total distance)
+• Meminimalkan overlap dan pelanggaran jarak minimum
+• Menyeimbangkan flow control (Push/Pull/FIFO/Kanban/CONWIP)
+• Menjaga target lead time proses
+
+**Struktur Tampilan (3 Panel):**
+
+1️⃣ **Panel Kiri (Setup & Kontrol)**
+• Pilih project
+• Add Area / Add Flow
+• Optimize / Save
+• Mode interaksi: Select / Pan
+• Zoom + / Zoom - / Reset View
+• Scale & Snap (Grid px, Unit/Grid, satuan m/ft/px, Snap ON/OFF)
+• Lead Time Constraint
+• Import referensi: Image dan CAD (DWG/DXF)
+
+2️⃣ **Panel Tengah (Canvas Layout)**
+• Area kerja layout dengan ruler, grid, zoom, pan
+• Drag-drop area untuk ubah posisi
+• Visual flow antar area dengan panah berwarna sesuai control type
+• Mode optimasi:
+   - Calculate for Network Structure
+   - Calculate for Line Structure
+
+3️⃣ **Panel Kanan (Analisis & Detail)**
+• KPI utama: Total Cost, Flow Cost, Total Distance, Lead Time, penalties
+• Flow Control summary
+• Editor detail flow matrix
+• Daftar skenario hasil optimasi
+• Properti area terpilih (nama, ukuran, lock/unlock)
+• Pengaturan ukuran canvas & opacity background
+
+**Workflow Rekomendasi (Step-by-step):**
+
+1. Pilih Project
+2. Tambahkan Area kerja sesuai workstation/departemen
+3. Tambahkan Flow antar area (from-to)
+4. Isi parameter flow:
+   • Frequency
+   • Unit Cost
+   • Control Type
+   • Buffer Limit, Reorder Point
+   • Base Lead Time, Handling Time
+   • Transport Speed, Signal Qty
+5. Atur skala layout (grid dan unit nyata)
+6. Aktifkan Snap untuk positioning presisi
+7. Jalankan **Optimize**
+8. Bandingkan skenario yang dihasilkan
+9. Pilih skenario terbaik berdasarkan KPI
+10. **Save** ke project
+
+**Penjelasan KPI:**
+• **Total Cost**: indikator utama objective function
+• **Flow Cost**: akumulasi biaya aliran antar area
+• **Total Distance**: total jarak perpindahan berbobot frekuensi
+• **Average/Total Lead Time**: estimasi waktu aliran sistem
+• **Overlap Penalty**: penalti area saling tumpang tindih
+• **Spacing Penalty**: penalti jika jarak area kurang dari batas minimum
+• **Flow Control Penalty**: penalti dari pengaturan control tidak ideal
+• **Structure Penalty**: penalti ketidaksesuaian mode optimasi dengan pola layout
+• **Lead Time Penalty**: penalti jika melewati target lead time
+
+**Mode Struktur (Line vs Network):**
+• Sistem akan mendeteksi struktur layout secara otomatis (Detected Structure)
+• **Line** cocok untuk aliran searah minim backflow
+• **Network** cocok untuk aliran bercabang/kompleks
+• Jika mode optimasi tidak cocok dengan struktur terdeteksi, warning akan muncul
+
+**Flow Control Types:**
+• **Push**: produksi dorong berdasarkan jadwal
+• **Pull / Supermarket**: produksi tarik berbasis kebutuhan downstream
+• **FIFO Lane**: aliran first-in-first-out
+• **Kanban Signal**: replenishment berbasis sinyal
+• **CONWIP**: kontrol WIP total pada sistem
+
+**Fitur CAD & Background:**
+• Import **Image** untuk floorplan referensi visual
+• Import **DWG/DXF** sebagai metadata referensi awal
+• Opacity background dapat diatur agar area dan flow tetap terbaca
+
+**Tips Praktis:**
+• Mulai dari layout baseline aktual, lalu optimize bertahap
+• Lock area yang tidak boleh dipindah (mesin fixed/utilitas)
+• Pastikan skala grid sesuai kondisi lapangan
+• Gunakan frequency berdasarkan data historis, bukan asumsi kasar
+• Evaluasi trade-off biaya vs lead time, bukan hanya satu KPI
+• Simpan setiap iterasi penting untuk pembandingan
+
+**Troubleshooting:**
+• **Optimize tidak menghasilkan perbaikan signifikan:**
+  Cek kelengkapan flow, frequency, unit cost, dan constraint
+• **Layout terasa tidak realistis:**
+  Aktifkan Snap, sesuaikan grid scale, lock area fixed
+• **Flow line membingungkan:**
+  Kurangi flow yang tidak relevan atau pisahkan per value stream
+• **Save gagal:**
+  Pastikan project sudah dipilih sebelum menyimpan
+
+**Best Practice Implementasi di Lapangan:**
+• Validasi hasil optimasi dengan tim IE, produksi, dan material handling
+• Uji skenario di area pilot sebelum deployment penuh
+• Dokumentasikan perubahan layout dan dampaknya (cost, distance, lead time)
+• Lakukan review berkala setelah volume/varian produk berubah
             `
         },
 
@@ -835,6 +950,9 @@ Tangga waktu otomatis di bagian bawah VSM yang memisahkan Lead Time (inventory) 
                         </div>
                         <div style={{ padding: '10px', backgroundColor: '#2a2a2a', borderRadius: '4px', textAlign: 'center', cursor: 'pointer' }} onClick={() => setActiveSection('features')}>
                             🎬 Fitur Utama
+                        </div>
+                        <div style={{ padding: '10px', backgroundColor: '#2a2a2a', borderRadius: '4px', textAlign: 'center', cursor: 'pointer' }} onClick={() => setActiveSection('layoutoptimizer')}>
+                            🏭 Layout Optimizer
                         </div>
                         <div style={{ padding: '10px', backgroundColor: '#2a2a2a', borderRadius: '4px', textAlign: 'center', cursor: 'pointer' }} onClick={() => setActiveSection('tips')}>
                             💡 Tips

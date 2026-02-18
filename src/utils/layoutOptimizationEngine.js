@@ -11,6 +11,28 @@ const distance = (a, b) => {
     return Math.sqrt(dx * dx + dy * dy);
 };
 
+const getFlowPathDistance = (flow = {}, fromArea, toArea) => {
+    if (!fromArea || !toArea) return 0;
+
+    const start = areaCenter(fromArea);
+    const end = areaCenter(toArea);
+    const waypoints = Array.isArray(flow.waypoints)
+        ? flow.waypoints.map((point) => ({
+            x: Number(point.x) || 0,
+            y: Number(point.y) || 0,
+        }))
+        : [];
+
+    const points = [start, ...waypoints, end];
+    const directionalPoints = flow.direction === 'reverse' ? [...points].reverse() : points;
+
+    let total = 0;
+    for (let i = 1; i < directionalPoints.length; i++) {
+        total += distance(directionalPoints[i - 1], directionalPoints[i]);
+    }
+    return total;
+};
+
 const overlapArea = (a, b) => {
     const xOverlap = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x));
     const yOverlap = Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
@@ -101,7 +123,7 @@ export const evaluateFacilityLayout = ({
         const to = areaById.get(flow.to);
         if (!from || !to) return;
 
-        const d = distance(areaCenter(from), areaCenter(to));
+        const d = getFlowPathDistance(flow, from, to);
         const frequency = Number(flow.frequency) || 0;
         const unitCost = Number(flow.unitCost) || 1;
         flowCost += d * frequency * unitCost;

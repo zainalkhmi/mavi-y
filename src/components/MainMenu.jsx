@@ -16,6 +16,7 @@ import {
     GanttChart,
     BarChart3,
     Network,
+    Blocks,
     LineChart,
     Trophy,
     IterationCcw,
@@ -141,6 +142,16 @@ const MENU_ITEMS = [
         description: 'Map material and information flow',
         descriptionId: 'Petakan aliran material dan informasi',
         category: 'IE'
+    },
+    {
+        path: '/facility-layout',
+        icon: <Blocks />,
+        label: 'Facility Layout',
+        labelId: 'Tata Letak Fasilitas',
+        description: 'visTABLE-style block layout and flow optimization',
+        descriptionId: 'Optimasi tata letak blok dan aliran ala visTABLE',
+        category: 'IE',
+        beta: true
     },
     {
         path: '/statistical-analysis',

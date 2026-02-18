@@ -537,7 +537,8 @@ const FileExplorer = () => {
                 imported.measurements || [],
                 imported.swcsData || null,
                 imported.standardWorkLayoutData || null,
-                currentFolderId
+                currentFolderId,
+                imported.facilityLayoutData || null
             );
 
             await showAlert('Success', `Project imported from Drive as "${importedName}"`);

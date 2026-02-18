@@ -105,6 +105,7 @@ const AdminPanel = React.lazy(() => import('./components/AdminPanel'));
 const AIProcessWorkspace = React.lazy(() => import('./components/AIProcessWorkspace'));
 const StandardDataBuilder = React.lazy(() => import('./components/StandardDataBuilder'));
 const ErgoCopilot = React.lazy(() => import('./components/ErgoCopilot'));
+const FacilityLayoutOptimizer = React.lazy(() => import('./components/FacilityLayoutOptimizer'));
 
 const StudioModel = React.lazy(() => import('./components/studio/StudioModel'));
 const PitchDeck = React.lazy(() => import('./components/PitchDeck'));
@@ -319,7 +320,9 @@ function AppContent() {
         projectData.videoName,
         projectData.measurements,
         projectData.swcsData,
-        projectData.standardWorkLayoutData
+        projectData.standardWorkLayoutData,
+        null,
+        projectData.facilityLayoutData
       );
       handleOpenProject(projectData.projectName);
     } catch (error) {
@@ -646,6 +649,9 @@ function AppContent() {
 
                 {/* Ergo Copilot */}
                 <Route path="/ergo-copilot" element={<div style={{ overflow: 'hidden', height: '100%' }}><ErgoCopilot /></div>} />
+
+                {/* Facility Layout Optimizer */}
+                <Route path="/facility-layout" element={<div style={{ overflow: 'hidden', height: '100%' }}><FacilityLayoutOptimizer /></div>} />
 
                 {/* Admin Panel */}
                 <Route path="/admin" element={<div style={{ overflow: 'hidden', height: '100%' }}><AdminPanel /></div>} />

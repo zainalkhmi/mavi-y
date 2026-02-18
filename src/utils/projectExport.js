@@ -18,7 +18,8 @@ export const generateProjectZip = async (project) => {
         createdAt: project.createdAt,
         lastModified: project.lastModified,
         swcsData: project.swcsData,
-        standardWorkLayoutData: project.standardWorkLayoutData
+        standardWorkLayoutData: project.standardWorkLayoutData,
+        facilityLayoutData: project.facilityLayoutData
     }, null, 2));
 
     // Add measurements data
@@ -92,7 +93,8 @@ export const importProject = async (zipFile) => {
             createdAt: projectJson.createdAt,
             lastModified: projectJson.lastModified,
             swcsData: projectJson.swcsData,
-            standardWorkLayoutData: projectJson.standardWorkLayoutData
+            standardWorkLayoutData: projectJson.standardWorkLayoutData,
+            facilityLayoutData: projectJson.facilityLayoutData
         };
     } catch (error) {
         console.error('Error importing project:', error);

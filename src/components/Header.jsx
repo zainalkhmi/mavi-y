@@ -32,8 +32,7 @@ import {
     Rocket,
     Shield,
     Sparkles,
-    Zap,
-    RefreshCw
+    Zap
 } from 'lucide-react';
 
 const MENU_CATEGORIES = {
@@ -65,6 +64,7 @@ const MENU_ITEMS = [
     { path: '/swcs', icon: <GanttChart size={20} />, labelKey: 'header.swcs', title: 'Standard Work Combination Sheet', category: 'IE' },
     { path: '/yamazumi', icon: <BarChart3 size={20} />, labelKey: 'header.yamazumi', title: 'Yamazumi Chart', category: 'IE' },
     { path: '/value-stream-map', icon: <Network size={20} />, labelKey: 'header.valueStreamMap', title: 'Value Stream Map', category: 'IE' },
+    { path: '/facility-layout', icon: <Layout size={20} />, title: 'Facility Layout Optimizer', category: 'IE', beta: true },
     { path: '/statistical-analysis', icon: <LineChart size={20} />, labelKey: 'header.statisticalAnalysis', title: 'Statistical Analysis', category: 'IE' },
     // PMTS Builder item removed as per user request
 
@@ -262,48 +262,6 @@ function Header({ videoName, onUpload, onLogout, sidebarCollapsed }) {
             {!sidebarCollapsed && (
                 <div id="header-tools" style={{ marginTop: 'auto', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', alignItems: 'center', padding: '0 12px' }}>
                     {/* Admin Panel button removed as per user request */}
-
-                    <button
-                        className="btn"
-                        onClick={() => navigate('/')}
-                        title="Video"
-                        style={{
-                            padding: '0',
-                            fontSize: '1.2rem',
-                            width: '80%',
-                            height: '50px',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            backgroundColor: '#333',
-                            border: '1px solid #555',
-                            borderRadius: '10px'
-                        }}
-                    >
-                        <Film size={20} />
-                    </button>
-
-                    <button
-                        className="btn"
-                        onClick={() => window.location.reload()}
-                        title="Refresh"
-                        style={{
-                            padding: '0',
-                            fontSize: '1.2rem',
-                            width: '80%',
-                            height: '50px',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            backgroundColor: '#333',
-                            border: '1px solid #555',
-                            borderRadius: '10px'
-                        }}
-                    >
-                        <RefreshCw size={20} />
-                    </button>
-
-
 
                     <button
                         className="btn"

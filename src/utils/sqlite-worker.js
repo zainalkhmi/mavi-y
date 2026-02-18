@@ -21,7 +21,8 @@ const SCHEMA_QUERIES = [
         lastModified TEXT,
         folderId INTEGER,
         swcsData TEXT,
-        standardWorkLayoutData TEXT
+        standardWorkLayoutData TEXT,
+        facilityLayoutData TEXT
     );`,
     `CREATE TABLE IF NOT EXISTS measurements (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -146,6 +147,7 @@ async function init() {
         // Migrations
         try { db.exec(`ALTER TABLE projects ADD COLUMN swcsData TEXT;`); } catch (e) { }
         try { db.exec(`ALTER TABLE projects ADD COLUMN standardWorkLayoutData TEXT;`); } catch (e) { }
+        try { db.exec(`ALTER TABLE projects ADD COLUMN facilityLayoutData TEXT;`); } catch (e) { }
         try { db.exec(`ALTER TABLE knowledge_base ADD COLUMN cloudId TEXT;`); } catch (e) { }
         try { db.exec(`ALTER TABLE knowledge_base ADD COLUMN syncStatus TEXT;`); } catch (e) { }
         try { db.exec(`CREATE TABLE IF NOT EXISTS vsm_data (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, data TEXT, thumbnail TEXT, createdAt TEXT, lastModified TEXT, folderId INTEGER);`); } catch (e) { }

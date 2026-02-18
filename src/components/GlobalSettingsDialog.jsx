@@ -270,7 +270,7 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
         }}>
             <div style={{
                 backgroundColor: '#1e1e1e',
-                width: '600px',
+                width: '750px',
                 maxWidth: '95%',
                 height: '70vh',
                 borderRadius: '24px',
@@ -358,7 +358,7 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                             cursor: 'pointer'
                         }}
                     >
-                        <Cloud size={18} /> Cloud Storage
+                        <Cloud size={18} /> {t('settings.cloud')}
                     </button>
                     <button
                         onClick={() => setActiveTab('conference')}
@@ -376,7 +376,7 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                             cursor: 'pointer'
                         }}
                     >
-                        <Radio size={18} /> Conference
+                        <Radio size={18} /> {t('settings.conference')}
                     </button>
                     <button
                         onClick={() => setActiveTab('system')}
@@ -443,9 +443,9 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                                 border: '1px solid rgba(255,255,255,0.1)',
                                 background: 'rgba(255,255,255,0.02)'
                             }}>
-                                <div style={{ color: 'white', fontWeight: 600, marginBottom: '6px' }}>Jitsi Conference Settings</div>
+                                <div style={{ color: 'white', fontWeight: 600, marginBottom: '6px' }}>{t('settings.jitsiSettingsTitle')}</div>
                                 <div style={{ color: '#aaa', fontSize: '0.85rem' }}>
-                                    Atur domain/API Jitsi dan default conference behavior untuk menu Broadcast.
+                                    {t('settings.jitsiSettingsDesc')}
                                 </div>
                             </div>
 
@@ -531,18 +531,18 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                     ) : activeTab === 'system' ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <div>
-                                <h3 style={{ color: '#ef4444', marginBottom: '10px', fontSize: '1rem' }}>Danger Zone</h3>
+                                <h3 style={{ color: '#ef4444', marginBottom: '10px', fontSize: '1rem' }}>{t('settings.dangerZone')}</h3>
                                 <div style={{ padding: '20px', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', backgroundColor: 'rgba(239, 68, 68, 0.05)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <div>
-                                            <div style={{ fontWeight: '600', color: 'white', marginBottom: '4px' }}>Reset Application</div>
+                                            <div style={{ fontWeight: '600', color: 'white', marginBottom: '4px' }}>{t('settings.resetApp')}</div>
                                             <div style={{ fontSize: '0.85rem', color: '#aaa' }}>
-                                                Clears all local data, licenses, and cached settings. Application will reload.
+                                                {t('settings.resetAppDesc')}
                                             </div>
                                         </div>
                                         <button
                                             onClick={async () => {
-                                                if (await showConfirm('Reset Application', 'Are you sure you want to reset the application? This will clear all licenses and local data.')) {
+                                                if (await showConfirm(t('settings.resetConfirmTitle'), t('settings.resetConfirmMsg'))) {
                                                     localStorage.removeItem('mavi_app_license');
                                                     localStorage.removeItem('mavi_trial_start');
                                                     localStorage.removeItem('mavi_user_role');
@@ -560,7 +560,7 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                                                 fontWeight: '600'
                                             }}
                                         >
-                                            Reset App
+                                            {t('settings.resetApp')}
                                         </button>
                                     </div>
                                 </div>
@@ -574,9 +574,9 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                                 border: '1px solid rgba(255,255,255,0.1)',
                                 background: 'rgba(255,255,255,0.02)'
                             }}>
-                                <div style={{ color: 'white', fontWeight: 600, marginBottom: '6px' }}>Google Drive Project Backup</div>
+                                <div style={{ color: 'white', fontWeight: 600, marginBottom: '6px' }}>{t('settings.googleDriveBackup')}</div>
                                 <div style={{ color: '#aaa', fontSize: '0.85rem' }}>
-                                    Simpan project ZIP ke Google Drive, termasuk mode OAuth user login + fallback service account.
+                                    {t('settings.googleDriveDesc')}
                                 </div>
                             </div>
 

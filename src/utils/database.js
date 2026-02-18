@@ -107,6 +107,7 @@ const dbDataToBlob = (data, type = 'video/mp4') => {
 const normalizeProjectRow = (row) => {
     const parsedSwcs = row.swcsData ? JSON.parse(row.swcsData) : null;
     const parsedLayout = row.standardWorkLayoutData ? JSON.parse(row.standardWorkLayoutData) : null;
+    const parsedFacilityLayout = row.facilityLayoutData ? JSON.parse(row.facilityLayoutData) : null;
 
     let normalizedFolderId = row.folderId;
     let normalizedLayout = parsedLayout;
@@ -124,27 +125,29 @@ const normalizeProjectRow = (row) => {
         videoBlob: dbDataToBlob(row.videoBlob),
         measurements: JSON.parse(row.measurements || '[]'),
         swcsData: parsedSwcs,
-        standardWorkLayoutData: normalizedLayout
+        standardWorkLayoutData: normalizedLayout,
+        facilityLayoutData: parsedFacilityLayout
     };
 };
 
 // ===== PROJECT MANAGEMENT FUNCTIONS =====
 
 // Save new project
-export const saveProject = async (projectName, videoBlob, videoName, measurements = [], swcsData = null, standardWorkLayoutData = null, folderId = null) => {
+export const saveProject = async (projectName, videoBlob, videoName, measurements = [], swcsData = null, standardWorkLayoutData = null, folderId = null, facilityLayoutData = null) => {
     const db = await initDB();
     const videoData = await blobToUint8Array(videoBlob);
 
     const result = await db.execute(
         `INSERT INTO projects 
-        (projectName, videoBlob, videoName, measurements, createdAt, lastModified, swcsData, standardWorkLayoutData, folderId) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (projectName, videoBlob, videoName, measurements, createdAt, lastModified, swcsData, standardWorkLayoutData, folderId, facilityLayoutData) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             projectName, videoData, videoName, JSON.stringify(measurements),
             new Date().toISOString(), new Date().toISOString(),
             swcsData ? JSON.stringify(swcsData) : null,
             standardWorkLayoutData ? JSON.stringify(standardWorkLayoutData) : null,
-            folderId
+            folderId,
+            facilityLayoutData ? JSON.stringify(facilityLayoutData) : null
         ]
     );
     return result.lastInsertId;
@@ -193,7 +196,8 @@ export const updateProject = async (identifier, updates) => {
         'lastModified = ?',
         'folderId = ?',
         'swcsData = ?',
-        'standardWorkLayoutData = ?'
+        'standardWorkLayoutData = ?',
+        'facilityLayoutData = ?'
     ];
 
     const params = [
@@ -203,7 +207,8 @@ export const updateProject = async (identifier, updates) => {
         updatedData.lastModified,
         updatedData.folderId,
         updatedData.swcsData ? JSON.stringify(updatedData.swcsData) : null,
-        updatedData.standardWorkLayoutData ? JSON.stringify(updatedData.standardWorkLayoutData) : null
+        updatedData.standardWorkLayoutData ? JSON.stringify(updatedData.standardWorkLayoutData) : null,
+        updatedData.facilityLayoutData ? JSON.stringify(updatedData.facilityLayoutData) : null
     ];
 
     if (updates.videoBlob) {
@@ -421,6 +426,59 @@ export const deleteStandardWorkLayoutData = async (projectIdentifier) => {
 
     await db.execute(
         'UPDATE projects SET standardWorkLayoutData = NULL, lastModified = ? WHERE id = ?',
+        [new Date().toISOString(), project.id]
+    );
+    return project.id;
+};
+
+// ===== FACILITY LAYOUT FUNCTIONS =====
+
+export const saveFacilityLayoutData = async (projectIdentifier, layoutData) => {
+    const db = await initDB();
+    let project;
+
+    if (typeof projectIdentifier === 'number') {
+        project = await getProjectById(projectIdentifier);
+    } else {
+        project = await getProjectByName(projectIdentifier);
+    }
+
+    if (!project) throw new Error('Project not found');
+
+    await db.execute(
+        'UPDATE projects SET facilityLayoutData = ?, lastModified = ? WHERE id = ?',
+        [JSON.stringify(layoutData), new Date().toISOString(), project.id]
+    );
+    return project.id;
+};
+
+export const getFacilityLayoutData = async (projectIdentifier) => {
+    let project;
+
+    if (typeof projectIdentifier === 'number') {
+        project = await getProjectById(projectIdentifier);
+    } else {
+        project = await getProjectByName(projectIdentifier);
+    }
+
+    if (!project) return null;
+    return project.facilityLayoutData;
+};
+
+export const deleteFacilityLayoutData = async (projectIdentifier) => {
+    const db = await initDB();
+    let project;
+
+    if (typeof projectIdentifier === 'number') {
+        project = await getProjectById(projectIdentifier);
+    } else {
+        project = await getProjectByName(projectIdentifier);
+    }
+
+    if (!project) throw new Error('Project not found');
+
+    await db.execute(
+        'UPDATE projects SET facilityLayoutData = NULL, lastModified = ? WHERE id = ?',
         [new Date().toISOString(), project.id]
     );
     return project.id;

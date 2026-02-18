@@ -127,6 +127,10 @@ const VSMCanvasContent = () => {
     const [showWizard, setShowWizard] = useState(false);
     const [showHelpModal, setShowHelpModal] = useState(false);
     const [showAIChat, setShowAIChat] = useState(false);
+    const [showLeadTimeView, setShowLeadTimeView] = useState(false);
+    const [waitTimeMethod, setWaitTimeMethod] = useState('takt'); // takt | cycle
+    const [waitTimeMinutes, setWaitTimeMinutes] = useState(10);
+    const [leadTimePathNodeIds, setLeadTimePathNodeIds] = useState([]);
 
     const [showTemplateModal, setShowTemplateModal] = useState(false); // Template Dialog
     const [showSupplyChainModal, setShowSupplyChainModal] = useState(false); // Supply Chain Dialog
@@ -880,6 +884,13 @@ const VSMCanvasContent = () => {
     }, []);
 
     const onNodeClick = (event, node) => {
+        if (showLeadTimeView && node.type === 'process') {
+            setLeadTimePathNodeIds((prev) => (
+                prev.includes(node.id)
+                    ? prev.filter((id) => id !== node.id)
+                    : [...prev, node.id]
+            ));
+        }
         setSelectedNode(node);
         setSelectedEdge(null);
         setEdgeMenuPosition(null);
@@ -911,6 +922,24 @@ const VSMCanvasContent = () => {
         setEdgeMenuPosition(null);
         setNodeMenuPosition(null);
     }, []);
+
+    useEffect(() => {
+        setNodes((nds) => nds.map((node) => {
+            if (node.type !== 'process') return node;
+            const isLeadSelected = showLeadTimeView && leadTimePathNodeIds.includes(node.id);
+            if (node.data?.leadTimeSelected === isLeadSelected && node.data?.leadTimeViewActive === showLeadTimeView) {
+                return node;
+            }
+            return {
+                ...node,
+                data: {
+                    ...node.data,
+                    leadTimeSelected: isLeadSelected,
+                    leadTimeViewActive: showLeadTimeView,
+                }
+            };
+        }));
+    }, [showLeadTimeView, leadTimePathNodeIds, setNodes]);
 
     const onNodeDoubleClick = (event, node) => {
         if (node.data?.symbolType === VSMSymbols.PROJECT && node.data?.projectName) {
@@ -2303,6 +2332,55 @@ const VSMCanvasContent = () => {
         ? bottlenecks.map(n => `- ${n.data.label || n.data.name}: Cycle Time ${n.data.ct}s (Exceeds Takt ${globalTakt}s)`).join('\n')
         : "No Bottlenecks detected. All processes are under Takt Time.";
 
+    const leadTimeViewMetrics = useMemo(() => {
+        const pathNodes = nodes
+            .filter((n) => leadTimePathNodeIds.includes(n.id) && n.type === 'process')
+            .sort((a, b) => a.position.x - b.position.x);
+
+        if (pathNodes.length === 0) {
+            return {
+                pathNodes: [],
+                totalVA: 0,
+                totalNVA: 0,
+                leadTime: 0,
+                pce: 0,
+            };
+        }
+
+        const processRows = pathNodes.map((node) => {
+            const ct = Number(node.data?.ct || 0);
+            const va = Number(node.data?.va || ct || 0);
+            return { id: node.id, name: node.data?.name || node.id, ct, va };
+        });
+
+        const baseWaitSec = Math.max(0, Number(waitTimeMinutes) || 0) * 60;
+        let totalVA = 0;
+        let totalNVA = 0;
+
+        processRows.forEach((row, idx) => {
+            totalVA += Math.max(0, row.va);
+            if (idx < processRows.length - 1) {
+                const next = processRows[idx + 1];
+                const waitSec = waitTimeMethod === 'cycle'
+                    ? Math.max(baseWaitSec, (Math.max(0, row.ct) + Math.max(0, next.ct)) / 2)
+                    : Math.max(baseWaitSec, Math.max(0, Number(globalTakt) || 0));
+                totalNVA += waitSec;
+            }
+        });
+
+        const leadTime = totalVA + totalNVA;
+        const pce = leadTime > 0 ? (totalVA / leadTime) * 100 : 0;
+
+        return {
+            pathNodes,
+            totalVA,
+            totalNVA,
+            leadTime,
+            pce,
+            processRows,
+        };
+    }, [nodes, leadTimePathNodeIds, waitTimeMethod, waitTimeMinutes, globalTakt]);
+
     return (
         <div style={{ display: 'flex', height: '100vh', width: '100%', flexDirection: 'column' }}>
             {/* ... Rest of Toolbar ... */}
@@ -2344,6 +2422,40 @@ const VSMCanvasContent = () => {
                     <button style={btnStyle} onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">
                         <Redo size={14} />
                     </button>
+                </div>
+
+                <Separator />
+
+                <div style={{ ...toolbarGroupStyle, backgroundColor: showLeadTimeView ? 'rgba(16,124,16,0.3)' : 'transparent', paddingRight: '10px' }}>
+                    <button
+                        style={{ ...btnStyle, backgroundColor: showLeadTimeView ? '#107c10' : '#444' }}
+                        onClick={() => setShowLeadTimeView((v) => !v)}
+                        title="Lead Time View"
+                    >
+                        {showLeadTimeView ? <Eye size={14} /> : <EyeOff size={14} />} LT View
+                    </button>
+
+                    {showLeadTimeView && (
+                        <>
+                            <select
+                                value={waitTimeMethod}
+                                onChange={(e) => setWaitTimeMethod(e.target.value)}
+                                style={{ ...inputStyle, width: '140px', padding: '4px', fontSize: '0.72rem' }}
+                            >
+                                <option value="takt">Wait = Takt Time</option>
+                                <option value="cycle">Wait = Cycle Time</option>
+                            </select>
+                            <input
+                                type="number"
+                                min="0"
+                                value={waitTimeMinutes}
+                                onChange={(e) => setWaitTimeMinutes(Math.max(0, Number(e.target.value) || 0))}
+                                style={{ ...inputStyle, width: '70px', padding: '4px', fontSize: '0.72rem' }}
+                                title="Base wait time (minutes)"
+                            />
+                            <span style={{ fontSize: '0.72rem', color: '#ddd' }}>min</span>
+                        </>
+                    )}
                 </div>
 
                 <Separator />
@@ -2620,7 +2732,60 @@ const VSMCanvasContent = () => {
                         <Background color="#555" gap={15} size={1} variant="dots" />
                     </ReactFlow>
 
-                    <TimelineLadder nodes={nodes} metrics={metrics} />
+                    <TimelineLadder
+                        nodes={nodes}
+                        metrics={metrics}
+                        leadPathNodeIds={leadTimePathNodeIds}
+                        leadTimeViewActive={showLeadTimeView}
+                        waitTimeMethod={waitTimeMethod}
+                        waitTimeMinutes={waitTimeMinutes}
+                        globalTakt={globalTakt}
+                    />
+
+                    {showLeadTimeView && (
+                        <>
+                            <div style={{
+                                position: 'absolute',
+                                top: 12,
+                                left: 12,
+                                zIndex: 8,
+                                backgroundColor: 'rgba(0,0,0,0.72)',
+                                border: '1px solid #16a34a',
+                                borderRadius: 8,
+                                color: '#e5e7eb',
+                                padding: '8px 10px',
+                                fontSize: '0.72rem',
+                                maxWidth: 360,
+                            }}>
+                                <div style={{ fontWeight: 700, color: '#86efac', marginBottom: 4 }}>Lead time path</div>
+                                Klik process box untuk menandai jalur lead time.
+                                {leadTimePathNodeIds.length > 0 && (
+                                    <div style={{ marginTop: 6, color: '#d1d5db' }}>Selected: {leadTimePathNodeIds.length} process</div>
+                                )}
+                            </div>
+
+                            <div style={{
+                                position: 'absolute',
+                                right: 16,
+                                top: 16,
+                                zIndex: 8,
+                                width: 290,
+                                backgroundColor: 'rgba(17,24,39,0.92)',
+                                border: '1px solid #4b5563',
+                                borderRadius: 10,
+                                padding: 12,
+                                color: '#e5e7eb',
+                            }}>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 8 }}>Calculation results</div>
+                                <div style={{ display: 'grid', gap: 6, fontSize: '0.78rem' }}>
+                                    <div>• Process Cycle Efficiency: <b style={{ color: '#22c55e' }}>{leadTimeViewMetrics.pce.toFixed(2)}%</b></div>
+                                    <div>• Total non value-added times: <b style={{ color: '#f59e0b' }}>{(leadTimeViewMetrics.totalNVA / 60).toFixed(2)} min</b></div>
+                                    <div>• Total value-added times: <b style={{ color: '#38bdf8' }}>{leadTimeViewMetrics.totalVA.toFixed(2)} s</b></div>
+                                    <div>• Lead Time: <b style={{ color: '#f97316' }}>{(leadTimeViewMetrics.leadTime / 60).toFixed(2)} min</b></div>
+                                </div>
+                            </div>
+                        </>
+                    )}
 
 
                     {/* Bottom Metrics Bar */}

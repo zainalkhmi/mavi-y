@@ -63,6 +63,7 @@ const CONTROLLED_MENU_ITEMS = [
     { path: '/swcs', label: 'SWCS', group: 'Industrial Engineering' },
     { path: '/yamazumi', label: 'Yamazumi', group: 'Industrial Engineering' },
     { path: '/value-stream-map', label: 'Value Stream Map', group: 'Industrial Engineering' },
+    { path: '/facility-layout', label: 'Facility Layout Optimizer', group: 'Industrial Engineering' },
     { path: '/statistical-analysis', label: 'Statistical Analysis', group: 'Industrial Engineering' },
     { path: '/best-worst', label: 'Best/Worst Cycle', group: 'Industrial Engineering' },
     { path: '/rearrangement', label: 'Rearrangement', group: 'Industrial Engineering' },

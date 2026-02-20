@@ -1,5 +1,30 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Save, Sparkles, Trash2, Move, MousePointer2, Lock, Unlock, Bot } from 'lucide-react';
+import {
+    Plus,
+    Save,
+    Sparkles,
+    Trash2,
+    Move,
+    MousePointer2,
+    Lock,
+    Unlock,
+    Bot,
+    Building2,
+    Boxes,
+    Route,
+    GitBranchPlus,
+    Goal,
+    ScanLine,
+    ZoomIn,
+    ZoomOut,
+    RotateCcw,
+    Grid3X3,
+    Magnet,
+    Timer,
+    Ruler,
+    HelpCircle,
+    X,
+} from 'lucide-react';
 import { useProject } from '../contexts/ProjectContext';
 import { useDialog } from '../contexts/DialogContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -7,8 +32,21 @@ import { getAllProjects, saveFacilityLayoutData } from '../utils/database';
 import { evaluateFacilityLayout, generateFacilityScenarios } from '../utils/layoutOptimizationEngine';
 import AIChatOverlay from './features/AIChatOverlay';
 
-const CANVAS = { width: 1080, height: 640 };
+const DEFAULT_LAYOUT_PROPERTIES = {
+    projectName: 'New Layout',
+    dimensionHorizontal: 1080,
+    dimensionVertical: 640,
+    gridVisible: true,
+    gridSpacing: 40,
+    units: 'metric',
+    metricUnit: 'm',
+    automaticMetric: true,
+    notes: '',
+};
+
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+const uid = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
 const createArea = (index) => ({
     id: `area-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${index}`,
@@ -17,10 +55,128 @@ const createArea = (index) => ({
     y: 80 + Math.floor(index / 4) * 120,
     width: 130,
     height: 80,
+    layer: 'block layout',
     locked: false,
     fixedX: null,
     fixedY: null,
 });
+
+const createBlockArea = ({ name, x, y, width, height }) => ({
+    id: uid('area'),
+    name,
+    x,
+    y,
+    width,
+    height,
+    layer: 'block layout',
+    locked: false,
+    fixedX: null,
+    fixedY: null,
+});
+
+const createDimension = ({ type = 'horizontal', from, to, offset = 20, color = '#0f172a' }) => ({
+    id: uid('dim'),
+    type,
+    from,
+    to,
+    offset,
+    color,
+});
+
+const normalizeDimension = (dimension = {}) => ({
+    id: dimension.id || uid('dim'),
+    type: dimension.type || 'horizontal',
+    from: dimension.from || null,
+    to: dimension.to || null,
+    offset: Number.isFinite(dimension.offset) ? dimension.offset : 20,
+    color: dimension.color || '#0f172a',
+});
+
+const areaAnchor = (area, anchor = 'center') => {
+    if (!area) return { x: 0, y: 0 };
+    switch (anchor) {
+        case 'topLeft': return { x: area.x, y: area.y };
+        case 'topRight': return { x: area.x + area.width, y: area.y };
+        case 'bottomLeft': return { x: area.x, y: area.y + area.height };
+        case 'bottomRight': return { x: area.x + area.width, y: area.y + area.height };
+        case 'leftCenter': return { x: area.x, y: area.y + area.height / 2 };
+        case 'rightCenter': return { x: area.x + area.width, y: area.y + area.height / 2 };
+        case 'topCenter': return { x: area.x + area.width / 2, y: area.y };
+        case 'bottomCenter': return { x: area.x + area.width / 2, y: area.y + area.height };
+        default: return { x: area.x + area.width / 2, y: area.y + area.height / 2 };
+    }
+};
+
+const createBlockLayoutCatalog = () => {
+    const catalogAreas = [
+        createBlockArea({ name: 'AP sawing + periphery', x: 120, y: 90, width: 220, height: 140 }),
+        createBlockArea({ name: 'AP turning + periphery', x: 420, y: 90, width: 220, height: 140 }),
+        createBlockArea({ name: 'AP grinding + periphery', x: 720, y: 90, width: 220, height: 140 }),
+        createBlockArea({ name: 'Packing station', x: 420, y: 310, width: 220, height: 130 }),
+        createBlockArea({ name: 'Goods receipt warehouse', x: 120, y: 290, width: 220, height: 170 }),
+        createBlockArea({ name: 'Goods issue warehouse', x: 720, y: 290, width: 220, height: 170 }),
+    ];
+
+    const [sawing, turning, grinding, packing, goodsReceipt, goodsIssue] = catalogAreas;
+    const catalogDimensions = [];
+
+    catalogAreas.forEach((area) => {
+        catalogDimensions.push(
+            createDimension({
+                type: 'horizontal',
+                from: { areaId: area.id, anchor: 'topLeft' },
+                to: { areaId: area.id, anchor: 'topRight' },
+                offset: 24,
+            }),
+            createDimension({
+                type: 'vertical',
+                from: { areaId: area.id, anchor: 'topLeft' },
+                to: { areaId: area.id, anchor: 'bottomLeft' },
+                offset: 24,
+            })
+        );
+    });
+
+    catalogDimensions.push(
+        createDimension({
+            type: 'aligned',
+            from: { areaId: sawing.id, anchor: 'center' },
+            to: { areaId: turning.id, anchor: 'center' },
+            offset: 34,
+            color: '#1d4ed8',
+        }),
+        createDimension({
+            type: 'aligned',
+            from: { areaId: turning.id, anchor: 'center' },
+            to: { areaId: grinding.id, anchor: 'center' },
+            offset: 34,
+            color: '#1d4ed8',
+        }),
+        createDimension({
+            type: 'aligned',
+            from: { areaId: goodsReceipt.id, anchor: 'center' },
+            to: { areaId: packing.id, anchor: 'center' },
+            offset: 26,
+            color: '#0369a1',
+        }),
+        createDimension({
+            type: 'aligned',
+            from: { areaId: packing.id, anchor: 'center' },
+            to: { areaId: goodsIssue.id, anchor: 'center' },
+            offset: 26,
+            color: '#0369a1',
+        }),
+        createDimension({
+            type: 'vertical',
+            from: { areaId: turning.id, anchor: 'bottomCenter' },
+            to: { areaId: packing.id, anchor: 'topCenter' },
+            offset: 46,
+            color: '#475569',
+        })
+    );
+
+    return { catalogAreas, catalogDimensions };
+};
 
 const createWaypoint = (x = 0, y = 0, index = 0) => ({
     id: `wp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${index}`,
@@ -93,6 +249,8 @@ function FacilityLayoutOptimizer() {
     const [selectedProjectId, setSelectedProjectId] = useState(null);
 
     const [areas, setAreas] = useState([createArea(0), createArea(1), createArea(2)]);
+    const [dimensions, setDimensions] = useState([]);
+    const [showDimensions, setShowDimensions] = useState(true);
     const [flows, setFlows] = useState([]);
     const [selectedFlowId, setSelectedFlowId] = useState(null);
     const [constraints, setConstraints] = useState({ minSpacing: 40, targetLeadTime: 0 });
@@ -109,6 +267,7 @@ function FacilityLayoutOptimizer() {
     const [snapEnabled, setSnapEnabled] = useState(true);
     const [gridSize, setGridSize] = useState(40);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [layoutProperties, setLayoutProperties] = useState(DEFAULT_LAYOUT_PROPERTIES);
 
     const [dragState, setDragState] = useState(null);
     const [panState, setPanState] = useState(null);
@@ -138,6 +297,21 @@ function FacilityLayoutOptimizer() {
         [flows]
     );
 
+    const canvasSize = useMemo(
+        () => ({
+            width: clamp(Number(layoutProperties.dimensionHorizontal) || 1080, 320, 4000),
+            height: clamp(Number(layoutProperties.dimensionVertical) || 640, 240, 3000),
+        }),
+        [layoutProperties.dimensionHorizontal, layoutProperties.dimensionVertical]
+    );
+
+    const objectCounts = useMemo(() => ({
+        areas: areas.length,
+        dimensions: dimensions.length,
+        flows: flows.length,
+        nodes: flows.reduce((sum, flow) => sum + ((flow.waypoints || []).length), 0),
+    }), [areas.length, dimensions.length, flows]);
+
     const selectedProject = useMemo(
         () => projects.find((p) => Number(p.id) === Number(selectedProjectId)) || null,
         [projects, selectedProjectId]
@@ -155,7 +329,14 @@ function FacilityLayoutOptimizer() {
 
     const hydrateFromData = (data) => {
         if (!data) return;
+
+        const nextLayoutProperties = {
+            ...DEFAULT_LAYOUT_PROPERTIES,
+            ...(data.layoutProperties || {}),
+        };
+
         setAreas(Array.isArray(data.areas) && data.areas.length > 0 ? data.areas : [createArea(0), createArea(1), createArea(2)]);
+        setDimensions(Array.isArray(data.dimensions) ? data.dimensions.map(normalizeDimension) : []);
         const nextFlows = Array.isArray(data.flows) ? data.flows.map(normalizeFlow) : [];
         setFlows(nextFlows);
         setSelectedFlowId((prev) => (prev && nextFlows.some((flow) => flow.id === prev) ? prev : nextFlows[0]?.id || null));
@@ -166,8 +347,12 @@ function FacilityLayoutOptimizer() {
         setBaselineCost(Number.isFinite(data.baselineCost) ? data.baselineCost : null);
         setZoom(Number.isFinite(data.zoom) ? data.zoom : 1);
         setPan(data.pan || { x: 0, y: 0 });
-        setGridSize(Number.isFinite(data.gridSize) ? data.gridSize : 40);
+        setLayoutProperties(nextLayoutProperties);
+        setGridSize(Number.isFinite(nextLayoutProperties.gridSpacing)
+            ? nextLayoutProperties.gridSpacing
+            : (Number.isFinite(data.gridSize) ? data.gridSize : 40));
         setSnapEnabled(typeof data.snapEnabled === 'boolean' ? data.snapEnabled : true);
+        setShowDimensions(typeof data.showDimensions === 'boolean' ? data.showDimensions : true);
     };
 
     useEffect(() => {
@@ -204,6 +389,9 @@ function FacilityLayoutOptimizer() {
 
     const removeArea = (id) => {
         setAreas((prev) => prev.filter((a) => a.id !== id));
+        setDimensions((prev) => prev.filter((dimension) => (
+            dimension?.from?.areaId !== id && dimension?.to?.areaId !== id
+        )));
         setFlows((prev) => {
             const next = prev.filter((f) => f.from !== id && f.to !== id);
             if (selectedFlowId && !next.some((flow) => flow.id === selectedFlowId)) {
@@ -301,6 +489,116 @@ function FacilityLayoutOptimizer() {
         return orthogonal;
     };
 
+    const addBlockLayoutCatalog = () => {
+        const { catalogAreas, catalogDimensions } = createBlockLayoutCatalog();
+        setAreas(catalogAreas);
+        setDimensions(catalogDimensions.map(normalizeDimension));
+        setSelectedAreaId(catalogAreas[0]?.id || null);
+        setShowDimensions(true);
+    };
+
+    const resolveDimensionPoint = (reference) => {
+        if (!reference?.areaId) return null;
+        const area = areaById.get(reference.areaId);
+        if (!area) return null;
+        return areaAnchor(area, reference.anchor || 'center');
+    };
+
+    const formatDimensionValue = (distance) => {
+        const rawDistance = Number.isFinite(distance) ? Math.max(distance, 0) : 0;
+        if (layoutProperties.units === 'imperial') {
+            const ft = rawDistance * 3.28084;
+            return `${ft.toFixed(2)} ft`;
+        }
+
+        if (layoutProperties.metricUnit === 'mm' || (layoutProperties.automaticMetric && rawDistance < 10)) {
+            return `${(rawDistance * 1000).toFixed(0)} mm`;
+        }
+        return `${rawDistance.toFixed(2)} m`;
+    };
+
+    const renderDimension = (dimension) => {
+        const p1 = resolveDimensionPoint(dimension.from);
+        const p2 = resolveDimensionPoint(dimension.to);
+        if (!p1 || !p2) return null;
+
+        const stroke = dimension.color || '#0f172a';
+        const offset = Number.isFinite(dimension.offset) ? dimension.offset : 20;
+
+        if (dimension.type === 'vertical') {
+            const xDim = Math.min(p1.x, p2.x) - offset;
+            const y1 = p1.y;
+            const y2 = p2.y;
+            const length = Math.abs(y2 - y1);
+            const textX = xDim - 22;
+            const textY = (y1 + y2) / 2;
+            return (
+                <g key={dimension.id} className="dimension-group">
+                    <line x1={p1.x} y1={y1} x2={xDim} y2={y1} stroke={stroke} strokeWidth="1.2" />
+                    <line x1={p2.x} y1={y2} x2={xDim} y2={y2} stroke={stroke} strokeWidth="1.2" />
+                    <line x1={xDim} y1={y1} x2={xDim} y2={y2} stroke={stroke} strokeWidth="1.6" markerStart="url(#dim-arrow)" markerEnd="url(#dim-arrow)" />
+                    <text x={textX} y={textY} transform={`rotate(-90 ${textX} ${textY})`} fill={stroke} style={{ fontSize: 10, fontWeight: 700 }} textAnchor="middle">
+                        {formatDimensionValue(length)}
+                    </text>
+                    <text x={xDim - 42} y={textY + 3} transform={`rotate(-90 ${xDim - 42} ${textY + 3})`} fill="#64748b" style={{ fontSize: 9, fontWeight: 600 }} textAnchor="middle">
+                        Type: vertical
+                    </text>
+                </g>
+            );
+        }
+
+        if (dimension.type === 'aligned') {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const distance = Math.hypot(dx, dy);
+            if (distance < 0.0001) return null;
+            const ux = dx / distance;
+            const uy = dy / distance;
+            const nx = -uy;
+            const ny = ux;
+            const a1 = { x: p1.x + nx * offset, y: p1.y + ny * offset };
+            const a2 = { x: p2.x + nx * offset, y: p2.y + ny * offset };
+            const textX = (a1.x + a2.x) / 2;
+            const textY = (a1.y + a2.y) / 2 - 6;
+            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+            return (
+                <g key={dimension.id} className="dimension-group">
+                    <line x1={p1.x} y1={p1.y} x2={a1.x} y2={a1.y} stroke={stroke} strokeWidth="1.2" />
+                    <line x1={p2.x} y1={p2.y} x2={a2.x} y2={a2.y} stroke={stroke} strokeWidth="1.2" />
+                    <line x1={a1.x} y1={a1.y} x2={a2.x} y2={a2.y} stroke={stroke} strokeWidth="1.6" markerStart="url(#dim-arrow)" markerEnd="url(#dim-arrow)" />
+                    <text x={textX} y={textY} fill={stroke} transform={`rotate(${angle} ${textX} ${textY})`} style={{ fontSize: 10, fontWeight: 700 }} textAnchor="middle">
+                        {formatDimensionValue(distance)}
+                    </text>
+                    <text x={textX} y={textY + 14} fill="#64748b" transform={`rotate(${angle} ${textX} ${textY + 14})`} style={{ fontSize: 9, fontWeight: 600 }} textAnchor="middle">
+                        Type: aligned
+                    </text>
+                </g>
+            );
+        }
+
+        const yDim = Math.min(p1.y, p2.y) - offset;
+        const x1 = p1.x;
+        const x2 = p2.x;
+        const length = Math.abs(x2 - x1);
+        const textX = (x1 + x2) / 2;
+        const textY = yDim - 8;
+
+        return (
+            <g key={dimension.id} className="dimension-group">
+                <line x1={x1} y1={p1.y} x2={x1} y2={yDim} stroke={stroke} strokeWidth="1.2" />
+                <line x1={x2} y1={p2.y} x2={x2} y2={yDim} stroke={stroke} strokeWidth="1.2" />
+                <line x1={x1} y1={yDim} x2={x2} y2={yDim} stroke={stroke} strokeWidth="1.6" markerStart="url(#dim-arrow)" markerEnd="url(#dim-arrow)" />
+                <text x={textX} y={textY} fill={stroke} style={{ fontSize: 10, fontWeight: 700 }} textAnchor="middle">
+                    {formatDimensionValue(length)}
+                </text>
+                <text x={textX} y={textY + 14} fill="#64748b" style={{ fontSize: 9, fontWeight: 600 }} textAnchor="middle">
+                    Type: horizontal
+                </text>
+            </g>
+        );
+    };
+
     const saveLayout = async () => {
         if (!selectedProjectId) {
             await showAlert(
@@ -314,16 +612,24 @@ function FacilityLayoutOptimizer() {
         try {
             await saveFacilityLayoutData(Number(selectedProjectId), {
                 areas,
+                dimensions,
                 flows,
                 constraints,
                 scenarios,
                 activeScenarioId,
                 optimizationMode,
                 baselineCost,
+                layoutProperties: {
+                    ...layoutProperties,
+                    dimensionHorizontal: canvasSize.width,
+                    dimensionVertical: canvasSize.height,
+                    gridSpacing: gridSize,
+                },
                 zoom,
                 pan,
                 gridSize,
                 snapEnabled,
+                showDimensions,
                 updatedAt: new Date().toISOString(),
             });
 
@@ -349,7 +655,7 @@ function FacilityLayoutOptimizer() {
                 flows,
                 constraints,
                 optimizationMode,
-                bounds: CANVAS,
+                bounds: canvasSize,
             });
 
             setScenarios(generated);
@@ -391,8 +697,8 @@ function FacilityLayoutOptimizer() {
 
         if (dragState.type === 'area') {
             const target = screenToWorld(sx, sy);
-            const x = clamp(snap(target.x - dragState.offsetX), 0, CANVAS.width - dragState.width);
-            const y = clamp(snap(target.y - dragState.offsetY), 0, CANVAS.height - dragState.height);
+            const x = clamp(snap(target.x - dragState.offsetX), 0, canvasSize.width - dragState.width);
+            const y = clamp(snap(target.y - dragState.offsetY), 0, canvasSize.height - dragState.height);
 
             setAreas((prev) => prev.map((item) => (item.id === dragState.id ? { ...item, x, y } : item)));
             return;
@@ -400,8 +706,8 @@ function FacilityLayoutOptimizer() {
 
         if (dragState.type === 'waypoint') {
             const target = screenToWorld(sx, sy);
-            const x = clamp(snap(target.x - dragState.offsetX), 0, CANVAS.width);
-            const y = clamp(snap(target.y - dragState.offsetY), 0, CANVAS.height);
+            const x = clamp(snap(target.x - dragState.offsetX), 0, canvasSize.width);
+            const y = clamp(snap(target.y - dragState.offsetY), 0, canvasSize.height);
 
             setFlows((prev) => prev.map((flow) => {
                 if (flow.id !== dragState.flowId) return flow;
@@ -482,117 +788,123 @@ function FacilityLayoutOptimizer() {
         });
     };
 
+    const [showLayoutHelp, setShowLayoutHelp] = useState(false);
+
     return (
         <div className="layout-optimizer modern-shell">
-            <aside className="panel left-panel">
-                <h2>{t('facilityLayout.title') || 'Facility Layout Optimizer'}</h2>
-
-                <div className="card compact">
-                    <label>{t('facilityLayout.project') || 'Project'}</label>
-                    <select
-                        value={selectedProjectId || ''}
-                        onChange={(event) => setSelectedProjectId(event.target.value ? Number(event.target.value) : null)}
-                    >
-                        <option value="">{t('facilityLayout.selectProject') || 'Select Project'}</option>
-                        {projects.map((project) => (
-                            <option key={project.id} value={project.id}>{project.projectName}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="card compact">
-                    <div className="row">
-                        <button onClick={addArea}><Plus size={14} /> Area</button>
-                        <button onClick={addFlow}><Plus size={14} /> Flow</button>
-                    </div>
-                    <div className="row" style={{ marginTop: 8 }}>
-                        <button onClick={() => addWaypointToFlow(selectedFlowId)} disabled={!selectedFlowId}>
-                            <Plus size={14} /> Node (Flow)
-                        </button>
-                    </div>
-                    <div className="row">
-                        <button onClick={runOptimization} disabled={optimizing}>
-                            <Sparkles size={14} /> {optimizing ? 'Optimizing...' : 'Optimize'}
-                        </button>
-                        <button onClick={saveLayout} disabled={saving}>
-                            <Save size={14} /> {saving ? 'Saving...' : 'Save'}
-                        </button>
-                    </div>
-                </div>
-
-                <div className="card compact">
-                    <label>Objective</label>
-                    <div className="row">
-                        <button
-                            className={optimizationMode === 'network' ? 'active' : ''}
-                            onClick={() => setOptimizationMode('network')}
-                        >
-                            Network
-                        </button>
-                        <button
-                            className={optimizationMode === 'line' ? 'active' : ''}
-                            onClick={() => setOptimizationMode('line')}
-                        >
-                            Line
-                        </button>
-                    </div>
-                    <p className="muted">Detected: <strong>{detectedStructure}</strong></p>
-                </div>
-
-                <div className="card compact">
-                    <label>Canvas</label>
-                    <div className="row">
-                        <button
-                            className={interactionMode === 'select' ? 'active' : ''}
-                            onClick={() => setInteractionMode('select')}
-                        >
-                            <MousePointer2 size={14} /> Select
-                        </button>
-                        <button
-                            className={interactionMode === 'pan' ? 'active' : ''}
-                            onClick={() => setInteractionMode('pan')}
-                        >
-                            <Move size={14} /> Pan
-                        </button>
-                    </div>
-
-                    <div className="row">
-                        <button onClick={() => setZoom((z) => clamp(z * 1.15, 0.3, 3.5))}>Zoom +</button>
-                        <button onClick={() => setZoom((z) => clamp(z * 0.85, 0.3, 3.5))}>Zoom -</button>
-                        <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>Reset</button>
-                    </div>
-
-                    <label>Grid</label>
-                    <input
-                        type="number"
-                        value={gridSize}
-                        onChange={(event) => setGridSize(clamp(Number(event.target.value) || 40, 10, 120))}
-                    />
-                    <button onClick={() => setSnapEnabled((prev) => !prev)} className={snapEnabled ? 'active' : ''}>
-                        Snap {snapEnabled ? 'ON' : 'OFF'}
-                    </button>
-                </div>
-
-                <div className="card compact">
-                    <label>Lead Time Target (hour)</label>
-                    <input
-                        type="number"
-                        step="0.1"
-                        value={constraints.targetLeadTime || 0}
-                        onChange={(event) => setConstraints((prev) => ({
-                            ...prev,
-                            targetLeadTime: Math.max(0, Number(event.target.value) || 0),
-                        }))}
-                    />
-                    <small className="muted">0 = no lead time constraint</small>
-                </div>
-            </aside>
-
             <main className="panel canvas-panel">
                 <div className="topbar">
-                    <div className="status-pill">Mouse: {mousePos.x}, {mousePos.y}</div>
-                    <div className="status-pill">Zoom: {(zoom * 100).toFixed(0)}%</div>
-                    <div className="status-pill">Pan: {Math.round(pan.x)}, {Math.round(pan.y)}</div>
+                    <div className="toolbar-group title-group">
+                        <h2>{layoutProperties.projectName || t('facilityLayout.title') || 'Facility Layout Optimizer'}</h2>
+                    </div>
+
+                    <div className="toolbar-group project-group">
+                        <Building2 size={14} />
+                        <select
+                            value={selectedProjectId || ''}
+                            onChange={(event) => setSelectedProjectId(event.target.value ? Number(event.target.value) : null)}
+                        >
+                            <option value="">{t('facilityLayout.selectProject') || 'Select Project'}</option>
+                            {projects.map((project) => (
+                                <option key={project.id} value={project.id}>{project.projectName}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="toolbar-group icon-group">
+                        <button title="Add Area" aria-label="Add Area" className="icon-btn" onClick={addArea}><Boxes size={14} /></button>
+                        <button title="Insert Block Layout Catalog" aria-label="Insert Block Layout Catalog" className="icon-btn" onClick={addBlockLayoutCatalog}><Building2 size={14} /></button>
+                        <button title="Add Flow" aria-label="Add Flow" className="icon-btn" onClick={addFlow}><Route size={14} /></button>
+                        <button title="Add Node to Selected Flow" aria-label="Add Node" className="icon-btn" onClick={() => addWaypointToFlow(selectedFlowId)} disabled={!selectedFlowId}><GitBranchPlus size={14} /></button>
+                        <button title="Optimize Layout" aria-label="Optimize Layout" className="icon-btn" onClick={runOptimization} disabled={optimizing}><Sparkles size={14} /></button>
+                        <button title="Save Layout" aria-label="Save Layout" className="icon-btn" onClick={saveLayout} disabled={saving}><Save size={14} /></button>
+                    </div>
+
+                    <div className="toolbar-group icon-group">
+                        <button
+                            title="Objective: Network"
+                            aria-label="Objective Network"
+                            className={`icon-btn ${optimizationMode === 'network' ? 'active' : ''}`}
+                            onClick={() => setOptimizationMode('network')}
+                        >
+                            <Goal size={14} />
+                        </button>
+                        <button
+                            title="Objective: Line"
+                            aria-label="Objective Line"
+                            className={`icon-btn ${optimizationMode === 'line' ? 'active' : ''}`}
+                            onClick={() => setOptimizationMode('line')}
+                        >
+                            <ScanLine size={14} />
+                        </button>
+                        <button
+                            title="Select Mode"
+                            aria-label="Select Mode"
+                            className={`icon-btn ${interactionMode === 'select' ? 'active' : ''}`}
+                            onClick={() => setInteractionMode('select')}
+                        >
+                            <MousePointer2 size={14} />
+                        </button>
+                        <button
+                            title="Pan Mode"
+                            aria-label="Pan Mode"
+                            className={`icon-btn ${interactionMode === 'pan' ? 'active' : ''}`}
+                            onClick={() => setInteractionMode('pan')}
+                        >
+                            <Move size={14} />
+                        </button>
+                    </div>
+
+                    <div className="toolbar-group icon-group">
+                        <button title="Zoom In" aria-label="Zoom In" className="icon-btn" onClick={() => setZoom((z) => clamp(z * 1.15, 0.3, 3.5))}><ZoomIn size={14} /></button>
+                        <button title="Zoom Out" aria-label="Zoom Out" className="icon-btn" onClick={() => setZoom((z) => clamp(z * 0.85, 0.3, 3.5))}><ZoomOut size={14} /></button>
+                        <button title="Reset View" aria-label="Reset View" className="icon-btn" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}><RotateCcw size={14} /></button>
+                    </div>
+
+                    <div className="toolbar-group compact-input-group">
+                        <Grid3X3 size={13} />
+                        <input
+                            type="number"
+                            value={gridSize}
+                            title="Grid Size"
+                            aria-label="Grid Size"
+                            onChange={(event) => setGridSize(clamp(Number(event.target.value) || 40, 10, 120))}
+                        />
+                        <button title={`Snap ${snapEnabled ? 'ON' : 'OFF'}`} aria-label="Toggle Snap" className={`icon-btn ${snapEnabled ? 'active' : ''}`} onClick={() => setSnapEnabled((prev) => !prev)}>
+                            <Magnet size={13} />
+                        </button>
+                    </div>
+
+                    <div className="toolbar-group icon-group">
+                        <button title={showDimensions ? 'Hide Dimensions' : 'Show Dimensions'} aria-label="Toggle Dimensions" className={`icon-btn ${showDimensions ? 'active' : ''}`} onClick={() => setShowDimensions((prev) => !prev)}>
+                            <Ruler size={14} />
+                        </button>
+                        <button title="Layout Properties Help" aria-label="Layout Properties Help" className="icon-btn" onClick={() => setShowLayoutHelp(true)}>
+                            <HelpCircle size={14} />
+                        </button>
+                    </div>
+
+                    <div className="toolbar-group compact-input-group">
+                        <Timer size={13} />
+                        <input
+                            type="number"
+                            step="0.1"
+                            title="Lead Time Target"
+                            aria-label="Lead Time Target"
+                            value={constraints.targetLeadTime || 0}
+                            onChange={(event) => setConstraints((prev) => ({
+                                ...prev,
+                                targetLeadTime: Math.max(0, Number(event.target.value) || 0),
+                            }))}
+                        />
+                    </div>
+
+                    <div className="toolbar-group status-group">
+                        <div className="status-pill">Detected: <strong>{detectedStructure}</strong></div>
+                        <div className="status-pill">Mouse: {mousePos.x}, {mousePos.y}</div>
+                        <div className="status-pill">Zoom: {(zoom * 100).toFixed(0)}%</div>
+                        <div className="status-pill">Pan: {Math.round(pan.x)}, {Math.round(pan.y)}</div>
+                    </div>
                 </div>
 
                 <div
@@ -606,24 +918,33 @@ function FacilityLayoutOptimizer() {
                 >
                     <div
                         className="canvas-world"
-                        style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
+                        style={{
+                            width: canvasSize.width,
+                            height: canvasSize.height,
+                            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                        }}
                     >
-                        <div
-                            className="grid"
-                            style={{
-                                width: CANVAS.width,
-                                height: CANVAS.height,
-                                backgroundSize: `${gridSize}px ${gridSize}px`,
-                            }}
-                        />
+                        {layoutProperties.gridVisible && (
+                            <div
+                                className="grid"
+                                style={{
+                                    width: canvasSize.width,
+                                    height: canvasSize.height,
+                                    backgroundSize: `${gridSize}px ${gridSize}px`,
+                                }}
+                            />
+                        )}
 
-                        <svg className="flow-layer" width={CANVAS.width} height={CANVAS.height}>
+                        <svg className="flow-layer" width={canvasSize.width} height={canvasSize.height}>
                             <defs>
                                 <marker id="arrow-modern" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
                                     <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" />
                                 </marker>
                                 <marker id="arrow-modern-bi" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto-start-reverse">
                                     <path d="M0,0 L0,6 L9,3 z" fill="#facc15" />
+                                </marker>
+                                <marker id="dim-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto-start-reverse">
+                                    <path d="M0,0 L0,6 L7,3 z" fill="#0f172a" />
                                 </marker>
                             </defs>
                             {flows.map((flow) => {
@@ -676,6 +997,8 @@ function FacilityLayoutOptimizer() {
                                     </g>
                                 );
                             })}
+
+                            {showDimensions && dimensions.map((dimension) => renderDimension(dimension))}
                         </svg>
 
                         {areas.map((area) => (
@@ -704,6 +1027,107 @@ function FacilityLayoutOptimizer() {
             </main>
 
             <aside className="panel right-panel">
+                <h3>Layout Properties</h3>
+                <div className="list-card">
+                    <label>Project name</label>
+                    <input
+                        value={layoutProperties.projectName}
+                        onChange={(event) => setLayoutProperties((prev) => ({ ...prev, projectName: event.target.value || 'New Layout' }))}
+                    />
+
+                    <label>Dimension and grid</label>
+                    <div className="grid-two">
+                        <input
+                            type="number"
+                            value={layoutProperties.dimensionHorizontal}
+                            onChange={(event) => setLayoutProperties((prev) => ({
+                                ...prev,
+                                dimensionHorizontal: clamp(Number(event.target.value) || 1080, 320, 4000),
+                            }))}
+                            placeholder="Dimension horizontally"
+                        />
+                        <input
+                            type="number"
+                            value={layoutProperties.dimensionVertical}
+                            onChange={(event) => setLayoutProperties((prev) => ({
+                                ...prev,
+                                dimensionVertical: clamp(Number(event.target.value) || 640, 240, 3000),
+                            }))}
+                            placeholder="Dimension vertically"
+                        />
+                    </div>
+
+                    <div className="grid-two">
+                        <button
+                            className={layoutProperties.gridVisible ? 'active' : ''}
+                            onClick={() => setLayoutProperties((prev) => ({ ...prev, gridVisible: !prev.gridVisible }))}
+                        >
+                            Grid {layoutProperties.gridVisible ? 'On' : 'Off'}
+                        </button>
+                        <input
+                            type="number"
+                            value={gridSize}
+                            onChange={(event) => {
+                                const spacing = clamp(Number(event.target.value) || 40, 10, 120);
+                                setGridSize(spacing);
+                                setLayoutProperties((prev) => ({ ...prev, gridSpacing: spacing }));
+                            }}
+                            placeholder="Grid spacing"
+                        />
+                    </div>
+
+                    <label>Units</label>
+                    <div className="grid-two">
+                        <button
+                            className={layoutProperties.units === 'metric' ? 'active' : ''}
+                            onClick={() => setLayoutProperties((prev) => ({ ...prev, units: 'metric' }))}
+                        >
+                            Metric
+                        </button>
+                        <button
+                            className={layoutProperties.units === 'imperial' ? 'active' : ''}
+                            onClick={() => setLayoutProperties((prev) => ({ ...prev, units: 'imperial' }))}
+                        >
+                            Imperial
+                        </button>
+                    </div>
+
+                    <label>Metric measurements</label>
+                    <div className="grid-two">
+                        <button
+                            className={layoutProperties.automaticMetric ? 'active' : ''}
+                            onClick={() => setLayoutProperties((prev) => ({ ...prev, automaticMetric: !prev.automaticMetric }))}
+                        >
+                            Automatic
+                        </button>
+                        <button
+                            onClick={() => setLayoutProperties((prev) => ({ ...prev, metricUnit: prev.metricUnit === 'm' ? 'mm' : 'm' }))}
+                        >
+                            {layoutProperties.metricUnit === 'm' ? 'Meter' : 'Millimeter'}
+                        </button>
+                    </div>
+
+                    <label>Notes</label>
+                    <textarea
+                        value={layoutProperties.notes}
+                        onChange={(event) => setLayoutProperties((prev) => ({ ...prev, notes: event.target.value }))}
+                        rows={3}
+                        placeholder="Multi-line notes..."
+                    />
+
+                    <label>Number of objects</label>
+                    <div className="grid-three">
+                        <div className="kpi"><span>Areas</span><strong>{objectCounts.areas}</strong></div>
+                        <div className="kpi"><span>Dimensions</span><strong>{objectCounts.dimensions}</strong></div>
+                        <div className="kpi"><span>Flows</span><strong>{objectCounts.flows}</strong></div>
+                    </div>
+                    <div className="grid-three" style={{ marginTop: 6 }}>
+                        <div className="kpi"><span>Nodes</span><strong>{objectCounts.nodes}</strong></div>
+                        <div className="kpi"><span>Dimensions visible</span><strong>{showDimensions ? 'Yes' : 'No'}</strong></div>
+                        <div className="kpi"><span>Layer</span><strong>block layout</strong></div>
+                    </div>
+                </div>
+
                 <h3>Insights</h3>
                 <div className="kpi-grid">
                     <div className="kpi"><span>Total Cost</span><strong>{metrics.totalCost.toFixed(1)}</strong></div>
@@ -865,6 +1289,27 @@ function FacilityLayoutOptimizer() {
                 systemPrompt="You are an expert in facility layout optimization. Provide practical suggestions for area arrangement, transport cost reduction, and lead-time improvement."
             />
 
+            {showLayoutHelp && (
+                <div className="help-modal-overlay" onClick={() => setShowLayoutHelp(false)}>
+                    <div className="help-modal" onClick={(event) => event.stopPropagation()}>
+                        <div className="help-modal-header">
+                            <h3>Layout Properties</h3>
+                            <button className="icon-btn" onClick={() => setShowLayoutHelp(false)}><X size={14} /></button>
+                        </div>
+                        <div className="help-modal-body">
+                            <p><strong>Project name:</strong> Default is <em>New Layout</em>. You can rename it to identify the layout document topic. The name appears in the title bar and can be used in print/PDF title blocks.</p>
+                            <p><strong>Dimension and grid:</strong> Configure layout size, grid visibility, and grid spacing. The origin is fixed at bottom-left (x=0, y=0), so resizing grows/shrinks to the right and upward.</p>
+                            <p><strong>Units:</strong> Switch between metric and imperial for dimensions measured from the layout. This applies to measurements, area values, quick measurement, and 3D measurement.</p>
+                            <p><strong>Metric measurements:</strong> Choose m or mm. If <em>Automatic</em> is enabled, measurements above 10 m can be displayed in m automatically.</p>
+                            <p><strong>Block layout catalog:</strong> Use the catalog button in the top toolbar to insert six predefined blocks (3 AP peripheries, packing station, goods receipt, goods issue) on a shared layer named <em>block layout</em>.</p>
+                            <p><strong>Dimensioning:</strong> The ruler button toggles dimensions globally. Horizontal, vertical, and aligned dimensions are associative and update automatically when linked areas are moved or resized.</p>
+                            <p><strong>Notes:</strong> Multi-line notes are supported. Press ENTER to create a line break.</p>
+                            <p><strong>Number of objects:</strong> Shows the count of area, flow, and node object types in the current layout.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <style>{`
                 .modern-shell{
                     --bg:#060b14;
@@ -877,14 +1322,13 @@ function FacilityLayoutOptimizer() {
                     --danger:#ef4444;
                     height:100%;
                     display:grid;
-                    grid-template-columns:280px 1fr 340px;
+                    grid-template-columns:minmax(0,1fr) 340px;
                     background:radial-gradient(circle at top right,#12213d 0%,#060b14 55%);
                     color:var(--text);
                     overflow:hidden;
                 }
                 .panel{padding:14px;overflow:auto}
-                .left-panel,.right-panel{background:rgba(8,13,25,0.88);backdrop-filter:blur(6px)}
-                .left-panel{border-right:1px solid var(--stroke)}
+                .right-panel{background:rgba(8,13,25,0.88);backdrop-filter:blur(6px)}
                 .right-panel{border-left:1px solid var(--stroke)}
                 h2,h3{margin:0 0 10px}
                 .card{
@@ -899,7 +1343,23 @@ function FacilityLayoutOptimizer() {
                 .row{display:flex;gap:8px}
                 .row > *{flex:1}
                 .canvas-panel{display:flex;flex-direction:column;gap:10px}
-                .topbar{display:flex;gap:8px;flex-wrap:wrap}
+                .topbar{
+                    display:flex;
+                    gap:8px;
+                    flex-wrap:wrap;
+                    border:1px solid var(--stroke);
+                    background:rgba(11,19,34,0.88);
+                    border-radius:12px;
+                    padding:8px;
+                }
+                .toolbar-group{display:flex;align-items:center;gap:6px}
+                .title-group h2{margin:0;font-size:20px;line-height:1}
+                .project-group{padding:0 6px;border:1px solid var(--stroke);border-radius:10px;background:rgba(15,23,42,0.9)}
+                .project-group select{width:220px;border:none;background:transparent;padding:7px 4px}
+                .icon-group,.compact-input-group{padding:2px;border:1px solid var(--stroke);border-radius:10px;background:rgba(2,6,23,0.5)}
+                .icon-btn{width:34px;min-width:34px;padding:8px;flex:none}
+                .compact-input-group input{width:70px;padding:7px 8px;text-align:center}
+                .status-group{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
                 .status-pill{
                     border:1px solid var(--stroke);
                     background:rgba(11,19,34,0.88);
@@ -916,7 +1376,7 @@ function FacilityLayoutOptimizer() {
                     background:#0a1120;
                     overflow:hidden;
                 }
-                .canvas-world{position:absolute;left:0;top:0;transform-origin:0 0;width:${CANVAS.width}px;height:${CANVAS.height}px}
+                .canvas-world{position:absolute;left:0;top:0;transform-origin:0 0}
                 .grid{
                     position:absolute;
                     left:0;
@@ -989,11 +1449,52 @@ function FacilityLayoutOptimizer() {
                     padding:8px;
                     font-size:12px;
                 }
+                textarea{
+                    width:100%;
+                    resize:vertical;
+                    background:rgba(15,23,42,0.95);
+                    color:#e2e8f0;
+                    border:1px solid var(--stroke);
+                    border-radius:9px;
+                    padding:8px;
+                    font-size:12px;
+                    font-family:inherit;
+                }
                 button{display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
                 button:hover{filter:brightness(1.08)}
                 button.active{border-color:#60a5fa;background:rgba(59,130,246,0.22)}
                 button:disabled{opacity:.65;cursor:not-allowed}
                 button.danger{border-color:rgba(239,68,68,0.45);color:#fecaca;background:rgba(127,29,29,0.35)}
+                .help-modal-overlay{
+                    position:fixed;
+                    inset:0;
+                    background:rgba(2,6,23,0.6);
+                    z-index:1000;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    padding:16px;
+                }
+                .help-modal{
+                    width:min(780px,95vw);
+                    max-height:85vh;
+                    overflow:auto;
+                    border:1px solid var(--stroke);
+                    border-radius:12px;
+                    background:linear-gradient(180deg,var(--panel),var(--panel-soft));
+                }
+                .help-modal-header{
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    padding:10px 12px;
+                    border-bottom:1px solid var(--stroke);
+                }
+                .help-modal-body{padding:12px;font-size:13px;line-height:1.55}
+
+                @media (max-width: 1400px){
+                    .status-group{width:100%;margin-left:0}
+                }
             `}</style>
         </div>
     );

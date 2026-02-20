@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { invoke } from '@tauri-apps/api/core';
 import { modules as staticModules } from '../data/maviClassData';
 import {
     BookOpen,
@@ -152,6 +151,16 @@ function AdminPanel() {
     const [authToken, setAuthToken] = useState('');
     const [dbStatus, setDbStatus] = useState(null);
     const [checkingDb, setCheckingDb] = useState(false);
+
+    // Use Tauri runtime bridge directly to avoid Vite optimize-deps fetch issues for @tauri-apps/api/core.
+    const invokeTauri = async (command, payload = {}) => {
+        const internalInvoke = window.__TAURI_INTERNALS__?.invoke;
+        if (typeof internalInvoke !== 'function') {
+            throw new Error("This feature requires the desktop application (Tauri). It cannot be run in a standard web browser.");
+        }
+
+        return internalInvoke(command, payload);
+    };
 
     useEffect(() => {
         checkDbStatus();
@@ -548,13 +557,9 @@ function AdminPanel() {
         setTestResults(null);
         setTestError(null);
         try {
-            // Check if running in Tauri environment
-            if (!window.__TAURI_INTERNALS__) {
-                throw new Error("This feature requires the desktop application (Tauri). It cannot be run in a standard web browser.");
-            }
             // Pass selected features as tags (e.g., @smoke @analysis)
             const tags = selectedFeatures.map(f => `@${f}`).join(' ');
-            const result = await invoke('run_playwright_tests', { tags });
+            const result = await invokeTauri('run_playwright_tests', { tags });
             setTestResults(result);
         } catch (err) {
             console.error("Test execution failed:", err);

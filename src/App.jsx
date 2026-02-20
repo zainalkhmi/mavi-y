@@ -10,6 +10,7 @@ import SaveAsDialog from './components/SaveAsDialog';
 import YamazumiChart from './components/YamazumiChart';
 import ValueStreamMap from './components/ValueStreamMap';
 import RealtimeCompliance from './components/RealtimeCompliance';
+import AdminPanel from './components/AdminPanel';
 
 import BroadcastControls from './components/features/BroadcastControls';
 import BroadcastManager from './components/features/BroadcastManager';
@@ -28,12 +29,13 @@ import './index.css';
 // Helps recover from transient/stale dynamic import failures
 const lazyWithRetry = (importer, componentName = 'component', devImportPath = null) =>
   React.lazy(async () => {
-    const storageKey = `lazy-retry-${componentName}`;
-    const hasRefreshed = sessionStorage.getItem(storageKey) === 'true';
+    const storageKey = `lazy-retry-count-${componentName}`;
+    const retryCount = Number(sessionStorage.getItem(storageKey) || '0');
+    const maxReloadRetries = 3;
 
     try {
       const mod = await importer();
-      sessionStorage.setItem(storageKey, 'false');
+      sessionStorage.removeItem(storageKey);
       return mod;
     } catch (error) {
       // Typical error: "Failed to fetch dynamically imported module"
@@ -48,15 +50,15 @@ const lazyWithRetry = (importer, componentName = 'component', devImportPath = nu
           const sep = devImportPath.includes('?') ? '&' : '?';
           const cacheBustedPath = `${devImportPath}${sep}t=${Date.now()}`;
           const mod = await import(/* @vite-ignore */ cacheBustedPath);
-          sessionStorage.setItem(storageKey, 'false');
+          sessionStorage.removeItem(storageKey);
           return mod;
         } catch {
           // Ignore and continue to one-time hard reload fallback below.
         }
       }
 
-      if (!hasRefreshed) {
-        sessionStorage.setItem(storageKey, 'true');
+      if (isDynamicImportFetchError && retryCount < maxReloadRetries) {
+        sessionStorage.setItem(storageKey, String(retryCount + 1));
         window.location.reload();
       }
       throw error;
@@ -105,7 +107,6 @@ const FileExplorer = lazyWithRetry(
 );
 const PublicManualViewer = React.lazy(() => import('./components/PublicManualViewer'));
 const SystemDiagnostics = React.lazy(() => import('./components/SystemDiagnostics'));
-const AdminPanel = React.lazy(() => import('./components/AdminPanel'));
 const AIProcessWorkspace = React.lazy(() => import('./components/AIProcessWorkspace'));
 const StandardDataBuilder = React.lazy(() => import('./components/StandardDataBuilder'));
 const ErgoCopilot = React.lazy(() => import('./components/ErgoCopilot'));

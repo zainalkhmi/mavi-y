@@ -47,6 +47,9 @@ export class SupplyChainEngine {
             production: 0,
             inventory: 0,
             transportation: 0,
+            taxes: 0,
+            duties: 0,
+            fees: 0,
             wip: 0,
             total: 0
         };
@@ -57,6 +60,12 @@ export class SupplyChainEngine {
 
         // Schedule Tracking
         this.schedule = []; // Array of {nodeId, label, start, end, type}
+
+        // Mixed-Model Data
+        this.productMix = new Map(); // productId -> weight (0-1)
+
+        // Risk Data
+        this.riskNodes = []; // Array of {nodeId, type, severity, message}
     }
 
     log(message, level = 'info') {
@@ -185,9 +194,54 @@ export class SupplyChainEngine {
             nodeStatus, // { nodeId: { initial, final, shortage } }
             costBreakdown: this.costBreakdown,
             wipLevels: Object.fromEntries(this.wipLevels),
-            wipViolations: this.wipViolations
+            wipViolations: this.wipViolations,
+            riskNodes: this.riskNodes
         };
 
+    }
+
+    /**
+     * Mixed-Model: Set the product mix weights
+     * @param {Object} mix - { productId: weight }
+     */
+    setProductMix(mix) {
+        this.productMix = new Map(Object.entries(mix));
+        this.log(`Product Mix Updated: ${JSON.stringify(mix)}`);
+    }
+
+    /**
+     * Run Risk Analysis on the network
+     */
+    runRiskAnalysis() {
+        this.nodes.forEach(n => {
+            const inputEdges = this.edges.filter(e => e.target === n.id);
+            const symbolType = n.data?.symbolType;
+
+            // 1. Single Point of Failure (Single Supplier)
+            if ((n.type === 'process' || symbolType === 'process') && inputEdges.length === 1) {
+                const source = this.nodeMap.get(inputEdges[0].source);
+                if (source && (source.type === 'supplier' || source.data?.symbolType === 'supplier')) {
+                    this.riskNodes.push({
+                        nodeId: n.id,
+                        type: 'Single Supplier',
+                        severity: 'medium',
+                        message: `${n.data?.label || n.id} depends on a single supplier.`
+                    });
+                }
+            }
+
+            // 2. High Utilization / Bottleneck Potential
+            const takt = parseFloat(n.data?.globalTakt) || 0;
+            const ct = parseFloat(n.data?.ct || n.data?.cycleTime) || 0;
+            if (takt > 0 && ct > takt * 0.9) {
+                this.riskNodes.push({
+                    nodeId: n.id,
+                    type: 'Capacity Risk',
+                    severity: ct > takt ? 'high' : 'medium',
+                    message: `High utilization risk at ${n.data?.label || n.id}.`
+                });
+            }
+        });
     }
 
     /**
@@ -367,11 +421,32 @@ export class SupplyChainEngine {
             this.log(`Operation ${nodeName} Feasible! Committing plan.`);
             this.bookCapacity(node, quantity, startDate);
 
-            const costPerUnit = parseFloat(node.data.costPerUnit) || 0;
-            const productionCost = costPerUnit * quantity;
-            this.costBreakdown.production += productionCost;
+            // Cost Calculation
+            let unitCost = parseFloat(node.data.costPerUnit) || 0;
+
+            // Landed Cost (Add taxes, duties, port fees for logistics)
+            if (isTransport) {
+                const taxRate = parseFloat(node.data.taxes) || 0;
+                const portFees = parseFloat(node.data.portFees) || 0;
+                const dutyRate = parseFloat(node.data.duties) || 0;
+
+                const baseTransportCost = unitCost * quantity;
+                const taxes = baseTransportCost * (taxRate / 100);
+                const duties = baseTransportCost * (dutyRate / 100);
+
+                unitCost = unitCost + (taxes + duties + portFees) / quantity;
+                this.costBreakdown.taxes += taxes;
+                this.costBreakdown.duties += duties;
+                this.costBreakdown.fees += portFees;
+                this.log(`[LANDED COST] ${nodeName}: Taxes ($${taxes.toFixed(2)}), Duties ($${duties.toFixed(2)}), Fees ($${portFees.toFixed(2)})`);
+            }
+
+            const productionCost = unitCost * quantity;
+            if (!isTransport) this.costBreakdown.production += productionCost;
+            else this.costBreakdown.transportation += (parseFloat(node.data.costPerUnit) || 0) * quantity;
+
             if (productionCost > 0) {
-                this.log(`[COST] Production cost: $${productionCost.toFixed(2)} (${quantity} units @ $${costPerUnit}/unit)`);
+                this.log(`[COST] Total cost at ${nodeName}: $${productionCost.toFixed(2)}`);
             }
 
             this.trackWIP(nodeId, quantity);

@@ -3068,6 +3068,7 @@ const VSMCanvasContent = () => {
                                         <PropertyField label="Reliability (%)" field="reliability" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                         <PropertyField label="Lead Time (days)" field="leadTime" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                         <PropertyField label="MOQ (units)" field="moq" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        <PropertyField label="Risk Priority (1-10)" field="riskPriority" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                     </div>
                                 </>
                             )}
@@ -3078,6 +3079,7 @@ const VSMCanvasContent = () => {
                                     <PropertyField label={t('vsm.wizard.demandPerDay')} field="demand" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                     <PropertyField label={t('vsm.wizard.shifts')} field="shifts" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                     <PropertyField label={t('vsm.wizard.packSize')} field="packSize" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                    <PropertyField label="Product Mix (JSON: {A:0.5, B:0.5})" field="productMix" type="text" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                     <div style={{ marginTop: '10px', borderTop: '1px solid #444', paddingTop: '10px' }}>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                                             <div style={{ padding: '8px', backgroundColor: '#333', borderRadius: '4px' }}>
@@ -3128,6 +3130,11 @@ const VSMCanvasContent = () => {
                                         </div>
                                     </div>
                                     <PropertyField label={t('vsm.leadTime') + ' (min)'} field="leadTime" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                        <PropertyField label="Taxes (%)" field="taxes" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        <PropertyField label="Duties (%)" field="duties" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                    </div>
+                                    <PropertyField label="Port/Handling Fees ($)" field="portFees" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                 </>
                             )}
 
@@ -3162,6 +3169,11 @@ const VSMCanvasContent = () => {
 
                                     <PropertyField label="Lead Time (days)" field="leadTime" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                     <PropertyField label="Cost per Shipment ($)" field="costPerShipment" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                        <PropertyField label="Taxes (%)" field="taxes" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        <PropertyField label="Duties (%)" field="duties" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                    </div>
+                                    <PropertyField label="Port/Handling Fees ($)" field="portFees" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                 </>
                             )}
 

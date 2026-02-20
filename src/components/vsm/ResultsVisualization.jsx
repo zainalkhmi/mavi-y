@@ -199,6 +199,61 @@ const ResultsVisualization = ({ result, nodes, viewMode = 'results' }) => {
         );
     }
 
+    if (viewMode === 'risk') {
+        const riskNodes = result.riskNodes || [];
+
+        if (riskNodes.length === 0) {
+            return (
+                <div style={{ textAlign: 'center', padding: '60px', color: '#888', background: '#121212', borderRadius: '12px', border: '1px solid #333' }}>
+                    <CheckCircle size={48} style={{ color: '#4caf50', marginBottom: '16px', opacity: 0.5 }} />
+                    <h3>{t('vsm.analysis.noRisksDetected') || 'No Supply Chain Risks Detected'}</h3>
+                    <p>{t('vsm.analysis.noRisksDesc') || 'Your network appears to be robust based on current parameters.'}</p>
+                </div>
+            );
+        }
+
+        return (
+            <div style={{ padding: '20px', backgroundColor: '#121212', borderRadius: '12px', border: '1px solid #333' }}>
+                <h3 style={{ margin: '0 0 20px 0', color: '#ff9800', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <AlertTriangle size={24} /> {t('vsm.supplyChain.riskAssessment') || 'Risk Assessment'}
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {riskNodes.map((risk, idx) => (
+                        <div key={idx} style={{
+                            padding: '16px',
+                            background: risk.severity === 'high' ? 'rgba(211, 47, 47, 0.1)' : 'rgba(255, 152, 0, 0.1)',
+                            border: `1px solid ${risk.severity === 'high' ? '#d32f2f' : '#ff9800'}`,
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '15px'
+                        }}>
+                            <AlertCircle size={24} color={risk.severity === 'high' ? '#d32f2f' : '#ff9800'} />
+                            <div>
+                                <div style={{ fontWeight: 'bold', color: '#fff', marginBottom: '4px' }}>
+                                    {risk.type} - {nodes.find(n => n.id === risk.nodeId)?.data?.label || risk.nodeId}
+                                </div>
+                                <div style={{ fontSize: '0.9rem', color: '#ccc' }}>{risk.message}</div>
+                                <div style={{
+                                    marginTop: '8px',
+                                    fontSize: '0.75rem',
+                                    padding: '2px 8px',
+                                    background: risk.severity === 'high' ? '#d32f2f' : '#ff9800',
+                                    color: '#fff',
+                                    borderRadius: '40px',
+                                    display: 'inline-block',
+                                    fontWeight: 'bold'
+                                }}>
+                                    {risk.severity.toUpperCase()} PRIORITY
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
     // Default Results View
     // Prepare capacity utilization data
     const capacityData = nodes
@@ -480,9 +535,27 @@ const ResultsVisualization = ({ result, nodes, viewMode = 'results' }) => {
                             </div>
                         </div>
                         <div style={{ padding: '12px', background: 'rgba(156, 39, 176, 0.1)', borderRadius: '6px', border: '1px solid #9c27b0' }}>
-                            <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '4px' }}>{t('vsm.toolbox.logistics')}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '4px' }}>{t('vsm.toolbox.logistics')} Base</div>
                             <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#9c27b0' }}>
                                 ${result.costBreakdown.transportation.toFixed(2)}
+                            </div>
+                        </div>
+                        <div style={{ padding: '12px', background: 'rgba(255, 193, 7, 0.1)', borderRadius: '6px', border: '1px solid #ffc107' }}>
+                            <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '4px' }}>{t('vsm.supplyChain.taxes', 'Taxes')}</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#ffc107' }}>
+                                ${result.costBreakdown.taxes.toFixed(2)}
+                            </div>
+                        </div>
+                        <div style={{ padding: '12px', background: 'rgba(233, 30, 99, 0.1)', borderRadius: '6px', border: '1px solid #e91e63' }}>
+                            <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '4px' }}>{t('vsm.supplyChain.duties', 'Duties')}</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#e91e63' }}>
+                                ${result.costBreakdown.duties.toFixed(2)}
+                            </div>
+                        </div>
+                        <div style={{ padding: '12px', background: 'rgba(0, 150, 136, 0.1)', borderRadius: '6px', border: '1px solid #009688' }}>
+                            <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '4px' }}>{t('vsm.supplyChain.fees', 'Port Fees')}</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#009688' }}>
+                                ${result.costBreakdown.fees.toFixed(2)}
                             </div>
                         </div>
                         <div style={{ padding: '12px', background: 'rgba(244, 67, 54, 0.1)', borderRadius: '6px', border: '1px solid #f44336' }}>

@@ -73,7 +73,11 @@ const SupplyChainModal = ({ isOpen, onClose, nodes, edges, onSimulationResult, v
                 // Pass the first customer ID as entry point, but engine should handle multiple or total demand
                 // Assuming engine currently takes one start node. If multiple, we might need engine update.
                 // For now, adhering to existing signature but using total quantity.
-                const simResult = engine.simulate(customerNodes[0].id, parseInt(quantity), dueDate);
+                let simResult = engine.simulate(customerNodes[0].id, parseInt(quantity), dueDate);
+
+                // Run Risk Analysis
+                engine.runRiskAnalysis();
+                simResult.riskNodes = engine.riskNodes;
 
                 setResult(simResult);
 
@@ -119,6 +123,7 @@ const SupplyChainModal = ({ isOpen, onClose, nodes, edges, onSimulationResult, v
         { id: 'analysis', label: t('vsm.supplyChain.analysisResults'), icon: BarChart3 },
         { id: 'timeline', label: t('vsm.supplyChain.timeline'), icon: Clock },
         { id: 'logs', label: t('vsm.supplyChain.logs'), icon: FileText },
+        { id: 'risk', label: t('vsm.supplyChain.risk') || 'Risk Assessment', icon: AlertTriangle },
         { id: 'scenarios', label: t('vsm.supplyChain.scenarios'), icon: FolderOpen }
     ];
 
@@ -396,6 +401,17 @@ const SupplyChainModal = ({ isOpen, onClose, nodes, edges, onSimulationResult, v
                         <div style={{ height: '100%', padding: '20px' }}>
                             <LogViewer
                                 logs={result?.logs || []}
+                                currentLanguage={currentLanguage}
+                            />
+                        </div>
+                    )}
+
+                    {activeTab === 'risk' && (
+                        <div style={{ height: '100%', padding: '20px' }}>
+                            <ResultsVisualization
+                                result={result}
+                                nodes={nodes}
+                                viewMode="risk"
                                 currentLanguage={currentLanguage}
                             />
                         </div>

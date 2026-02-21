@@ -3,6 +3,54 @@
 
 import { getSqliteDb } from './sqlite.js';
 
+const KB_FALLBACK_KEY = 'mavi_kb_fallback_v1';
+
+const isBrowser = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+const readFallbackItems = () => {
+    if (!isBrowser()) return [];
+    try {
+        const raw = window.localStorage.getItem(KB_FALLBACK_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+};
+
+const writeFallbackItems = (items) => {
+    if (!isBrowser()) return;
+    try {
+        window.localStorage.setItem(KB_FALLBACK_KEY, JSON.stringify(items));
+    } catch {
+        // ignore storage quota / serialization errors
+    }
+};
+
+const upsertFallbackItem = (item) => {
+    const items = readFallbackItems();
+    const idx = items.findIndex(i => Number(i.id) === Number(item.id));
+    if (idx >= 0) items[idx] = { ...items[idx], ...item };
+    else items.push(item);
+    writeFallbackItems(items);
+};
+
+const removeFallbackItem = (id) => {
+    const items = readFallbackItems().filter(i => Number(i.id) !== Number(id));
+    writeFallbackItems(items);
+};
+
+const parseContentIfNeeded = (item) => {
+    if (item?.content && typeof item.content === 'string' && (item.content.startsWith('[') || item.content.startsWith('{'))) {
+        try {
+            return { ...item, content: JSON.parse(item.content) };
+        } catch {
+            return item;
+        }
+    }
+    return item;
+};
+
 // CRUD Operations for Knowledge Base Items
 
 export const addKnowledgeBaseItem = async (item) => {
@@ -34,21 +82,37 @@ export const addKnowledgeBaseItem = async (item) => {
         await addTagsToItem(kbId, item.tags);
     }
 
+    // Browser fallback persistence for environments that can run in transient WASM mode
+    upsertFallbackItem({
+        id: kbId,
+        title: item.title,
+        description: item.description,
+        content: item.content,
+        type: item.type,
+        category: item.category,
+        industry: item.industry,
+        cloudId: item.cloudId,
+        createdAt: now,
+        updatedAt: now,
+        syncStatus: 'local'
+    });
+
     return { id: kbId };
 };
 
 export const getAllKnowledgeBaseItems = async () => {
     const db = await getSqliteDb();
     const rows = await db.select('SELECT * FROM knowledge_base ORDER BY createdAt DESC');
+    if (!rows || rows.length === 0) {
+        return readFallbackItems()
+            .map(parseContentIfNeeded)
+            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    }
     return rows.map(item => {
-        if (item.content && typeof item.content === 'string' && (item.content.startsWith('[') || item.content.startsWith('{'))) {
-            try {
-                return { ...item, content: JSON.parse(item.content) };
-            } catch (e) {
-                return item;
-            }
-        }
-        return item;
+        const parsed = parseContentIfNeeded(item);
+        // Keep fallback up to date when real DB has data
+        upsertFallbackItem(parsed);
+        return parsed;
     });
 };
 
@@ -56,14 +120,13 @@ export const getKnowledgeBaseItem = async (id) => {
     const db = await getSqliteDb();
     const rows = await db.select('SELECT * FROM knowledge_base WHERE id = ?', [id]);
     const item = rows[0] || null;
-    if (item && item.content && typeof item.content === 'string' && (item.content.startsWith('[') || item.content.startsWith('{'))) {
-        try {
-            return { ...item, content: JSON.parse(item.content) };
-        } catch (e) {
-            return item;
-        }
+    if (item) {
+        const parsed = parseContentIfNeeded(item);
+        upsertFallbackItem(parsed);
+        return parsed;
     }
-    return item;
+    const fallback = readFallbackItems().find(i => Number(i.id) === Number(id)) || null;
+    return parseContentIfNeeded(fallback);
 };
 
 export const updateKnowledgeBaseItem = async (id, updates) => {
@@ -76,8 +139,26 @@ export const updateKnowledgeBaseItem = async (id, updates) => {
     const fields = [];
     const values = [];
 
+    const ALLOWED_COLUMNS = new Set([
+        'title',
+        'description',
+        'content',
+        'type',
+        'category',
+        'industry',
+        'cloudId',
+        'createdAt',
+        'updatedAt',
+        'syncStatus',
+        'viewCount',
+        'usageCount',
+        'averageRating',
+        'ratingCount'
+    ]);
+
     for (const [key, value] of Object.entries(updates)) {
         if (key === 'id') continue;
+        if (!ALLOWED_COLUMNS.has(key)) continue;
         fields.push(`${key} = ?`);
         values.push(typeof value === 'object' && value !== null ? JSON.stringify(value) : value);
     }
@@ -92,6 +173,14 @@ export const updateKnowledgeBaseItem = async (id, updates) => {
         values
     );
 
+    const mergedForFallback = {
+        ...(existing || {}),
+        ...updates,
+        id,
+        updatedAt: now
+    };
+    upsertFallbackItem(mergedForFallback);
+
     return id;
 };
 
@@ -99,6 +188,7 @@ export const deleteKnowledgeBaseItem = async (id) => {
     const db = await getSqliteDb();
     // Foreign key with ON DELETE CASCADE handles tags and ratings
     await db.execute('DELETE FROM knowledge_base WHERE id = ?', [id]);
+    removeFallbackItem(id);
 };
 
 // Tags Operations
@@ -210,15 +300,25 @@ export const searchKnowledgeBase = async (query, filters = {}) => {
     }
 
     const rows = await db.select(sql, params);
-    return rows.map(item => {
-        if (item.content && typeof item.content === 'string' && (item.content.startsWith('[') || item.content.startsWith('{'))) {
-            try {
-                return { ...item, content: JSON.parse(item.content) };
-            } catch (e) {
-                return item;
+    if (!rows || rows.length === 0) {
+        const fallback = readFallbackItems().map(parseContentIfNeeded);
+        return fallback.filter(item => {
+            if (query) {
+                const q = String(query).toLowerCase();
+                const inTitle = String(item.title || '').toLowerCase().includes(q);
+                const inDesc = String(item.description || '').toLowerCase().includes(q);
+                if (!inTitle && !inDesc) return false;
             }
-        }
-        return item;
+            if (filters.type && item.type !== filters.type) return false;
+            if (filters.category && item.category !== filters.category) return false;
+            if (filters.industry && item.industry !== filters.industry) return false;
+            return true;
+        });
+    }
+    return rows.map(item => {
+        const parsed = parseContentIfNeeded(item);
+        upsertFallbackItem(parsed);
+        return parsed;
     });
 };
 

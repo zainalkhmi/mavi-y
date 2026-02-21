@@ -338,9 +338,30 @@ function FacilityLayoutOptimizer() {
     const selectedArea = useMemo(() => areas.find((a) => a.id === selectedAreaId) || null, [areas, selectedAreaId]);
     const areaById = useMemo(() => new Map(areas.map((a) => [a.id, a])), [areas]);
 
+    const canvasWidth = useMemo(
+        () => clamp(Number(layoutProperties.dimensionHorizontal) || 1080, 320, 4000),
+        [layoutProperties.dimensionHorizontal]
+    );
+
+    const canvasHeight = useMemo(
+        () => clamp(Number(layoutProperties.dimensionVertical) || 640, 240, 3000),
+        [layoutProperties.dimensionVertical]
+    );
+
+    const canvasSize = useMemo(
+        () => ({ width: canvasWidth, height: canvasHeight }),
+        [canvasWidth, canvasHeight]
+    );
+
     const metrics = useMemo(
-        () => evaluateFacilityLayout({ areas, flows, constraints, optimizationMode, bounds: canvasSize }),
-        [areas, flows, constraints, optimizationMode, canvasSize]
+        () => evaluateFacilityLayout({
+            areas,
+            flows,
+            constraints,
+            optimizationMode,
+            bounds: { width: canvasWidth, height: canvasHeight },
+        }),
+        [areas, flows, constraints, optimizationMode, canvasWidth, canvasHeight]
     );
 
     const detectedStructure = useMemo(() => detectLayoutStructure(areas, flows), [areas, flows]);
@@ -360,14 +381,6 @@ function FacilityLayoutOptimizer() {
             return acc;
         }, {}),
         [closenessMatrix]
-    );
-
-    const canvasSize = useMemo(
-        () => ({
-            width: clamp(Number(layoutProperties.dimensionHorizontal) || 1080, 320, 4000),
-            height: clamp(Number(layoutProperties.dimensionVertical) || 640, 240, 3000),
-        }),
-        [layoutProperties.dimensionHorizontal, layoutProperties.dimensionVertical]
     );
 
     const objectCounts = useMemo(() => ({

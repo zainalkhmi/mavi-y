@@ -15,7 +15,6 @@ import {
 import { getAllKnowledgeBaseItems, deleteKnowledgeBaseItem } from '../utils/knowledgeBaseDB';
 import { getAllVSMItems, deleteVSM } from '../utils/vsmDB';
 import { useNavigate } from 'react-router-dom';
-import { invoke } from '@tauri-apps/api/core';
 import { importProject, generateProjectZip } from '../utils/projectExport';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -61,6 +60,15 @@ import {
     shareGoogleDriveFileWithEmail,
     createGoogleDriveShareLink
 } from '../utils/googleDrive';
+
+let tauriInvokeFn = null;
+
+const getTauriInvoke = async () => {
+    if (tauriInvokeFn) return tauriInvokeFn;
+    const mod = await import('@tauri-apps/api/core');
+    tauriInvokeFn = mod.invoke;
+    return tauriInvokeFn;
+};
 
 const FileExplorer = () => {
     const { t } = useLanguage();
@@ -479,6 +487,7 @@ const FileExplorer = () => {
             // Try native Tauri save to Documents\MAVI_Projects
             try {
                 const uint8 = new Uint8Array(await zipBlob.arrayBuffer());
+                const invoke = await getTauriInvoke();
                 const savedPath = await invoke('save_project_to_documents', {
                     fileName,
                     data: Array.from(uint8)

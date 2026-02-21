@@ -37,6 +37,18 @@ const GenericNode = ({ data, selected, showDetails: propShowDetails }) => {
     const isBottleneck = data.symbolType === VSMSymbols.PROJECT && data.globalTakt > 0 && Number(data.ct) > Number(data.globalTakt);
     const isSimulating = data.simulating;
     const progress = data.progress || 0;
+    const alertSeverity = (data?.alertSeverity || '').toLowerCase();
+    const alertClass = alertSeverity ? `vsm-alert-${alertSeverity}` : '';
+    const kanbanState = data?.kanbanState;
+    const kanbanRisk = kanbanState && (
+        kanbanState.below_rop ||
+        kanbanState.below_safety_stock ||
+        kanbanState.no_active_kanban_below_rop ||
+        kanbanState.production_without_kanban ||
+        kanbanState.kanban_overdue ||
+        kanbanState.fifo_violation ||
+        kanbanState.wip_cap_exceeded
+    );
 
     const commonStyle = {
         display: 'flex',
@@ -457,7 +469,7 @@ const GenericNode = ({ data, selected, showDetails: propShowDetails }) => {
 
     return (
         <div
-            className={`${isSimulating ? 'vsm-node-heartbeat' : ''} ${isBottleneck ? 'vsm-bottleneck-active' : ''}`}
+            className={`${isSimulating ? 'vsm-node-heartbeat' : ''} ${isBottleneck ? 'vsm-bottleneck-active' : ''} ${alertClass}`}
             style={commonStyle}
         >
             {/* Inventory Simulation Result Badge (Global for all Generic Types) */}
@@ -482,6 +494,26 @@ const GenericNode = ({ data, selected, showDetails: propShowDetails }) => {
                         ? `⚠️ ${t('vsm.nodes.shortageLabel')}: ${data.simulationResult.shortage}`
                         : `📦 ${t('vsm.nodes.invLabel')}: ${data.simulationResult.final}`
                     }
+                </div>
+            )}
+
+            {kanbanState && (
+                <div style={{
+                    position: 'absolute',
+                    top: '-52px',
+                    right: '-10px',
+                    backgroundColor: kanbanRisk ? '#c50f1f' : '#107c10',
+                    color: 'white',
+                    padding: '3px 7px',
+                    borderRadius: '12px',
+                    fontSize: '0.6rem',
+                    fontWeight: 'bold',
+                    border: '1px solid white',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                    zIndex: 21,
+                    whiteSpace: 'nowrap'
+                }}>
+                    🃏 {(kanbanState.active_production_kanban || kanbanState.active_withdrawal_kanban || 0)}/{kanbanState.kanban_count || 0}
                 </div>
             )}
 

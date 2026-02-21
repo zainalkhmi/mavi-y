@@ -30,6 +30,15 @@ const ProcessNode = ({ data, selected, showDetails: propShowDetails }) => {
 
     const isSimulating = data?.simulating;
     const progress = data?.progress || 0;
+    const kanbanState = data?.kanbanState;
+    const alertSeverity = (data?.alertSeverity || '').toLowerCase();
+    const alertClass = alertSeverity ? `vsm-alert-${alertSeverity}` : '';
+    const kanbanRisk = kanbanState && (
+        kanbanState.production_without_kanban ||
+        kanbanState.wip_cap_exceeded ||
+        kanbanState.kanban_overdue ||
+        kanbanState.fifo_violation
+    );
 
     return (
         <div style={{ position: 'relative' }}>
@@ -57,6 +66,25 @@ const ProcessNode = ({ data, selected, showDetails: propShowDetails }) => {
                 </div>
             )}
 
+            {kanbanState && (
+                <div style={{
+                    position: 'absolute',
+                    top: '-30px',
+                    left: '-10px',
+                    backgroundColor: kanbanRisk ? '#c50f1f' : '#107c10',
+                    color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '12px',
+                    fontSize: '0.62rem',
+                    fontWeight: 'bold',
+                    border: '1px solid white',
+                    zIndex: 10,
+                    whiteSpace: 'nowrap'
+                }}>
+                    🃏 {kanbanState.active_production_kanban || 0}/{kanbanState.kanban_count || 0}
+                </div>
+            )}
+
             {/* Input Handles - All sides can be targets */}
             <Handle type="target" position={Position.Top} id="top" style={{ background: '#555' }} />
             <Handle type="source" position={Position.Top} id="top-source" style={{ background: '#555', left: '60%' }} />
@@ -69,7 +97,7 @@ const ProcessNode = ({ data, selected, showDetails: propShowDetails }) => {
                 <div style={{ position: 'absolute', top: '-18px', right: '0', color: '#ff4444', fontSize: '0.6rem', fontWeight: 'bold' }}>⚠️ {t('vsm.nodes.bottleneck')}</div>
             )}
             <div
-                className={`${isSimulating ? 'vsm-node-heartbeat' : ''} ${isBottleneck ? 'vsm-bottleneck-active' : ''}`}
+                className={`${isSimulating ? 'vsm-node-heartbeat' : ''} ${isBottleneck ? 'vsm-bottleneck-active' : ''} ${alertClass}`}
                 style={{
                     width: '200px',
                     height: '60px',

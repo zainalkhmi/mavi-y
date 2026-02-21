@@ -196,3 +196,134 @@
 .vsm-threshold-alert {
     animation: thresholdPulse 1s infinite ease-in-out;
 }
+
+/* Kanban overlay layer */
+.vsm-kanban-overlay-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 18;
+}
+
+.vsm-kanban-token {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    margin-left: -10px;
+    margin-top: -10px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.45);
+}
+
+.vsm-kanban-token.kb-production {
+    background: #0078d4;
+}
+
+.vsm-kanban-token.kb-withdrawal {
+    background: #ff9900;
+}
+
+.vsm-kanban-token.kb-token-blocked {
+    background: #d13438;
+}
+
+.vsm-kanban-token.kb-token-overdue {
+    background: #b91c1c;
+}
+
+.vsm-kanban-token.kb-token-delivered {
+    background: #107c10;
+}
+
+/* Andon alert panel overlay */
+.vsm-andon-layer {
+    position: absolute;
+    top: 56px;
+    right: 14px;
+    z-index: 22;
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.vsm-andon-alert {
+    background: rgba(17, 24, 39, 0.9);
+    border: 1px solid #334155;
+    border-left-width: 4px;
+    border-radius: 8px;
+    color: #e5e7eb;
+    padding: 8px 9px;
+    display: flex;
+    gap: 8px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.vsm-andon-alert.sev-warning {
+    border-left-color: #f59e0b;
+}
+
+.vsm-andon-alert.sev-critical {
+    border-left-color: #ef4444;
+}
+
+.vsm-andon-alert.sev-andon {
+    border-left-color: #dc2626;
+}
+
+.vsm-andon-icon {
+    font-size: 1rem;
+    line-height: 1.2;
+}
+
+.vsm-andon-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.vsm-andon-head {
+    font-size: 0.68rem;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+}
+
+.vsm-andon-msg {
+    font-size: 0.7rem;
+    opacity: 0.92;
+}
+
+/* Node severity pulse */
+@keyframes vsmSeverityPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.45);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+    }
+}
+
+.vsm-alert-warning {
+    animation: vsmSeverityPulse 1.7s infinite;
+}
+
+.vsm-alert-critical {
+    animation: vsmSeverityPulse 1.1s infinite;
+}
+
+.vsm-alert-andon {
+    animation: shortagePulse 0.8s infinite;
+}

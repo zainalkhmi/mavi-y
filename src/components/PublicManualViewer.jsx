@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { getItemFromCloud } from '../utils/knowledgeBaseDB';
+import React, { useState, useEffect, useMemo } from 'react';
+import { getKnowledgeBaseItem, getItemByCloudId, updateKnowledgeBaseItem } from '../utils/knowledgeBaseDB';
+import { getManualByCloudId, appendManualAcknowledgement } from '../utils/tursoAPI';
 
 const PublicManualViewer = ({ manualId, onClose }) => {
     const [manual, setManual] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [ackName, setAckName] = useState('');
+    const [ackRole, setAckRole] = useState('Operator');
+    const [isSubmittingAck, setIsSubmittingAck] = useState(false);
 
     useEffect(() => {
         loadManual();
@@ -15,7 +19,22 @@ const PublicManualViewer = ({ manualId, onClose }) => {
         setError(null);
 
         try {
-            const data = await getItemFromCloud(manualId);
+            const numericId = Number(manualId);
+            let data = null;
+
+            // 1) Cloud-first (public QR path)
+            data = await getManualByCloudId(manualId);
+
+            // 2) Legacy local numeric id
+            if (Number.isFinite(numericId)) {
+                data = data || await getKnowledgeBaseItem(numericId);
+            }
+
+            // 3) Legacy local cloudId lookup
+            if (!data) {
+                data = await getItemByCloudId(manualId);
+            }
+
             if (data) {
                 setManual(data);
             } else {
@@ -31,6 +50,128 @@ const PublicManualViewer = ({ manualId, onClose }) => {
 
     const handlePrint = () => {
         window.print();
+    };
+
+    const query = new URLSearchParams(window.location.hash.split('?')[1] || window.location.search.substring(1));
+    const requestedVersion = query.get('v');
+    const requestedStepId = query.get('stepId');
+    const requestedStepNumber = Number(query.get('step') || '');
+    const requestedStation = query.get('station');
+
+    const contentObj = manual?.content && typeof manual.content === 'object' && !Array.isArray(manual.content)
+        ? manual.content
+        : null;
+    const steps = manual?.steps || contentObj?.steps || manual?.content || [];
+    const manualStatus = manual?.status || contentObj?.status || contentObj?.workflow?.status || 'Draft';
+    const manualVersion = manual?.version || contentObj?.version || '1.0';
+    const readAcks = Array.isArray(contentObj?.readAcks) ? contentObj.readAcks : [];
+
+    const focusedStepIndex = useMemo(() => {
+        if (!steps.length) return -1;
+
+        if (requestedStepId) {
+            const idx = steps.findIndex((s) => String(s?.id || '') === String(requestedStepId));
+            if (idx >= 0) return idx;
+        }
+
+        if (Number.isFinite(requestedStepNumber) && requestedStepNumber > 0 && requestedStepNumber <= steps.length) {
+            return requestedStepNumber - 1;
+        }
+
+        if (requestedStation) {
+            const target = requestedStation.trim().toLowerCase();
+            const idx = steps.findIndex((s) => String(s?.title || '').trim().toLowerCase() === target);
+            if (idx >= 0) return idx;
+        }
+
+        return -1;
+    }, [steps, requestedStepId, requestedStepNumber, requestedStation]);
+
+    useEffect(() => {
+        if (focusedStepIndex < 0) return;
+        const el = document.getElementById(`public-step-${focusedStepIndex}`);
+        if (el) {
+            setTimeout(() => {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+    }, [focusedStepIndex]);
+
+    const alreadyAcknowledged = readAcks.some(
+        (ack) => ack.version === manualVersion && ack.userName?.trim()?.toLowerCase() === ackName.trim().toLowerCase()
+    );
+
+    const handleAcknowledge = async () => {
+        if (!manual) return;
+        if (!ackName.trim()) {
+            alert('Please enter your name before acknowledging.');
+            return;
+        }
+        if (manualStatus !== 'Released') {
+            alert('This SOP is not Released yet and cannot be acknowledged.');
+            return;
+        }
+
+        setIsSubmittingAck(true);
+        try {
+            const currentContent = contentObj || {};
+            const currentAcks = Array.isArray(currentContent.readAcks) ? currentContent.readAcks : [];
+            const exists = currentAcks.some(
+                (ack) => ack.version === manualVersion && ack.userName?.trim()?.toLowerCase() === ackName.trim().toLowerCase()
+            );
+            if (exists) {
+                alert(`Acknowledgement for version ${manualVersion} already exists for ${ackName}.`);
+                return;
+            }
+
+            const nextAcks = [
+                {
+                    id: Math.random().toString(36).slice(2, 10),
+                    version: manualVersion,
+                    userName: ackName.trim(),
+                    role: ackRole,
+                    acknowledgedAt: new Date().toISOString(),
+                    source: 'qrcode-public-viewer'
+                },
+                ...currentAcks
+            ];
+
+            const cloudId = manual?.cloudId || manualId;
+            let savedToCloud = false;
+
+            if (cloudId) {
+                try {
+                    await appendManualAcknowledgement(cloudId, nextAcks[0]);
+                    savedToCloud = true;
+                } catch (cloudError) {
+                    console.warn('Cloud acknowledgement save failed, fallback to local:', cloudError);
+                }
+            }
+
+            if (!savedToCloud && manual?.id) {
+                await updateKnowledgeBaseItem(manual.id, {
+                    content: {
+                        ...currentContent,
+                        readAcks: nextAcks
+                    }
+                });
+            }
+
+            setManual((prev) => ({
+                ...prev,
+                content: {
+                    ...(currentContent || {}),
+                    readAcks: nextAcks
+                }
+            }));
+
+            alert(`Acknowledgement saved for ${ackName} (v${manualVersion}).`);
+        } catch (ackError) {
+            console.error('Failed to acknowledge SOP:', ackError);
+            alert('Failed to save acknowledgement. Please try again.');
+        } finally {
+            setIsSubmittingAck(false);
+        }
     };
 
     if (isLoading) {
@@ -53,8 +194,6 @@ const PublicManualViewer = ({ manualId, onClose }) => {
             </div>
         );
     }
-
-    const steps = manual.steps || manual.content || [];
 
     // A4 dimensions in pixels (approx 96 DPI): 794px x 1123px
     // Using mm for print accuracy
@@ -224,6 +363,24 @@ const PublicManualViewer = ({ manualId, onClose }) => {
 
             {/* A4 Page(s) */}
             <div className="pdf-page" style={styles.page}>
+                {manualStatus !== 'Released' && (
+                    <div style={{ marginBottom: '12px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#fff4e5', border: '1px solid #ffcc80', color: '#8a5200', fontSize: '10pt' }}>
+                        This SOP is not released yet (status: <strong>{manualStatus}</strong>). Operator access is read-only.
+                    </div>
+                )}
+
+                {requestedVersion && requestedVersion !== manualVersion && (
+                    <div style={{ marginBottom: '12px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#e8f0fe', border: '1px solid #90caf9', color: '#0d47a1', fontSize: '10pt' }}>
+                        You scanned version <strong>{requestedVersion}</strong>, but latest available is <strong>{manualVersion}</strong>.
+                    </div>
+                )}
+
+                {focusedStepIndex >= 0 && (
+                    <div style={{ marginBottom: '12px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#e8f5e9', border: '1px solid #81c784', color: '#1b5e20', fontSize: '10pt' }}>
+                        Deep link target: <strong>Step {focusedStepIndex + 1}</strong> ({steps[focusedStepIndex]?.title || 'Station'}).
+                    </div>
+                )}
+
                 {/* Header */}
                 <div style={styles.docHeader}>
                     <div>
@@ -266,7 +423,17 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                 {/* Steps Content */}
                 <div>
                     {steps.map((step, idx) => (
-                        <div key={step.id || idx} style={styles.stepContainer}>
+                        <div
+                            key={step.id || idx}
+                            id={`public-step-${idx}`}
+                            style={{
+                                ...styles.stepContainer,
+                                border: focusedStepIndex === idx ? '2px solid #0078d4' : 'none',
+                                borderRadius: focusedStepIndex === idx ? '8px' : '0px',
+                                padding: focusedStepIndex === idx ? '8px' : '0px',
+                                backgroundColor: focusedStepIndex === idx ? '#f5fbff' : 'transparent'
+                            }}
+                        >
                             <div style={styles.stepTitle}>Step {idx + 1}: {step.title}</div>
                             <div style={styles.stepContent}>
                                 {step.media && step.media.url && (
@@ -301,6 +468,42 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                             </div>
                         </div>
                     ))}
+                </div>
+
+                <div style={{ marginTop: '18px', paddingTop: '12px', borderTop: '1px dashed #ccc' }}>
+                    <div style={{ fontSize: '11pt', fontWeight: 'bold', marginBottom: '6px' }}>Read & Acknowledge (QR)</div>
+                    <div style={{ fontSize: '9pt', color: '#666', marginBottom: '8px' }}>
+                        Version: <strong>{manualVersion}</strong> • Current acknowledgements: <strong>{readAcks.filter((ack) => ack.version === manualVersion).length}</strong>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <input
+                            type="text"
+                            placeholder="Your name"
+                            value={ackName}
+                            onChange={(e) => setAckName(e.target.value)}
+                            style={{ border: '1px solid #ccc', borderRadius: '6px', padding: '8px', minWidth: '180px' }}
+                        />
+                        <select value={ackRole} onChange={(e) => setAckRole(e.target.value)} style={{ border: '1px solid #ccc', borderRadius: '6px', padding: '8px' }}>
+                            <option value="Operator">Operator</option>
+                            <option value="Reviewer">Reviewer</option>
+                            <option value="Approver">Approver</option>
+                            <option value="Author">Author</option>
+                        </select>
+                        <button
+                            onClick={handleAcknowledge}
+                            disabled={isSubmittingAck || manualStatus !== 'Released' || alreadyAcknowledged}
+                            style={{
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '8px 14px',
+                                backgroundColor: isSubmittingAck || manualStatus !== 'Released' || alreadyAcknowledged ? '#ccc' : '#0078d4',
+                                color: '#fff',
+                                cursor: isSubmittingAck || manualStatus !== 'Released' || alreadyAcknowledged ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            {alreadyAcknowledged ? 'Already Acknowledged' : (isSubmittingAck ? 'Saving...' : 'I Have Read This SOP')}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Footer for Page 1 (simplified, real pagination is complex in HTML/CSS) */}

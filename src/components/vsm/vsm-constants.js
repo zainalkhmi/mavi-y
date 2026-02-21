@@ -71,7 +71,15 @@ export const INITIAL_DATA = {
         fohPerUnit: 0,
         directMaterialCost: 0,
         directLaborCost: 0,
-        machineCost: 0
+        machineCost: 0,
+        wipCap: 0,
+        kanbanLimit: 0,
+        requiresActiveKanban: false,
+        activeProductionKanban: 0,
+        kanbanCardCapacity: 1,
+        kanbanLeadTime: 1,
+        kanbanSafetyFactor: 0.1,
+        fifoEnabled: false
     },
     inventory: {
         amount: 0,
@@ -79,7 +87,21 @@ export const INITIAL_DATA = {
         time: 0,
         minStock: 100,
         maxStock: 1000,
-        holdingCost: 0 // NEW: Cost per unit per day
+        holdingCost: 0, // NEW: Cost per unit per day
+        reorderPoint: 100,
+        safetyStock: 50,
+        consumptionRate: 0,
+        incomingQty: 0,
+        reservedQty: 0,
+        blockedQcQty: 0,
+        activeProductionKanban: 0,
+        activeWithdrawalKanban: 0,
+        kanbanCardCapacity: 1,
+        kanbanLeadTime: 1,
+        kanbanSafetyFactor: 0.1,
+        fifoEnabled: false,
+        fifoQueueAges: [],
+        openKanbanAgeHours: 0
     },
     supplier: {
         name: 'Supplier',
@@ -158,13 +180,28 @@ export const INITIAL_DATA = {
         minStock: 50,
         maxStock: 500,
         reorderPoint: 100,
-        replenishTime: 4
+        replenishTime: 4,
+        safetyStock: 25,
+        consumptionRate: 0,
+        incomingQty: 0,
+        reservedQty: 0,
+        blockedQcQty: 0,
+        activeProductionKanban: 0,
+        activeWithdrawalKanban: 0,
+        kanbanCardCapacity: 1,
+        kanbanLeadTime: 1,
+        kanbanSafetyFactor: 0.1,
+        fifoEnabled: true,
+        fifoQueueAges: []
     },
     buffer: {
         name: 'Buffer',
         amount: 0,
         maxCapacity: 200,
-        throughputRate: 50
+        throughputRate: 50,
+        wipCap: 200,
+        fifoEnabled: true,
+        fifoQueueAges: []
     },
     sea: {
         name: 'Sea Freight',

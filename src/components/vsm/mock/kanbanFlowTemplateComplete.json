@@ -1,0 +1,463 @@
+{
+    "_meta": {
+        "name": "Kanban Flow Template Complete",
+        "version": "1.0.0",
+        "description": "Template aliran Kanban lengkap + skenario simulasi (normal, warning, critical) untuk engine Kanban dan playback animasi VSM.",
+        "compatibleWith": [
+            "src/utils/kanbanEngine.js",
+            "src/utils/kanbanRuleEngine.js",
+            "src/utils/vsmAnimationEngine.js"
+        ],
+        "createdAt": "2026-02-21T15:00:00.000Z"
+    },
+    "howToUse": {
+        "step1": "Pilih salah satu object scenario di bawah (scenario_normal / scenario_warning / scenario_critical).",
+        "step2": "Kirim nodes + edges + inputContext ke KanbanEngine / SupplyChainEngine.",
+        "step3": "Kirim playback ke normalizeSimulationPayload untuk animasi kanban event + alert + node state.",
+        "note": "ID node dan edge di playback harus cocok dengan graph di scenario yang dipakai."
+    },
+    "scenario_normal": {
+        "nodes": [
+            {
+                "id": "k-rm-supermarket",
+                "type": "inventory",
+                "data": {
+                    "label": "RM Supermarket",
+                    "symbolType": "supermarket",
+                    "inventory": 640,
+                    "incomingQty": 50,
+                    "reservedQty": 30,
+                    "blockedQcQty": 5,
+                    "consumptionRate": 36,
+                    "dailyDemand": 320,
+                    "kanbanLeadTime": 1.2,
+                    "safetyStock": 280,
+                    "kanbanSafetyFactor": 0.2,
+                    "kanbanCardCapacity": 40,
+                    "yield": 99,
+                    "activeWithdrawalKanban": 7,
+                    "fifoEnabled": true,
+                    "fifoQueueAges": [
+                        1,
+                        2,
+                        3,
+                        4
+                    ],
+                    "wipCap": 900,
+                    "currentWip": 620,
+                    "maxStock": 1200,
+                    "openKanbanAgeHours": 8
+                }
+            },
+            {
+                "id": "k-cutting",
+                "type": "process",
+                "data": {
+                    "label": "Cutting",
+                    "symbolType": "process",
+                    "capacity": 300,
+                    "yield": 98,
+                    "activeProductionKanban": 8,
+                    "kanbanCardCapacity": 35,
+                    "requiresActiveKanban": true,
+                    "wipCap": 420,
+                    "currentWip": 280,
+                    "openKanbanAgeHours": 4
+                }
+            },
+            {
+                "id": "k-welding",
+                "type": "process",
+                "data": {
+                    "label": "Welding",
+                    "symbolType": "process",
+                    "capacity": 260,
+                    "yield": 97,
+                    "activeProductionKanban": 7,
+                    "kanbanCardCapacity": 30,
+                    "requiresActiveKanban": true,
+                    "wipCap": 360,
+                    "currentWip": 250,
+                    "openKanbanAgeHours": 5
+                }
+            },
+            {
+                "id": "k-fg-buffer",
+                "type": "inventory",
+                "data": {
+                    "label": "FG Buffer",
+                    "symbolType": "buffer",
+                    "inventory": 420,
+                    "incomingQty": 80,
+                    "reservedQty": 20,
+                    "blockedQcQty": 0,
+                    "consumptionRate": 28,
+                    "dailyDemand": 240,
+                    "kanbanLeadTime": 1,
+                    "safetyStock": 160,
+                    "kanbanSafetyFactor": 0.15,
+                    "kanbanCardCapacity": 30,
+                    "yield": 100,
+                    "activeWithdrawalKanban": 5,
+                    "fifoEnabled": true,
+                    "fifoQueueAges": [
+                        1,
+                        2,
+                        3
+                    ],
+                    "wipCap": 500,
+                    "currentWip": 310,
+                    "maxStock": 700,
+                    "openKanbanAgeHours": 6
+                }
+            },
+            {
+                "id": "k-customer",
+                "type": "inventory",
+                "data": {
+                    "label": "Customer Pull",
+                    "symbolType": "finished_goods",
+                    "inventory": 260,
+                    "incomingQty": 40,
+                    "reservedQty": 15,
+                    "blockedQcQty": 0,
+                    "consumptionRate": 25,
+                    "dailyDemand": 230,
+                    "kanbanLeadTime": 0.8,
+                    "safetyStock": 120,
+                    "kanbanSafetyFactor": 0.1,
+                    "kanbanCardCapacity": 25,
+                    "yield": 100,
+                    "activeWithdrawalKanban": 4,
+                    "fifoEnabled": false,
+                    "wipCap": 380,
+                    "currentWip": 220,
+                    "maxStock": 520,
+                    "openKanbanAgeHours": 3
+                }
+            }
+        ],
+        "edges": [
+            {
+                "id": "k-e1",
+                "source": "k-rm-supermarket",
+                "target": "k-cutting",
+                "data": {
+                    "transitQty": 32,
+                    "symbolType": "kanban_withdrawal"
+                }
+            },
+            {
+                "id": "k-e2",
+                "source": "k-cutting",
+                "target": "k-welding",
+                "data": {
+                    "transitQty": 20,
+                    "symbolType": "signal_kanban"
+                }
+            },
+            {
+                "id": "k-e3",
+                "source": "k-welding",
+                "target": "k-fg-buffer",
+                "data": {
+                    "transitQty": 24,
+                    "symbolType": "kanban_withdrawal"
+                }
+            },
+            {
+                "id": "k-e4",
+                "source": "k-fg-buffer",
+                "target": "k-customer",
+                "data": {
+                    "transitQty": 18,
+                    "symbolType": "signal_kanban"
+                }
+            }
+        ],
+        "inputContext": {
+            "wipLevels": {
+                "k-rm-supermarket": 620,
+                "k-cutting": 280,
+                "k-welding": 250,
+                "k-fg-buffer": 310,
+                "k-customer": 220
+            },
+            "result": {
+                "fulfilledQuantity": 230,
+                "schedule": [
+                    {
+                        "start": "2026-02-21T08:00:00.000Z",
+                        "end": "2026-02-21T09:30:00.000Z"
+                    },
+                    {
+                        "start": "2026-02-21T09:35:00.000Z",
+                        "end": "2026-02-21T11:10:00.000Z"
+                    },
+                    {
+                        "start": "2026-02-21T11:20:00.000Z",
+                        "end": "2026-02-21T12:50:00.000Z"
+                    }
+                ]
+            }
+        },
+        "playback": {
+            "kanbanEvents": [
+                {
+                    "id": "kb-n-1",
+                    "type": "withdrawal",
+                    "status": "in_transit",
+                    "sourceNodeId": "k-rm-supermarket",
+                    "targetNodeId": "k-cutting",
+                    "edgeId": "k-e1",
+                    "startTs": 0,
+                    "endTs": 4500,
+                    "overdue": false,
+                    "blocked": false
+                },
+                {
+                    "id": "kb-n-2",
+                    "type": "production",
+                    "status": "in_transit",
+                    "sourceNodeId": "k-cutting",
+                    "targetNodeId": "k-welding",
+                    "edgeId": "k-e2",
+                    "startTs": 700,
+                    "endTs": 5200,
+                    "overdue": false,
+                    "blocked": false
+                }
+            ],
+            "alerts": [],
+            "nodeStates": [
+                {
+                    "nodeId": "k-rm-supermarket",
+                    "onHandQty": 640,
+                    "rop": 384,
+                    "safetyStock": 280,
+                    "wip": 620,
+                    "wipCap": 900,
+                    "shortageRisk": false,
+                    "processingState": "processing",
+                    "fifoViolation": false,
+                    "belowRop": false,
+                    "belowSafety": false,
+                    "kanbanTriggered": false
+                }
+            ]
+        }
+    },
+    "scenario_warning": {
+        "inherits": "scenario_normal",
+        "quickPatch": {
+            "intent": "Munculkan warning tanpa andon",
+            "changes": {
+                "k-fg-buffer": {
+                    "inventory": 250,
+                    "incomingQty": 10,
+                    "consumptionRate": 35,
+                    "openKanbanAgeHours": 16,
+                    "activeWithdrawalKanban": 1
+                },
+                "k-welding": {
+                    "fifoEnabled": true,
+                    "fifoQueueAges": [
+                        1,
+                        4,
+                        3
+                    ]
+                }
+            }
+        },
+        "playback": {
+            "kanbanEvents": [
+                {
+                    "id": "kb-w-1",
+                    "type": "withdrawal",
+                    "status": "in_transit",
+                    "sourceNodeId": "k-fg-buffer",
+                    "targetNodeId": "k-customer",
+                    "edgeId": "k-e4",
+                    "startTs": 0,
+                    "endTs": 6000,
+                    "overdue": false,
+                    "blocked": false
+                }
+            ],
+            "alerts": [
+                {
+                    "alertId": "al-w-1",
+                    "severity": "warning",
+                    "ruleCode": "TPS_BELOW_ROP",
+                    "nodeId": "k-fg-buffer",
+                    "message": "FG Buffer mendekati stockout: below reorder point.",
+                    "status": "active",
+                    "createdAt": 100,
+                    "count": 1
+                },
+                {
+                    "alertId": "al-w-2",
+                    "severity": "warning",
+                    "ruleCode": "TPS_FIFO_VIOLATION",
+                    "nodeId": "k-welding",
+                    "message": "FIFO lane sequence violation terdeteksi di Welding.",
+                    "status": "active",
+                    "createdAt": 500,
+                    "count": 1
+                }
+            ],
+            "nodeStates": [
+                {
+                    "nodeId": "k-fg-buffer",
+                    "onHandQty": 250,
+                    "rop": 275,
+                    "safetyStock": 160,
+                    "wip": 300,
+                    "wipCap": 500,
+                    "shortageRisk": true,
+                    "processingState": "processing",
+                    "fifoViolation": false,
+                    "belowRop": true,
+                    "belowSafety": false,
+                    "kanbanTriggered": true
+                }
+            ]
+        }
+    },
+    "scenario_critical": {
+        "inherits": "scenario_normal",
+        "quickPatch": {
+            "intent": "Trigger kondisi kritis: safety breach, andon, WIP cap exceeded, produksi tanpa kanban",
+            "changes": {
+                "k-rm-supermarket": {
+                    "inventory": 120,
+                    "incomingQty": 0,
+                    "reservedQty": 40,
+                    "blockedQcQty": 20,
+                    "consumptionRate": 55,
+                    "activeWithdrawalKanban": 0,
+                    "openKanbanAgeHours": 40
+                },
+                "k-welding": {
+                    "activeProductionKanban": 0,
+                    "requiresActiveKanban": true,
+                    "wipCap": 300,
+                    "currentWip": 390,
+                    "openKanbanAgeHours": 30,
+                    "fifoEnabled": true,
+                    "fifoQueueAges": [
+                        2,
+                        6,
+                        4
+                    ]
+                },
+                "k-fg-buffer": {
+                    "inventory": 90,
+                    "incomingQty": 0,
+                    "consumptionRate": 42,
+                    "activeWithdrawalKanban": 0
+                }
+            }
+        },
+        "playback": {
+            "kanbanEvents": [
+                {
+                    "id": "kb-c-1",
+                    "type": "withdrawal",
+                    "status": "blocked",
+                    "sourceNodeId": "k-rm-supermarket",
+                    "targetNodeId": "k-cutting",
+                    "edgeId": "k-e1",
+                    "startTs": 0,
+                    "endTs": 9000,
+                    "overdue": false,
+                    "blocked": true
+                },
+                {
+                    "id": "kb-c-2",
+                    "type": "production",
+                    "status": "overdue",
+                    "sourceNodeId": "k-welding",
+                    "targetNodeId": "k-fg-buffer",
+                    "edgeId": "k-e3",
+                    "startTs": 600,
+                    "endTs": 4600,
+                    "overdue": true,
+                    "blocked": false
+                }
+            ],
+            "alerts": [
+                {
+                    "alertId": "al-c-1",
+                    "severity": "critical",
+                    "ruleCode": "TPS_BELOW_SAFETY_STOCK",
+                    "nodeId": "k-rm-supermarket",
+                    "message": "RM Supermarket di bawah safety stock.",
+                    "status": "active",
+                    "createdAt": 100,
+                    "count": 1
+                },
+                {
+                    "alertId": "al-c-2",
+                    "severity": "andon",
+                    "ruleCode": "TPS_STOCKOUT_TIME_ANDON",
+                    "nodeId": "k-rm-supermarket",
+                    "message": "Prediksi stockout < 2 jam (ANDON).",
+                    "status": "active",
+                    "createdAt": 200,
+                    "count": 1
+                },
+                {
+                    "alertId": "al-c-3",
+                    "severity": "critical",
+                    "ruleCode": "TPS_WIP_CAP_EXCEEDED",
+                    "nodeId": "k-welding",
+                    "message": "Welding melebihi batas WIP.",
+                    "status": "active",
+                    "createdAt": 450,
+                    "count": 1
+                },
+                {
+                    "alertId": "al-c-4",
+                    "severity": "critical",
+                    "ruleCode": "TPS_PRODUCTION_WITHOUT_KANBAN",
+                    "nodeId": "k-welding",
+                    "message": "Produksi berjalan tanpa production kanban aktif.",
+                    "status": "active",
+                    "createdAt": 600,
+                    "count": 1
+                }
+            ],
+            "nodeStates": [
+                {
+                    "nodeId": "k-rm-supermarket",
+                    "onHandQty": 120,
+                    "rop": 346,
+                    "safetyStock": 280,
+                    "wip": 160,
+                    "wipCap": 900,
+                    "shortageRisk": true,
+                    "processingState": "blocked",
+                    "fifoViolation": false,
+                    "belowRop": true,
+                    "belowSafety": true,
+                    "kanbanTriggered": false
+                },
+                {
+                    "nodeId": "k-welding",
+                    "onHandQty": 200,
+                    "rop": 150,
+                    "safetyStock": 100,
+                    "wip": 390,
+                    "wipCap": 300,
+                    "shortageRisk": true,
+                    "processingState": "processing",
+                    "fifoViolation": true,
+                    "belowRop": false,
+                    "belowSafety": false,
+                    "kanbanTriggered": false
+                }
+            ]
+        }
+    }
+}

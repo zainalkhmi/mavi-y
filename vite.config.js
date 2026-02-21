@@ -19,7 +19,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     // Keep sqlite wasm out of pre-bundling due worker/runtime specifics.
-    exclude: ['@sqlite.org/sqlite-wasm'],
+    exclude: ['@sqlite.org/sqlite-wasm', '@tauri-apps/api', '@tauri-apps/api/core'],
     // Explicitly pre-bundle packages that benefit from optimization,
     // including MediaPipe modules required by tfjs pose-detection.
     include: [

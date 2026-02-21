@@ -3,6 +3,9 @@
  * Implements recursive logic: Demand -> Operation -> Capacity/Material -> Buffer -> Replenishment
  */
 
+import { KanbanEngine } from './kanbanEngine';
+import { KanbanRuleEngine } from './kanbanRuleEngine';
+
 // Native Date Helpers (replacing date-fns to avoid dependency)
 const addDays = (date, days) => {
     return new Date(new Date(date).getTime() + days * 86400000);
@@ -218,6 +221,81 @@ export class SupplyChainEngine {
             }
         });
 
+        const kanbanEngine = new KanbanEngine(this.nodes, this.edges);
+        const { kanbanNodeStates, shortagePropagation } = kanbanEngine.evaluate({
+            result,
+            wipLevels: Object.fromEntries(this.wipLevels)
+        });
+        const kanbanRuleEngine = new KanbanRuleEngine();
+        const alerts = kanbanRuleEngine.evaluate(kanbanNodeStates);
+        const vsmSummary = kanbanEngine.buildSummary({
+            result,
+            kanbanNodeStates,
+            alerts,
+            shortagePropagation
+        });
+
+        const stockoutIncidentNodes = Array.isArray(vsmSummary?.stockout_incident_nodes)
+            ? vsmSummary.stockout_incident_nodes
+            : [];
+        const stockoutIncidentEvents = stockoutIncidentNodes.map((nodeId) => ({
+            nodeId,
+            mode: vsmSummary?.stockout_incident_mode || 'unique-node-per-evaluation',
+            evaluatedAt: new Date().toISOString(),
+        }));
+
+        const allKanbanStates = Object.values(kanbanNodeStates || {});
+        const adherenceViolations = allKanbanStates.filter((s) => (
+            s.production_without_kanban
+            || s.wip_cap_exceeded
+            || s.fifo_violation
+            || s.kanban_overdue
+            || s.no_active_kanban_below_rop
+        )).length;
+        const totalKanbanRelevant = Math.max(1, allKanbanStates.length);
+        const overdueStuckCount = allKanbanStates.filter((s) => Boolean(s.kanban_overdue)).length;
+
+        const kanbanAnalytics = {
+            kanbanAdherence: Number(vsmSummary?.kanban_adherence ?? 0),
+            adherenceNumerator: adherenceViolations,
+            adherenceDenominator: totalKanbanRelevant,
+            stockoutIncidents: Number(vsmSummary?.stockout_incidents ?? stockoutIncidentNodes.length),
+            stockoutIncidentNodes,
+            stockoutIncidentEvents,
+            stockoutIncidentMode: vsmSummary?.stockout_incident_mode || 'unique-node-per-evaluation',
+            overdueStuckCount,
+        };
+
+        const qtyRotationIssues = [];
+        allKanbanStates.forEach((s) => {
+            if (s.fifo_violation) {
+                qtyRotationIssues.push({
+                    type: 'fifo_violation',
+                    nodeId: s.node_id,
+                    message: `${s.node_name || s.node_id} has FIFO sequence anomaly.`,
+                });
+            }
+            if (s.wip_cap_exceeded) {
+                qtyRotationIssues.push({
+                    type: 'wip_cap_exceeded',
+                    nodeId: s.node_id,
+                    message: `${s.node_name || s.node_id} exceeds WIP cap (${s.current_wip} > ${s.wip_cap}).`,
+                });
+            }
+            if (s.no_active_kanban_below_rop) {
+                qtyRotationIssues.push({
+                    type: 'no_active_kanban_below_rop',
+                    nodeId: s.node_id,
+                    message: `${s.node_name || s.node_id} is below ROP without active withdrawal kanban.`,
+                });
+            }
+        });
+        const qtyRotationIssuesMeta = {
+            enabled: true,
+            reason: null,
+            analyzer: 'kanban-node-state-heuristics',
+        };
+
         return {
             success: result.feasible,
             fulfilledQuantity: result.fulfilled,
@@ -228,7 +306,14 @@ export class SupplyChainEngine {
             costBreakdown: this.costBreakdown,
             wipLevels: Object.fromEntries(this.wipLevels),
             wipViolations: this.wipViolations,
-            riskNodes: this.riskNodes
+            riskNodes: this.riskNodes,
+            kanbanNodeStates,
+            shortagePropagation,
+            alerts,
+            vsmSummary,
+            kanbanAnalytics,
+            qtyRotationIssues,
+            qtyRotationIssuesMeta
         };
 
     }

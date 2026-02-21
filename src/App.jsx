@@ -11,6 +11,7 @@ import YamazumiChart from './components/YamazumiChart';
 import ValueStreamMap from './components/ValueStreamMap';
 import RealtimeCompliance from './components/RealtimeCompliance';
 import AdminPanel from './components/AdminPanel';
+import FileExplorer from './components/FileExplorer';
 
 import BroadcastControls from './components/features/BroadcastControls';
 import BroadcastManager from './components/features/BroadcastManager';
@@ -100,11 +101,6 @@ const SpaghettiChart = React.lazy(() => import('./components/SpaghettiChart'));
 const WorkflowGuide = React.lazy(() => import('./components/WorkflowGuide'));
 const MaviClass = React.lazy(() => import('./components/MaviClass'));
 const MotionLaboratory = React.lazy(() => import('./components/studio/MotionLaboratory'));
-const FileExplorer = lazyWithRetry(
-  () => import('./components/FileExplorer'),
-  'FileExplorer',
-  '/src/components/FileExplorer.jsx'
-);
 const PublicManualViewer = React.lazy(() => import('./components/PublicManualViewer'));
 const SystemDiagnostics = React.lazy(() => import('./components/SystemDiagnostics'));
 const AIProcessWorkspace = React.lazy(() => import('./components/AIProcessWorkspace'));

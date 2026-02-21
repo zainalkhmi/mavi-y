@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getAllProjects } from '../utils/database';
 import { addKnowledgeBaseItem, updateKnowledgeBaseItem, getAllKnowledgeBaseItems, getKnowledgeBaseItem } from '../utils/knowledgeBaseDB';
+import { upsertManual, listManuals } from '../utils/tursoAPI';
 import HelpButton from './HelpButton';
 import { helpContent } from '../utils/helpContent.jsx';
 import GuideHeader from './manual/GuideHeader';
@@ -28,6 +29,14 @@ import { useProject } from '../contexts/ProjectContext';
 import { useDialog } from '../contexts/DialogContext';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
+const USER_ROLES = ['Author', 'Reviewer', 'Approver', 'Operator', 'Admin'];
+const CAPA_TRANSITIONS = {
+    Open: ['Root Cause'],
+    'Root Cause': ['Corrective Action'],
+    'Corrective Action': ['Verification'],
+    Verification: ['Closed'],
+    Closed: []
+};
 
 function ManualCreation() {
     const { t } = useLanguage();
@@ -54,7 +63,15 @@ function ManualCreation() {
         { id: 'timeRequired', label: 'Time Required' }
     ];
 
-    const [guide, setGuide] = useState({
+    const WORKFLOW_STATUSES = ['Draft', 'In Review', 'Approved', 'Released'];
+    const WORKFLOW_TRANSITIONS = {
+        Draft: ['Draft', 'In Review'],
+        'In Review': ['Draft', 'In Review', 'Approved'],
+        Approved: ['In Review', 'Approved', 'Released'],
+        Released: ['Approved', 'Released']
+    };
+
+    const createDefaultGuide = () => ({
         id: generateId(),
         title: '',
         summary: '',
@@ -67,8 +84,81 @@ function ManualCreation() {
         revisionDate: new Date().toISOString().split('T')[0],
         effectiveDate: '',
         headerOrder: DEFAULT_HEADER_ORDER,
+        workflow: {
+            status: 'Draft',
+            updatedBy: 'System',
+            updatedAt: new Date().toISOString()
+        },
+        versionHistory: [],
+        templateFields: {
+            tools: [],
+            parts: [],
+            ppe: []
+        },
+        approvalMatrix: [
+            { id: generateId(), level: 1, role: 'Supervisor', approverName: '', slaHours: 24 }
+        ],
+        approvalRequests: [],
+        assignments: [],
+        auditTrail: [],
+        stepComments: [],
+        issueReports: [],
+        notifications: [],
+        eSignatures: [],
+        readAcks: [],
         steps: []
     });
+
+    const normalizeGuide = (manual) => {
+        const contentObj = manual?.content && typeof manual.content === 'object' && !Array.isArray(manual.content)
+            ? manual.content
+            : {};
+
+        const templateFields = contentObj.templateFields || manual?.templateFields || {};
+        const fallbackStatus = manual?.status || contentObj?.workflow?.status || 'Draft';
+
+        return {
+            ...createDefaultGuide(),
+            id: manual?.cloudId || manual?.id || generateId(),
+            kbId: manual?.id,
+            title: manual?.title || contentObj?.title || '',
+            summary: manual?.summary || manual?.description || contentObj?.summary || '',
+            difficulty: manual?.difficulty || contentObj?.difficulty || 'Moderate',
+            timeRequired: manual?.timeRequired || contentObj?.timeRequired || '',
+            documentNumber: manual?.documentNumber || contentObj?.documentNumber || '',
+            version: manual?.version || contentObj?.version || '1.0',
+            status: fallbackStatus,
+            author: manual?.author || contentObj?.author || '',
+            revisionDate: manual?.updatedAt
+                ? new Date(manual.updatedAt).toISOString().split('T')[0]
+                : (contentObj?.revisionDate || new Date().toISOString().split('T')[0]),
+            effectiveDate: manual?.effectiveDate || contentObj?.effectiveDate || '',
+            headerOrder: manual?.headerOrder || contentObj?.headerOrder || DEFAULT_HEADER_ORDER,
+            workflow: {
+                status: fallbackStatus,
+                updatedBy: contentObj?.workflow?.updatedBy || 'System',
+                updatedAt: contentObj?.workflow?.updatedAt || new Date().toISOString()
+            },
+            versionHistory: Array.isArray(contentObj?.versionHistory) ? contentObj.versionHistory : [],
+            templateFields: {
+                tools: Array.isArray(templateFields?.tools) ? templateFields.tools : [],
+                parts: Array.isArray(templateFields?.parts) ? templateFields.parts : [],
+                ppe: Array.isArray(templateFields?.ppe) ? templateFields.ppe : []
+            },
+            approvalMatrix: Array.isArray(contentObj?.approvalMatrix) ? contentObj.approvalMatrix : [{ id: generateId(), level: 1, role: 'Supervisor', approverName: '', slaHours: 24 }],
+            approvalRequests: Array.isArray(contentObj?.approvalRequests) ? contentObj.approvalRequests : [],
+            assignments: Array.isArray(contentObj?.assignments) ? contentObj.assignments : [],
+            auditTrail: Array.isArray(contentObj?.auditTrail) ? contentObj.auditTrail : [],
+            stepComments: Array.isArray(contentObj?.stepComments) ? contentObj.stepComments : [],
+            issueReports: Array.isArray(contentObj?.issueReports) ? contentObj.issueReports : [],
+            notifications: Array.isArray(contentObj?.notifications) ? contentObj.notifications : [],
+            eSignatures: Array.isArray(contentObj?.eSignatures) ? contentObj.eSignatures : [],
+            readAcks: Array.isArray(contentObj?.readAcks) ? contentObj.readAcks : [],
+            steps: manual?.steps || contentObj?.steps || manual?.content || []
+        };
+    };
+
+    const [guide, setGuide] = useState(createDefaultGuide());
 
     const [activeStepId, setActiveStepId] = useState(null);
     const [savedManuals, setSavedManuals] = useState([]);
@@ -77,6 +167,10 @@ function ManualCreation() {
     const [generationLanguage, setGenerationLanguage] = useState('English');
     const [layoutTemplate, setLayoutTemplate] = useState('standard'); // standard, compact, one-per-page
     const [QRCodePreviewComponent, setQRCodePreviewComponent] = useState(null);
+    const [qrPreviewDataUrl, setQrPreviewDataUrl] = useState('');
+    const [isOperatorMode, setIsOperatorMode] = useState(false);
+    const [operatorStepIndex, setOperatorStepIndex] = useState(0);
+    const [operatorChecks, setOperatorChecks] = useState({});
 
     // Advanced AI State
     const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
@@ -84,6 +178,8 @@ function ManualCreation() {
     const [geminiVideoUri, setGeminiVideoUri] = useState(null);
     const [isFullAIAnalyzing, setIsFullAIAnalyzing] = useState(false);
     const [rawVideoFile, setRawVideoFile] = useState(null);
+    const [currentUserName, setCurrentUserName] = useState('User 1');
+    const [currentUserRole, setCurrentUserRole] = useState('Author');
 
     const location = useLocation();
 
@@ -107,6 +203,33 @@ function ManualCreation() {
             mounted = false;
         };
     }, []);
+
+    const manualPublicLink = `${window.location.origin}/#/manual/${guide.cloudId || guide.kbId || guide.id}?v=${encodeURIComponent(guide.version || '1.0')}`;
+    const buildStepPublicLink = (step, stepIndex) => {
+        const stationName = step?.title || `Step ${stepIndex + 1}`;
+        return `${manualPublicLink}&stepId=${encodeURIComponent(step?.id || '')}&step=${stepIndex + 1}&station=${encodeURIComponent(stationName)}`;
+    };
+
+    useEffect(() => {
+        let alive = true;
+        const generateFallbackQr = async () => {
+            try {
+                const QRCodeLib = (await import('qrcode')).default;
+                const dataUrl = await QRCodeLib.toDataURL(manualPublicLink, {
+                    width: 120,
+                    margin: 1,
+                    color: { dark: '#0078d4', light: '#ffffff' }
+                });
+                if (alive) setQrPreviewDataUrl(dataUrl);
+            } catch {
+                if (alive) setQrPreviewDataUrl('');
+            }
+        };
+        generateFallbackQr();
+        return () => {
+            alive = false;
+        };
+    }, [manualPublicLink]);
 
     useEffect(() => {
         if (location.state?.manualId) {
@@ -156,21 +279,7 @@ function ManualCreation() {
         } else {
             setSelectedProject(null);
             setVideoSrc(null);
-            setGuide({
-                id: generateId(),
-                title: '',
-                summary: '',
-                difficulty: 'Moderate',
-                timeRequired: '',
-                documentNumber: '',
-                version: '1.0',
-                status: 'Draft',
-                author: '',
-                revisionDate: new Date().toISOString().split('T')[0],
-                effectiveDate: '',
-                headerOrder: DEFAULT_HEADER_ORDER,
-                steps: []
-            });
+            setGuide(createDefaultGuide());
             setActiveStepId(null);
         }
     }, [selectedProjectId, projects]);
@@ -191,6 +300,544 @@ function ManualCreation() {
         }
     };
 
+    const getNextMinorVersion = (currentVersion) => {
+        const [majorRaw, minorRaw] = String(currentVersion || '1.0').split('.');
+        const major = Number.isFinite(Number(majorRaw)) ? Number(majorRaw) : 1;
+        const minor = Number.isFinite(Number(minorRaw)) ? Number(minorRaw) : 0;
+        return `${major}.${minor + 1}`;
+    };
+
+    const buildGuideSnapshot = (currentGuide = guide) => ({
+        title: currentGuide.title,
+        summary: currentGuide.summary,
+        difficulty: currentGuide.difficulty,
+        timeRequired: currentGuide.timeRequired,
+        documentNumber: currentGuide.documentNumber,
+        version: currentGuide.version,
+        status: currentGuide.status,
+        author: currentGuide.author,
+        revisionDate: currentGuide.revisionDate,
+        effectiveDate: currentGuide.effectiveDate,
+        headerOrder: currentGuide.headerOrder,
+        workflow: currentGuide.workflow,
+        templateFields: currentGuide.templateFields,
+        approvalMatrix: currentGuide.approvalMatrix,
+        approvalRequests: currentGuide.approvalRequests,
+        assignments: currentGuide.assignments,
+        auditTrail: currentGuide.auditTrail,
+        stepComments: currentGuide.stepComments,
+        issueReports: currentGuide.issueReports,
+        notifications: currentGuide.notifications,
+        eSignatures: currentGuide.eSignatures,
+        readAcks: currentGuide.readAcks,
+        steps: currentGuide.steps
+    });
+
+    const hasAnyRole = (...roles) => currentUserRole === 'Admin' || roles.includes(currentUserRole);
+    const canEditManual = hasAnyRole('Author');
+    const canSubmitApproval = hasAnyRole('Author');
+    const canApprove = hasAnyRole('Approver');
+    const canRelease = hasAnyRole('Approver');
+    const canSign = hasAnyRole('Approver');
+    const canReportIssue = hasAnyRole('Operator', 'Author', 'Reviewer', 'Approver');
+    const canResolveComment = hasAnyRole('Reviewer', 'Approver');
+    const canManageAssignments = hasAnyRole('Author', 'Approver');
+    const canAcknowledge = hasAnyRole('Operator', 'Reviewer', 'Approver', 'Author');
+    const canManageCAPA = hasAnyRole('Reviewer', 'Approver');
+
+    const guardPermission = async (allowed, actionLabel = 'this action') => {
+        if (allowed) return true;
+        await showAlert('Access Denied', `Role ${currentUserRole} cannot perform ${actionLabel}.`);
+        return false;
+    };
+
+    const appendAuditEvent = (prevGuide, action, details = '') => {
+        const entry = {
+            id: generateId(),
+            action,
+            details,
+            actor: `${currentUserName} (${currentUserRole})`,
+            timestamp: new Date().toISOString()
+        };
+        return [entry, ...(prevGuide.auditTrail || [])].slice(0, 200);
+    };
+
+    const createVersionSnapshot = (snapshotGuide = guide, summary = '') => ({
+        id: generateId(),
+        version: snapshotGuide.version || '1.0',
+        summary: summary || `Snapshot v${snapshotGuide.version || '1.0'}`,
+        updatedAt: new Date().toISOString(),
+        updatedBy: snapshotGuide.author || 'System',
+        guideSnapshot: buildGuideSnapshot(snapshotGuide)
+    });
+
+    const handleWorkflowStatusChange = async (nextStatus) => {
+        if (!(await guardPermission(nextStatus === 'Released' ? canRelease : canEditManual, `status change to ${nextStatus}`))) return;
+        const currentStatus = guide.workflow?.status || guide.status || 'Draft';
+        const allowed = WORKFLOW_TRANSITIONS[currentStatus] || [currentStatus];
+
+        if (!allowed.includes(nextStatus)) {
+            await showAlert(
+                'Invalid Transition',
+                `Status transition from "${currentStatus}" to "${nextStatus}" is not allowed. Use step-by-step approval flow.`
+            );
+            return;
+        }
+
+        if (nextStatus === 'Released') {
+            const allApproved = (guide.approvalRequests || []).length > 0 && (guide.approvalRequests || []).every(r => r.status === 'Approved');
+            if (!allApproved) {
+                await showAlert('Approval Required', 'All approval levels must be approved before status can be Released.');
+                return;
+            }
+        }
+
+        setGuide(prev => {
+            const nextReadAcks = nextStatus === 'Released'
+                ? (prev.readAcks || []).filter(a => a.version !== (prev.version || '1.0'))
+                : (prev.readAcks || []);
+            return {
+                ...prev,
+                status: nextStatus,
+                workflow: {
+                    ...(prev.workflow || {}),
+                    status: nextStatus,
+                    updatedBy: `${currentUserName} (${currentUserRole})`,
+                    updatedAt: new Date().toISOString()
+                },
+                readAcks: nextReadAcks,
+                auditTrail: appendAuditEvent(prev, 'Workflow Status Changed', `${prev.workflow?.status || prev.status || 'Draft'} -> ${nextStatus}`)
+            };
+        });
+    };
+
+    const handleCreateVersion = async () => {
+        const summary = window.prompt('Version summary (optional):', 'Minor improvement') || '';
+        setGuide(prev => {
+            const snapshot = createVersionSnapshot(prev, summary);
+            const nextVersion = getNextMinorVersion(prev.version);
+            return {
+                ...prev,
+                version: nextVersion,
+                revisionDate: new Date().toISOString().split('T')[0],
+                versionHistory: [snapshot, ...(prev.versionHistory || [])].slice(0, 25),
+                workflow: {
+                    ...(prev.workflow || {}),
+                    status: prev.workflow?.status || prev.status || 'Draft',
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: prev.author || 'System'
+                },
+                auditTrail: appendAuditEvent(prev, 'Version Snapshot Created', `Created snapshot v${snapshot.version}${summary ? `: ${summary}` : ''}`)
+            };
+        });
+        await showAlert('Version Created', 'New version snapshot created successfully.');
+    };
+
+    const handleRestoreVersion = async (historyItem) => {
+        if (!historyItem?.guideSnapshot) return;
+        if (!await showConfirm(`Restore version ${historyItem.version}? Current unsaved changes may be replaced.`)) return;
+
+        setGuide(prev => {
+            const backupSnapshot = createVersionSnapshot(prev, `Auto-backup before restore ${historyItem.version}`);
+            const restored = historyItem.guideSnapshot;
+            return {
+                ...prev,
+                ...restored,
+                versionHistory: [backupSnapshot, ...(prev.versionHistory || [])].slice(0, 25),
+                workflow: {
+                    ...(restored.workflow || {}),
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: prev.author || 'System'
+                },
+                auditTrail: appendAuditEvent(prev, 'Version Restored', `Restored version ${historyItem.version}`)
+            };
+        });
+        setActiveStepId(historyItem.guideSnapshot?.steps?.[0]?.id || null);
+    };
+
+    const handleAddApprovalLevel = () => {
+        setGuide(prev => {
+            const nextLevel = (prev.approvalMatrix?.length || 0) + 1;
+            return {
+                ...prev,
+                approvalMatrix: [...(prev.approvalMatrix || []), { id: generateId(), level: nextLevel, role: '', approverName: '', slaHours: 24 }],
+                auditTrail: appendAuditEvent(prev, 'Approval Matrix Updated', `Added level ${nextLevel}`)
+            };
+        });
+    };
+
+    const handleUpdateApprovalLevel = (id, key, value) => {
+        setGuide(prev => ({
+            ...prev,
+            approvalMatrix: (prev.approvalMatrix || []).map(l => l.id === id ? { ...l, [key]: value } : l)
+        }));
+    };
+
+    const handleRemoveApprovalLevel = (id) => {
+        setGuide(prev => {
+            const updated = (prev.approvalMatrix || []).filter(l => l.id !== id).map((l, idx) => ({ ...l, level: idx + 1 }));
+            return {
+                ...prev,
+                approvalMatrix: updated,
+                auditTrail: appendAuditEvent(prev, 'Approval Matrix Updated', 'Removed approval level')
+            };
+        });
+    };
+
+    const handleSubmitForApproval = async () => {
+        if (!(await guardPermission(canSubmitApproval, 'submit for approval'))) return;
+        if (!(guide.approvalMatrix || []).length) {
+            await showAlert('Approval Matrix Missing', 'Please add at least one approval level before submitting.');
+            return;
+        }
+
+        setGuide(prev => {
+            const requests = (prev.approvalMatrix || []).map(level => ({
+                id: generateId(),
+                level: level.level,
+                role: level.role,
+                approverName: level.approverName,
+                status: 'Pending',
+                note: '',
+                actedAt: null
+            }));
+
+            return {
+                ...prev,
+                status: 'In Review',
+                workflow: {
+                    ...(prev.workflow || {}),
+                    status: 'In Review',
+                    updatedBy: prev.author || 'System',
+                    updatedAt: new Date().toISOString()
+                },
+                approvalRequests: requests,
+                auditTrail: appendAuditEvent(prev, 'Submitted for Approval', `Submitted ${requests.length} approval levels`)
+            };
+        });
+    };
+
+    const handleApprovalAction = async (requestId, decision) => {
+        if (!(await guardPermission(canApprove, `${decision.toLowerCase()} approval`))) return;
+        const note = window.prompt(`${decision} note (optional):`, '') || '';
+        setGuide(prev => {
+            const updatedRequests = (prev.approvalRequests || []).map(r =>
+                r.id === requestId ? { ...r, status: decision, note, actedAt: new Date().toISOString() } : r
+            );
+
+            const allApproved = updatedRequests.length > 0 && updatedRequests.every(r => r.status === 'Approved');
+            const hasRejected = updatedRequests.some(r => r.status === 'Rejected');
+
+            let nextStatus = prev.status;
+            if (allApproved) nextStatus = 'Approved';
+            if (hasRejected) nextStatus = 'Draft';
+
+            return {
+                ...prev,
+                status: nextStatus,
+                workflow: {
+                    ...(prev.workflow || {}),
+                    status: nextStatus,
+                    updatedBy: prev.author || 'System',
+                    updatedAt: new Date().toISOString()
+                },
+                approvalRequests: updatedRequests,
+                auditTrail: appendAuditEvent(prev, 'Approval Action', `${decision} by level request`)
+            };
+        });
+    };
+
+    const handleAddAssignment = async () => {
+        if (!(await guardPermission(canManageAssignments, 'add assignment'))) return;
+        const assignee = window.prompt('Assignee name:', '') || '';
+        if (!assignee.trim()) return;
+        const team = window.prompt('Team (optional):', '') || '';
+        const shift = window.prompt('Shift (optional):', '') || '';
+        const dueAt = window.prompt('Due date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]) || '';
+
+        setGuide(prev => ({
+            ...prev,
+            assignments: [
+                {
+                    id: generateId(),
+                    assignee,
+                    team,
+                    shift,
+                    dueAt,
+                    status: 'Not Started',
+                    assignedAt: new Date().toISOString(),
+                    startedAt: null,
+                    completedAt: null,
+                    signedOffBy: null,
+                    signedOffAt: null
+                },
+                ...(prev.assignments || [])
+            ],
+            auditTrail: appendAuditEvent(prev, 'Assignment Added', `Assigned to ${assignee}`)
+        }));
+    };
+
+    const handleAssignmentStatusChange = (assignmentId, status) => {
+        setGuide(prev => ({
+            ...prev,
+            assignments: (prev.assignments || []).map(a => {
+                if (a.id !== assignmentId) return a;
+                const next = { ...a, status };
+                if (status === 'In Progress' && !a.startedAt) next.startedAt = new Date().toISOString();
+                if (status === 'Done' && !a.completedAt) next.completedAt = new Date().toISOString();
+                return next;
+            }),
+            auditTrail: appendAuditEvent(prev, 'Assignment Status Changed', `Assignment updated to ${status}`)
+        }));
+    };
+
+    const handleSignOffAssignment = async (assignmentId) => {
+        if (!(await guardPermission(canManageAssignments, 'sign off assignment'))) return;
+        const signer = window.prompt('Sign-off by:', '') || '';
+        if (!signer.trim()) return;
+
+        setGuide(prev => ({
+            ...prev,
+            assignments: (prev.assignments || []).map(a =>
+                a.id === assignmentId
+                    ? {
+                        ...a,
+                        status: 'Done',
+                        completedAt: a.completedAt || new Date().toISOString(),
+                        signedOffBy: signer,
+                        signedOffAt: new Date().toISOString()
+                    }
+                    : a
+            ),
+            auditTrail: appendAuditEvent(prev, 'Assignment Signed Off', `Signed off by ${signer}`)
+        }));
+    };
+
+    const handleAddInlineComment = async (stepId) => {
+        if (!(await guardPermission(hasAnyRole('Reviewer', 'Approver', 'Author'), 'add inline comment'))) return;
+        const reviewer = window.prompt('Reviewer name:', '') || '';
+        const comment = window.prompt('Inline comment:', '') || '';
+        if (!reviewer.trim() || !comment.trim()) return;
+
+        setGuide(prev => ({
+            ...prev,
+            stepComments: [
+                {
+                    id: generateId(),
+                    stepId,
+                    reviewer,
+                    comment,
+                    status: 'Open',
+                    createdAt: new Date().toISOString(),
+                    resolvedAt: null
+                },
+                ...(prev.stepComments || [])
+            ],
+            auditTrail: appendAuditEvent(prev, 'Inline Comment Added', `Step ${stepId} commented by ${reviewer}`)
+        }));
+    };
+
+    const handleResolveInlineComment = async (commentId) => {
+        if (!(await guardPermission(canResolveComment, 'resolve inline comment'))) return;
+        setGuide(prev => ({
+            ...prev,
+            stepComments: (prev.stepComments || []).map(c =>
+                c.id === commentId ? { ...c, status: 'Resolved', resolvedAt: new Date().toISOString() } : c
+            ),
+            auditTrail: appendAuditEvent(prev, 'Inline Comment Resolved', `Comment ${commentId} resolved`)
+        }));
+    };
+
+    const handleReportIssue = async (stepId) => {
+        if (!(await guardPermission(canReportIssue, 'report issue'))) return;
+        const category = window.prompt('Issue category (tool/safety/quality/method):', 'safety') || 'general';
+        const title = window.prompt('Issue title:', '') || '';
+        const description = window.prompt('Issue description:', '') || '';
+        const reportedBy = window.prompt('Reported by:', currentUserName) || currentUserName;
+        if (!title.trim() || !reportedBy.trim()) return;
+
+        setGuide(prev => ({
+            ...prev,
+            issueReports: [
+                {
+                    id: generateId(),
+                    stepId,
+                    category,
+                    title,
+                    description,
+                    reportedBy,
+                    owner: '',
+                    status: 'Open',
+                    rootCause: '',
+                    correctiveAction: '',
+                    verificationNote: '',
+                    targetDate: '',
+                    verifiedBy: '',
+                    verifiedAt: null,
+                    closureNote: '',
+                    createdAt: new Date().toISOString()
+                },
+                ...(prev.issueReports || [])
+            ],
+            auditTrail: appendAuditEvent(prev, 'Issue Reported', `${category}: ${title}`)
+        }));
+    };
+
+    const handleSignElectronic = async () => {
+        if (!(await guardPermission(canSign, 'electronic sign'))) return;
+        const signerName = window.prompt('Signer name:', '') || '';
+        const role = window.prompt('Role:', 'Approver') || 'Approver';
+        const pin = window.prompt('PIN (min 4 digits):', '') || '';
+        const reason = window.prompt('Reason/signature note:', 'Manual verification') || '';
+
+        if (!signerName.trim()) return;
+        if (!pin || pin.length < 4) {
+            await showAlert('Invalid PIN', 'PIN must be at least 4 digits.');
+            return;
+        }
+
+        setGuide(prev => ({
+            ...prev,
+            eSignatures: [
+                {
+                    id: generateId(),
+                    signerName,
+                    role,
+                    pinMasked: '*'.repeat(pin.length),
+                    reason,
+                    signedAt: new Date().toISOString(),
+                    targetVersion: prev.version || '1.0'
+                },
+                ...(prev.eSignatures || [])
+            ],
+            auditTrail: appendAuditEvent(prev, 'Electronic Signature Added', `${signerName} (${role}) signed`)
+        }));
+    };
+
+    const handleAcknowledgeCurrentVersion = async () => {
+        if (!(await guardPermission(canAcknowledge, 'acknowledge manual version'))) return;
+        const currentVersion = guide.version || '1.0';
+        const exists = (guide.readAcks || []).some(a => a.version === currentVersion && a.userName === currentUserName);
+        if (exists) {
+            await showAlert('Already Acknowledged', `You already acknowledged version ${currentVersion}.`);
+            return;
+        }
+        const note = window.prompt('Acknowledgement note (optional):', '') || '';
+        setGuide(prev => ({
+            ...prev,
+            readAcks: [
+                {
+                    id: generateId(),
+                    version: prev.version || '1.0',
+                    userName: currentUserName,
+                    role: currentUserRole,
+                    acknowledgedAt: new Date().toISOString(),
+                    note
+                },
+                ...(prev.readAcks || [])
+            ],
+            auditTrail: appendAuditEvent(prev, 'Manual Acknowledged', `Version ${prev.version || '1.0'} acknowledged by ${currentUserName}`)
+        }));
+    };
+
+    const handleIssueTransition = async (issueId, nextStatus) => {
+        if (!(await guardPermission(canManageCAPA, `move CAPA to ${nextStatus}`))) return;
+        const currentIssue = (guide.issueReports || []).find(i => i.id === issueId);
+        if (!currentIssue) return;
+        const allowedNow = CAPA_TRANSITIONS[currentIssue.status] || [];
+        if (!allowedNow.includes(nextStatus)) {
+            await showAlert('Invalid CAPA Transition', `Cannot move from ${currentIssue.status} to ${nextStatus}.`);
+            return;
+        }
+        if (nextStatus === 'Closed' && !String(currentIssue.verificationNote || '').trim()) {
+            await showAlert('Verification Required', 'Please fill verification note before closing CAPA.');
+            return;
+        }
+        setGuide(prev => {
+            const target = (prev.issueReports || []).find(i => i.id === issueId);
+            if (!target) return prev;
+            const allowed = CAPA_TRANSITIONS[target.status] || [];
+            if (!allowed.includes(nextStatus)) return prev;
+
+            let patch = {};
+            if (nextStatus === 'Root Cause') {
+                patch.rootCause = window.prompt('Root cause:', target.rootCause || '') || target.rootCause || '';
+                patch.owner = window.prompt('Owner:', target.owner || currentUserName) || target.owner || currentUserName;
+            }
+            if (nextStatus === 'Corrective Action') {
+                patch.correctiveAction = window.prompt('Corrective action:', target.correctiveAction || '') || target.correctiveAction || '';
+                patch.targetDate = window.prompt('Target date (YYYY-MM-DD):', target.targetDate || new Date().toISOString().split('T')[0]) || target.targetDate || '';
+            }
+            if (nextStatus === 'Verification') {
+                patch.verificationNote = window.prompt('Verification note:', target.verificationNote || '') || target.verificationNote || '';
+            }
+            if (nextStatus === 'Closed') {
+                patch.closureNote = window.prompt('Closure note:', target.closureNote || '') || target.closureNote || '';
+                patch.verifiedBy = currentUserName;
+                patch.verifiedAt = new Date().toISOString();
+            }
+
+            return {
+                ...prev,
+                issueReports: (prev.issueReports || []).map(i => i.id === issueId ? { ...i, ...patch, status: nextStatus } : i),
+                auditTrail: appendAuditEvent(prev, 'CAPA Transition', `${target.title}: ${target.status} -> ${nextStatus}`)
+            };
+        });
+    };
+
+    const updateTemplateList = (type, nextList) => {
+        setGuide(prev => ({
+            ...prev,
+            templateFields: {
+                ...(prev.templateFields || {}),
+                [type]: nextList
+            }
+        }));
+    };
+
+    const addTemplateItem = (type) => {
+        const defaults = {
+            tools: { name: '', qty: '', note: '' },
+            parts: { partNo: '', name: '', qty: '', note: '' },
+            ppe: { name: '', mandatory: true }
+        };
+        const current = guide.templateFields?.[type] || [];
+        updateTemplateList(type, [...current, defaults[type]]);
+    };
+
+    const updateTemplateItem = (type, index, key, value) => {
+        const current = [...(guide.templateFields?.[type] || [])];
+        if (!current[index]) return;
+        current[index] = { ...current[index], [key]: value };
+        updateTemplateList(type, current);
+    };
+
+    const removeTemplateItem = (type, index) => {
+        const current = [...(guide.templateFields?.[type] || [])];
+        current.splice(index, 1);
+        updateTemplateList(type, current);
+    };
+
+    const handleOperatorToggleCheck = (stepId) => {
+        setOperatorChecks(prev => {
+            const existing = prev[stepId];
+            return {
+                ...prev,
+                [stepId]: existing?.completed
+                    ? { completed: false, checkedAt: null, note: existing?.note || '' }
+                    : { completed: true, checkedAt: new Date().toISOString(), note: existing?.note || '' }
+            };
+        });
+    };
+
+    const handleOperatorNext = () => {
+        setOperatorStepIndex(prev => Math.min(prev + 1, Math.max(guide.steps.length - 1, 0)));
+    };
+
+    const handleOperatorBack = () => {
+        setOperatorStepIndex(prev => Math.max(prev - 1, 0));
+    };
+
     const handleSaveManual = async () => {
         if (!guide.title) {
             await showAlert('Title Required', t('manual.alerts.enterTitle'));
@@ -199,29 +846,61 @@ function ManualCreation() {
 
         try {
             const manualData = {
-                ...guide, // spread everything to catch custom fields
                 title: guide.title,
+                description: guide.summary || '',
                 category: 'Work Instruction',
                 type: 'manual',
-                steps: guide.steps,
-                content: guide.steps,
+                version: guide.version,
+                status: guide.workflow?.status || guide.status || 'Draft',
+                author: guide.author || '',
+                documentNumber: guide.documentNumber || '',
+                content: {
+                    ...buildGuideSnapshot(guide),
+                    status: guide.workflow?.status || guide.status || 'Draft'
+                },
                 updatedAt: new Date().toISOString()
             };
 
-            // Check if this manual already exists in KB (by ID match or Title match loosely?)
-            // For now, we rely on having an ID. But 'generateId' creates a random string not matching KB IDs unless loaded.
-            // If guide has a 'cloudId' or 'kbId', we assume update. Otherwise create.
+            // 1) Save to Turso cloud first for QR cross-device access
+            const cloudResult = await upsertManual({
+                cloudId: guide.cloudId,
+                ...manualData
+            });
+            const nextCloudId = cloudResult?.cloudId || guide.cloudId;
 
+            // 2) Keep local KB in sync (best-effort fallback cache)
+            let nextKbId = guide.kbId;
             if (guide.kbId) {
-                await updateKnowledgeBaseItem(guide.kbId, manualData);
-                await showAlert('Success', t('manual.alerts.updateSuccess'));
+                try {
+                    await updateKnowledgeBaseItem(guide.kbId, {
+                        ...manualData,
+                        cloudId: nextCloudId
+                    });
+                } catch {
+                    const localResult = await addKnowledgeBaseItem({
+                        ...manualData,
+                        cloudId: nextCloudId
+                    });
+                    if (localResult?.id) nextKbId = localResult.id;
+                }
             } else {
-                const result = await addKnowledgeBaseItem(manualData);
-                // result is { id, cloudId }
-                setGuide(prev => ({ ...prev, kbId: result.id, cloudId: result.cloudId, id: result.cloudId }));
-                // We update main 'id' to cloudId as well, as that's what we use for external refs
-                await showAlert('Success', t('manual.alerts.saveSuccess'));
+                const localResult = await addKnowledgeBaseItem({
+                    ...manualData,
+                    cloudId: nextCloudId
+                });
+                if (localResult?.id) {
+                    nextKbId = localResult.id;
+                }
             }
+
+            setGuide(prev => ({
+                ...prev,
+                cloudId: nextCloudId,
+                id: nextCloudId || prev.id,
+                kbId: nextKbId
+            }));
+
+            await showAlert('Success', guide.kbId ? t('manual.alerts.updateSuccess') : t('manual.alerts.saveSuccess'));
         } catch (error) {
             console.error('Error saving manual:', error);
             await showAlert('Error', t('manual.alerts.saveFailed', { message: error.message }));
@@ -230,8 +909,23 @@ function ManualCreation() {
 
     const handleLoadManualsList = async () => {
         try {
+            let cloudManuals = [];
+            try {
+                cloudManuals = await listManuals();
+            } catch {
+                cloudManuals = [];
+            }
+
             const items = await getAllKnowledgeBaseItems();
-            const manuals = items.filter(item => item.type === 'manual');
+            const localManuals = items.filter(item => item.type === 'manual');
+
+            const mergedMap = new Map();
+            [...cloudManuals, ...localManuals].forEach((m) => {
+                const key = String(m.cloudId || m.cloud_id || m.id);
+                if (!mergedMap.has(key)) mergedMap.set(key, m);
+            });
+
+            const manuals = Array.from(mergedMap.values());
             setSavedManuals(manuals);
             setShowOpenDialog(true);
         } catch (error) {
@@ -241,28 +935,11 @@ function ManualCreation() {
     };
 
     const handleOpenManual = (manual) => {
-        setGuide({
-            id: manual.cloudId || generateId(),
-            kbId: manual.id, // Local SQLite ID
-            title: manual.title || '',
-            summary: manual.summary || manual.description || '',
-            difficulty: manual.difficulty || 'Moderate',
-            timeRequired: manual.timeRequired || '',
-            documentNumber: manual.documentNumber || '',
-            version: manual.version || '1.0',
-            status: manual.status || 'Draft',
-            author: manual.author || '',
-            revisionDate: manual.updatedAt ? new Date(manual.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-            effectiveDate: manual.effectiveDate || '',
-            headerOrder: manual.headerOrder || DEFAULT_HEADER_ORDER,
-            steps: manual.steps || manual.content || []
-        });
-
-        if (manual.steps && manual.steps.length > 0) {
-            setActiveStepId(manual.steps[0].id);
-        } else {
-            setActiveStepId(null);
-        }
+        const normalized = normalizeGuide(manual);
+        setGuide(normalized);
+        setActiveStepId(normalized.steps?.[0]?.id || null);
+        setOperatorStepIndex(0);
+        setOperatorChecks({});
 
         setShowOpenDialog(false);
         // Set selectedProject to enable the editor view
@@ -496,8 +1173,8 @@ function ManualCreation() {
 
             // QR Code - Top Right Corner (web-accessible URL)
             const baseUrl = window.location.origin;
-            const manualId = guide.id || generateId();
-            const qrUrl = `${baseUrl}/#/manual/${manualId}?doc=${encodeURIComponent(guide.documentNumber || '')}&title=${encodeURIComponent(guide.title || '')}`;
+            const manualId = guide.kbId || guide.id || generateId();
+            const qrUrl = `${baseUrl}/#/manual/${manualId}?v=${encodeURIComponent(guide.version || '1.0')}&doc=${encodeURIComponent(guide.documentNumber || '')}&title=${encodeURIComponent(guide.title || '')}`;
             try {
                 const QRCode = (await import('qrcode')).default;
                 const qrDataUrl = await QRCode.toDataURL(qrUrl, {
@@ -985,6 +1662,25 @@ function ManualCreation() {
     };
 
     const activeStep = guide.steps.find(s => s.id === activeStepId);
+    const operatorCurrentStep = guide.steps[operatorStepIndex] || null;
+    const operatorCompletedCount = guide.steps.reduce((acc, step) => acc + (operatorChecks[step.id]?.completed ? 1 : 0), 0);
+    const operatorTotalSteps = guide.steps.length;
+    const operatorProgress = operatorTotalSteps > 0 ? Math.round((operatorCompletedCount / operatorTotalSteps) * 100) : 0;
+    const assignments = guide.assignments || [];
+    const totalAssignments = assignments.length;
+    const completedAssignments = assignments.filter(a => a.status === 'Done').length;
+    const overdueAssignments = assignments.filter(a => a.dueAt && new Date(a.dueAt) < new Date() && a.status !== 'Done').length;
+    const completionRate = totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0;
+    const firstPassCompliance = totalAssignments > 0 ? Math.round((assignments.filter(a => a.signedOffBy && a.status === 'Done').length / totalAssignments) * 100) : 0;
+    const completedWithTime = assignments.filter(a => a.startedAt && a.completedAt);
+    const avgCompletionHours = completedWithTime.length > 0
+        ? (completedWithTime.reduce((sum, a) => sum + ((new Date(a.completedAt) - new Date(a.startedAt)) / 3600000), 0) / completedWithTime.length).toFixed(1)
+        : '0.0';
+    const currentVersion = guide.version || '1.0';
+    const currentVersionAcks = (guide.readAcks || []).filter(a => a.version === currentVersion);
+    const readAckRate = USER_ROLES.length > 0 ? Math.min(100, Math.round((currentVersionAcks.length / USER_ROLES.length) * 100)) : 0;
+    const openCapaCount = (guide.issueReports || []).filter(i => i.status !== 'Closed').length;
+    const closedCapaCount = (guide.issueReports || []).filter(i => i.status === 'Closed').length;
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#0a0a0c', color: '#fff', fontFamily: 'Inter, system-ui, sans-serif' }}>
@@ -1119,6 +1815,49 @@ function ManualCreation() {
                         {tt('common.open', 'Open')}
                     </button>
 
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <select
+                            value={guide.workflow?.status || guide.status || 'Draft'}
+                            onChange={(e) => handleWorkflowStatusChange(e.target.value)}
+                            className="pro-select"
+                            style={{ paddingRight: '32px', minWidth: '135px' }}
+                        >
+                            {WORKFLOW_STATUSES.map((statusItem) => (
+                                <option key={statusItem} value={statusItem}>{statusItem}</option>
+                            ))}
+                        </select>
+                        <Activity size={14} style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'rgba(255, 255, 255, 0.4)' }} />
+                    </div>
+
+                    <button
+                        onClick={handleCreateVersion}
+                        className="btn-pro"
+                        style={{ backgroundColor: 'rgba(37, 99, 235, 0.15)', color: '#93c5fd', borderColor: 'rgba(59, 130, 246, 0.35)' }}
+                        title="Create Version Snapshot"
+                    >
+                        <Layers size={16} />
+                        New Ver
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            setIsOperatorMode(prev => {
+                                const next = !prev;
+                                if (next) setOperatorStepIndex(0);
+                                return next;
+                            });
+                        }}
+                        className="btn-pro"
+                        style={{
+                            backgroundColor: isOperatorMode ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                            color: isOperatorMode ? '#6ee7b7' : 'white',
+                            borderColor: isOperatorMode ? 'rgba(16, 185, 129, 0.35)' : 'rgba(255, 255, 255, 0.1)'
+                        }}
+                    >
+                        <Play size={16} />
+                        {isOperatorMode ? 'Operator ON' : 'Operator'}
+                    </button>
+
 
 
                     <div style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255, 255, 255, 0.1)', margin: '0 4px' }} />
@@ -1195,6 +1934,22 @@ function ManualCreation() {
                         <ChevronDown size={14} style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: '#60a5fa' }} />
                     </div>
 
+                    <input
+                        className="pro-select"
+                        value={currentUserName}
+                        onChange={(e) => setCurrentUserName(e.target.value)}
+                        placeholder="User"
+                        style={{ minWidth: '120px' }}
+                    />
+                    <select
+                        value={currentUserRole}
+                        onChange={(e) => setCurrentUserRole(e.target.value)}
+                        className="pro-select"
+                        style={{ minWidth: '120px' }}
+                    >
+                        {USER_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
+                    </select>
+
                     <HelpButton
                         title={helpContent['manual-creation'].title}
                         content={helpContent['manual-creation'].content}
@@ -1207,7 +1962,126 @@ function ManualCreation() {
                 <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
                     {/* Left: Steps Editor / Preview */}
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '20px' }}>
-                        {isPreviewMode ? (
+                        {isOperatorMode ? (
+                            <div style={{ padding: '0 40px 60px 40px', maxWidth: '1000px', margin: '0 auto', width: '100%', animation: 'fadeIn 0.4s ease' }}>
+                                <div className="glass-panel" style={{ padding: '24px', marginBottom: '20px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                                        <div>
+                                            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Operator Execution Mode</h3>
+                                            <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', marginTop: '4px' }}>
+                                                Completion: {operatorCompletedCount}/{operatorTotalSteps} steps
+                                            </div>
+                                        </div>
+                                        <div style={{ color: '#6ee7b7', fontWeight: 800, fontSize: '1.1rem' }}>{operatorProgress}%</div>
+                                    </div>
+
+                                    <div style={{ height: '8px', borderRadius: '999px', backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                                        <div style={{ width: `${operatorProgress}%`, height: '100%', background: 'linear-gradient(90deg, #16a34a, #22c55e)' }} />
+                                    </div>
+                                </div>
+
+                                {operatorCurrentStep ? (
+                                    <div className="glass-panel" style={{ padding: '28px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                            <h2 style={{ margin: 0, fontSize: '1.3rem' }}>
+                                                Step {operatorStepIndex + 1}: {operatorCurrentStep.title}
+                                            </h2>
+                                            <button
+                                                onClick={() => handleOperatorToggleCheck(operatorCurrentStep.id)}
+                                                className="btn-pro"
+                                                style={{
+                                                    backgroundColor: operatorChecks[operatorCurrentStep.id]?.completed ? 'rgba(16,185,129,0.22)' : 'rgba(255,255,255,0.06)',
+                                                    color: operatorChecks[operatorCurrentStep.id]?.completed ? '#6ee7b7' : '#fff',
+                                                    borderColor: operatorChecks[operatorCurrentStep.id]?.completed ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.12)'
+                                                }}
+                                            >
+                                                <CheckCircle size={16} />
+                                                {operatorChecks[operatorCurrentStep.id]?.completed ? 'Completed' : 'Mark Complete'}
+                                            </button>
+                                        </div>
+
+                                        <div style={{ marginBottom: '12px' }}>
+                                            <button
+                                                onClick={() => handleReportIssue(operatorCurrentStep.id)}
+                                                className="btn-pro"
+                                                style={{
+                                                    backgroundColor: 'rgba(239,68,68,0.14)',
+                                                    color: '#fca5a5',
+                                                    borderColor: 'rgba(239,68,68,0.35)'
+                                                }}
+                                            >
+                                                <Shield size={15} /> Report Issue
+                                            </button>
+                                        </div>
+
+                                        {operatorCurrentStep.media?.url && (
+                                            <img
+                                                src={operatorCurrentStep.media.url}
+                                                alt={operatorCurrentStep.title}
+                                                style={{ width: '100%', maxHeight: '320px', objectFit: 'contain', borderRadius: '12px', marginBottom: '18px', border: '1px solid rgba(255,255,255,0.1)' }}
+                                            />
+                                        )}
+
+                                        {operatorCurrentStep.instructions && (
+                                            <div
+                                                style={{ lineHeight: '1.8', color: 'rgba(255,255,255,0.9)', marginBottom: '16px' }}
+                                                dangerouslySetInnerHTML={{ __html: operatorCurrentStep.instructions }}
+                                            />
+                                        )}
+
+                                        {operatorCurrentStep.bullets?.length > 0 && (
+                                            <div style={{ display: 'grid', gap: '8px', marginBottom: '20px' }}>
+                                                {operatorCurrentStep.bullets.map((b, idx) => (
+                                                    <div key={`${operatorCurrentStep.id}-bullet-${idx}`} style={{
+                                                        padding: '10px 12px',
+                                                        borderRadius: '10px',
+                                                        backgroundColor: 'rgba(255,255,255,0.03)',
+                                                        borderLeft: `4px solid ${b.type === 'warning' ? '#f59e0b' : b.type === 'caution' ? '#ef4444' : '#3b82f6'}`
+                                                    }}>
+                                                        <strong style={{ textTransform: 'uppercase', fontSize: '0.72rem', opacity: 0.9 }}>{b.type}</strong>
+                                                        <div style={{ marginTop: '4px', fontSize: '0.9rem', color: 'rgba(255,255,255,0.85)' }}>{b.text}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                                            <button
+                                                onClick={handleOperatorBack}
+                                                disabled={operatorStepIndex === 0}
+                                                className="btn-pro"
+                                                style={{
+                                                    opacity: operatorStepIndex === 0 ? 0.4 : 1,
+                                                    cursor: operatorStepIndex === 0 ? 'not-allowed' : 'pointer',
+                                                    backgroundColor: 'rgba(255,255,255,0.06)',
+                                                    color: '#fff'
+                                                }}
+                                            >
+                                                Back
+                                            </button>
+                                            <button
+                                                onClick={handleOperatorNext}
+                                                disabled={operatorStepIndex >= operatorTotalSteps - 1}
+                                                className="btn-pro"
+                                                style={{
+                                                    opacity: operatorStepIndex >= operatorTotalSteps - 1 ? 0.4 : 1,
+                                                    cursor: operatorStepIndex >= operatorTotalSteps - 1 ? 'not-allowed' : 'pointer',
+                                                    backgroundColor: 'rgba(37,99,235,0.18)',
+                                                    color: '#93c5fd',
+                                                    borderColor: 'rgba(59,130,246,0.35)'
+                                                }}
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="glass-panel" style={{ padding: '28px', textAlign: 'center', color: 'rgba(255,255,255,0.55)' }}>
+                                        No steps available for operator mode.
+                                    </div>
+                                )}
+                            </div>
+                        ) : isPreviewMode ? (
                             <div style={{ padding: '0 40px 80px 40px', maxWidth: '1000px', margin: '0 auto', animation: 'fadeIn 0.6s ease' }}>
                                 {/* Modern Digital Header */}
                                 <div className="glass-panel" style={{ padding: '48px', marginBottom: '32px', textAlign: 'center', backgroundColor: 'rgba(255, 255, 255, 0.02)' }}>
@@ -1248,7 +2122,9 @@ function ManualCreation() {
                                                 boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
                                             }}>
                                                 {QRCodePreviewComponent ? (
-                                                    <QRCodePreviewComponent value={`${window.location.origin}/#/manual/${guide.id}`} size={100} />
+                                                    <QRCodePreviewComponent value={manualPublicLink} size={100} />
+                                                ) : qrPreviewDataUrl ? (
+                                                    <img src={qrPreviewDataUrl} alt="Manual QR" style={{ width: '100px', height: '100px', display: 'block' }} />
                                                 ) : (
                                                     <div style={{ width: '100px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: '0.75rem' }}>
                                                         QR
@@ -1363,9 +2239,475 @@ function ManualCreation() {
                                 </div>
                                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '24px', backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
                                     <div className="glass-panel" style={{ padding: '24px' }}>
-                                        <GuideHeader headerInfo={guide} onChange={(info) => setGuide(prev => ({ ...prev, ...info }))} />
+                                        <div style={{ opacity: canEditManual ? 1 : 0.65, pointerEvents: canEditManual ? 'auto' : 'none' }}>
+                                            <GuideHeader headerInfo={guide} onChange={(info) => setGuide(prev => ({ ...prev, ...info }))} />
+                                        </div>
                                         <div style={{ margin: '24px 0', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }} />
-                                        <StepEditor step={activeStep} onChange={handleStepChange} onCaptureImage={handleCaptureFrame} onAiImprove={handleAiImprove} onAiGenerate={handleAiGenerate} onAiGenerateFromVideo={handleVideoAiGenerate} isAiLoading={isAiLoading} />
+
+                                        <div className="glass-panel" style={{ padding: '12px', marginBottom: '16px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                                                <div>
+                                                    <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>SOP QR Access</div>
+                                                    <div style={{ fontSize: '0.8rem', color: '#93c5fd', marginTop: '4px', wordBreak: 'break-all' }}>{manualPublicLink}</div>
+                                                </div>
+                                                <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: '#fff' }}>
+                                                    {QRCodePreviewComponent ? (
+                                                        <QRCodePreviewComponent value={manualPublicLink} size={88} />
+                                                    ) : qrPreviewDataUrl ? (
+                                                        <img src={qrPreviewDataUrl} alt="SOP QR" style={{ width: '88px', height: '88px', display: 'block' }} />
+                                                    ) : (
+                                                        <div style={{ width: '88px', height: '88px', color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>QR</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {activeStep && (
+                                            <div className="glass-panel" style={{ padding: '12px', marginBottom: '16px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                                                    <div>
+                                                        <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>Step/Station QR Deep Link</div>
+                                                        <div style={{ fontSize: '0.85rem', color: '#fff', marginTop: '4px' }}>
+                                                            {guide.steps.findIndex(s => s.id === activeStep.id) + 1}. {activeStep.title || 'Untitled Step'}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.78rem', color: '#93c5fd', marginTop: '4px', wordBreak: 'break-all' }}>
+                                                            {buildStepPublicLink(activeStep, Math.max(guide.steps.findIndex(s => s.id === activeStep.id), 0))}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: '#fff' }}>
+                                                        {QRCodePreviewComponent ? (
+                                                            <QRCodePreviewComponent
+                                                                value={buildStepPublicLink(activeStep, Math.max(guide.steps.findIndex(s => s.id === activeStep.id), 0))}
+                                                                size={88}
+                                                            />
+                                                        ) : qrPreviewDataUrl ? (
+                                                            <img src={qrPreviewDataUrl} alt="Step QR" style={{ width: '88px', height: '88px', display: 'block' }} />
+                                                        ) : (
+                                                            <div style={{ width: '88px', height: '88px', color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>QR</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Workflow + Version History */}
+                                        <div style={{ marginBottom: '24px', display: 'grid', gap: '12px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div>
+                                                    <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>Workflow</div>
+                                                    <div style={{ marginTop: '4px', fontWeight: '700' }}>{guide.workflow?.status || guide.status || 'Draft'}</div>
+                                                </div>
+                                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>
+                                                    Updated by {guide.workflow?.updatedBy || 'System'} • {guide.workflow?.updatedAt ? new Date(guide.workflow.updatedAt).toLocaleString() : '-'}
+                                                </div>
+                                            </div>
+
+                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                                    <strong style={{ fontSize: '0.9rem' }}>Version History</strong>
+                                                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>{guide.versionHistory?.length || 0} snapshots</span>
+                                                </div>
+
+                                                {(guide.versionHistory || []).length === 0 ? (
+                                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No snapshots yet. Click "New Ver" to create version snapshot.</div>
+                                                ) : (
+                                                    <div style={{ display: 'grid', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+                                                        {guide.versionHistory.map((v) => (
+                                                            <div key={v.id} style={{
+                                                                display: 'flex',
+                                                                justifyContent: 'space-between',
+                                                                alignItems: 'center',
+                                                                backgroundColor: 'rgba(255,255,255,0.03)',
+                                                                border: '1px solid rgba(255,255,255,0.08)',
+                                                                borderRadius: '10px',
+                                                                padding: '8px 10px'
+                                                            }}>
+                                                                <div>
+                                                                    <div style={{ fontSize: '0.84rem', fontWeight: '700' }}>v{v.version} — {v.summary || 'Snapshot'}</div>
+                                                                    <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)' }}>{v.updatedBy || 'System'} • {v.updatedAt ? new Date(v.updatedAt).toLocaleString() : '-'}</div>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => handleRestoreVersion(v)}
+                                                                    className="btn-pro"
+                                                                    style={{
+                                                                        padding: '6px 10px',
+                                                                        fontSize: '0.75rem',
+                                                                        backgroundColor: 'rgba(59,130,246,0.14)',
+                                                                        color: '#93c5fd',
+                                                                        borderColor: 'rgba(59,130,246,0.35)'
+                                                                    }}
+                                                                >
+                                                                    Restore
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Template Fields (Tools / Parts / PPE) */}
+                                        <div style={{ marginBottom: '24px' }}>
+                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '10px' }}>
+                                                Template Fields
+                                            </div>
+
+                                            <div style={{ display: 'grid', gap: '12px' }}>
+                                                {[
+                                                    { key: 'tools', title: 'Tools' },
+                                                    { key: 'parts', title: 'Parts' },
+                                                    { key: 'ppe', title: 'PPE' }
+                                                ].map(section => (
+                                                    <div key={section.key} className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                                            <strong style={{ fontSize: '0.9rem' }}>{section.title}</strong>
+                                                            <button
+                                                                onClick={() => addTemplateItem(section.key)}
+                                                                className="btn-pro"
+                                                                style={{
+                                                                    padding: '6px 10px',
+                                                                    fontSize: '0.75rem',
+                                                                    backgroundColor: 'rgba(16,185,129,0.15)',
+                                                                    color: '#6ee7b7',
+                                                                    borderColor: 'rgba(16,185,129,0.35)'
+                                                                }}
+                                                            >
+                                                                <Plus size={12} /> Add
+                                                            </button>
+                                                        </div>
+
+                                                        {(guide.templateFields?.[section.key] || []).length === 0 ? (
+                                                            <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No {section.title.toLowerCase()} added.</div>
+                                                        ) : (
+                                                            <div style={{ display: 'grid', gap: '8px' }}>
+                                                                {(guide.templateFields?.[section.key] || []).map((item, idx) => (
+                                                                    <div key={`${section.key}-${idx}`} style={{ display: 'grid', gap: '6px', backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px' }}>
+                                                                        {section.key === 'tools' && (
+                                                                            <>
+                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="Tool name" value={item.name || ''} onChange={(e) => updateTemplateItem('tools', idx, 'name', e.target.value)} />
+                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="Qty" value={item.qty || ''} onChange={(e) => updateTemplateItem('tools', idx, 'qty', e.target.value)} />
+                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="Note" value={item.note || ''} onChange={(e) => updateTemplateItem('tools', idx, 'note', e.target.value)} />
+                                                                            </>
+                                                                        )}
+                                                                        {section.key === 'parts' && (
+                                                                            <>
+                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="Part No" value={item.partNo || ''} onChange={(e) => updateTemplateItem('parts', idx, 'partNo', e.target.value)} />
+                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="Part name" value={item.name || ''} onChange={(e) => updateTemplateItem('parts', idx, 'name', e.target.value)} />
+                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="Qty" value={item.qty || ''} onChange={(e) => updateTemplateItem('parts', idx, 'qty', e.target.value)} />
+                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="Note" value={item.note || ''} onChange={(e) => updateTemplateItem('parts', idx, 'note', e.target.value)} />
+                                                                            </>
+                                                                        )}
+                                                                        {section.key === 'ppe' && (
+                                                                            <>
+                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="PPE name" value={item.name || ''} onChange={(e) => updateTemplateItem('ppe', idx, 'name', e.target.value)} />
+                                                                                <label style={{ fontSize: '0.8rem', display: 'flex', gap: '8px', alignItems: 'center', color: 'rgba(255,255,255,0.75)' }}>
+                                                                                    <input type="checkbox" checked={Boolean(item.mandatory)} onChange={(e) => updateTemplateItem('ppe', idx, 'mandatory', e.target.checked)} />
+                                                                                    Mandatory
+                                                                                </label>
+                                                                            </>
+                                                                        )}
+
+                                                                        <button
+                                                                            onClick={() => removeTemplateItem(section.key, idx)}
+                                                                            className="btn-pro"
+                                                                            style={{
+                                                                                width: 'fit-content',
+                                                                                padding: '6px 10px',
+                                                                                fontSize: '0.75rem',
+                                                                                backgroundColor: 'rgba(239,68,68,0.15)',
+                                                                                color: '#fca5a5',
+                                                                                borderColor: 'rgba(239,68,68,0.35)'
+                                                                            }}
+                                                                        >
+                                                                            <Trash2 size={12} /> Remove
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* P2: Approval Matrix */}
+                                        <div style={{ marginBottom: '24px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>
+                                                    Approval Matrix
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button className="btn-pro" onClick={handleAddApprovalLevel} disabled={!canEditManual} title={!canEditManual ? 'Author/Admin only' : ''} style={{ padding: '6px 10px', fontSize: '0.75rem', backgroundColor: 'rgba(16,185,129,0.15)', color: '#6ee7b7', borderColor: 'rgba(16,185,129,0.35)', opacity: canEditManual ? 1 : 0.5 }}>
+                                                        <Plus size={12} /> Add Level
+                                                    </button>
+                                                    <button className="btn-pro" onClick={handleSubmitForApproval} disabled={!canSubmitApproval} title={!canSubmitApproval ? 'Author/Admin only' : ''} style={{ padding: '6px 10px', fontSize: '0.75rem', backgroundColor: 'rgba(59,130,246,0.14)', color: '#93c5fd', borderColor: 'rgba(59,130,246,0.35)', opacity: canSubmitApproval ? 1 : 0.5 }}>
+                                                        Submit Approval
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)', display: 'grid', gap: '8px' }}>
+                                                {(guide.approvalMatrix || []).map(level => (
+                                                    <div key={level.id} style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr 90px auto', gap: '8px', alignItems: 'center' }}>
+                                                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>L{level.level}</div>
+                                                        <input className="pro-select" placeholder="Role" value={level.role || ''} onChange={(e) => handleUpdateApprovalLevel(level.id, 'role', e.target.value)} />
+                                                        <input className="pro-select" placeholder="Approver" value={level.approverName || ''} onChange={(e) => handleUpdateApprovalLevel(level.id, 'approverName', e.target.value)} />
+                                                        <input className="pro-select" placeholder="SLA(h)" value={level.slaHours || ''} onChange={(e) => handleUpdateApprovalLevel(level.id, 'slaHours', e.target.value)} />
+                                                        <button className="btn-pro" onClick={() => handleRemoveApprovalLevel(level.id)} style={{ padding: '6px 8px', fontSize: '0.72rem', backgroundColor: 'rgba(239,68,68,0.15)', color: '#fca5a5', borderColor: 'rgba(239,68,68,0.35)' }}>
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+
+                                                {(guide.approvalRequests || []).length > 0 && (
+                                                    <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'grid', gap: '8px' }}>
+                                                        {(guide.approvalRequests || []).map(req => (
+                                                            <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 10px' }}>
+                                                                <div style={{ fontSize: '0.82rem' }}>L{req.level} • {req.role || '-'} • {req.approverName || 'Unassigned'} • <strong>{req.status}</strong></div>
+                                                                <div style={{ display: 'flex', gap: '6px' }}>
+                                                                    {req.status === 'Pending' && (
+                                                                        <>
+                                                                            <button className="btn-pro" disabled={!canApprove} title={!canApprove ? 'Approver/Admin only' : ''} onClick={() => handleApprovalAction(req.id, 'Approved')} style={{ padding: '5px 8px', fontSize: '0.72rem', backgroundColor: 'rgba(16,185,129,0.15)', color: '#6ee7b7', borderColor: 'rgba(16,185,129,0.35)', opacity: canApprove ? 1 : 0.5 }}>Approve</button>
+                                                                            <button className="btn-pro" disabled={!canApprove} title={!canApprove ? 'Approver/Admin only' : ''} onClick={() => handleApprovalAction(req.id, 'Rejected')} style={{ padding: '5px 8px', fontSize: '0.72rem', backgroundColor: 'rgba(239,68,68,0.15)', color: '#fca5a5', borderColor: 'rgba(239,68,68,0.35)', opacity: canApprove ? 1 : 0.5 }}>Reject</button>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Sprint Next: Inline Comments */}
+                                        <div style={{ marginBottom: '24px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>
+                                                    Inline Comments (per step)
+                                                </div>
+                                                <button
+                                                    className="btn-pro"
+                                                    onClick={() => activeStep && handleAddInlineComment(activeStep.id)}
+                                                    disabled={!activeStep}
+                                                    style={{
+                                                        padding: '6px 10px',
+                                                        fontSize: '0.75rem',
+                                                        opacity: activeStep ? 1 : 0.5,
+                                                        backgroundColor: 'rgba(59,130,246,0.14)',
+                                                        color: '#93c5fd',
+                                                        borderColor: 'rgba(59,130,246,0.35)'
+                                                    }}
+                                                >
+                                                    <Plus size={12} /> Add Comment
+                                                </button>
+                                            </div>
+
+                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                                                {(guide.stepComments || []).filter(c => c.stepId === activeStep?.id).length === 0 ? (
+                                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No comments for current step.</div>
+                                                ) : (
+                                                    <div style={{ display: 'grid', gap: '8px' }}>
+                                                        {(guide.stepComments || []).filter(c => c.stepId === activeStep?.id).map(c => (
+                                                            <div key={c.id} style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 10px' }}>
+                                                                <div style={{ fontSize: '0.82rem', fontWeight: '700' }}>{c.reviewer} • {c.status}</div>
+                                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.72)', marginTop: '4px' }}>{c.comment}</div>
+                                                                {c.status === 'Open' && (
+                                                                    <button className="btn-pro" onClick={() => handleResolveInlineComment(c.id)} style={{ marginTop: '8px', padding: '5px 8px', fontSize: '0.72rem', backgroundColor: 'rgba(16,185,129,0.15)', color: '#6ee7b7', borderColor: 'rgba(16,185,129,0.35)' }}>
+                                                                        Resolve
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Sprint Next: Issue Reporting */}
+                                        <div style={{ marginBottom: '24px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>
+                                                    Issue Reporting
+                                                </div>
+                                                <button className="btn-pro" disabled={!canReportIssue} title={!canReportIssue ? 'Not allowed for this role' : ''} onClick={() => handleReportIssue(activeStep?.id || 'manual')} style={{ padding: '6px 10px', fontSize: '0.75rem', backgroundColor: 'rgba(239,68,68,0.14)', color: '#fca5a5', borderColor: 'rgba(239,68,68,0.35)', opacity: canReportIssue ? 1 : 0.5 }}>
+                                                    <Plus size={12} /> Report Issue
+                                                </button>
+                                            </div>
+
+                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                                                {(guide.issueReports || []).length === 0 ? (
+                                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No issues reported.</div>
+                                                ) : (
+                                                    <div style={{ display: 'grid', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+                                                        {(guide.issueReports || []).map(issue => (
+                                                            <div key={issue.id} style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 10px' }}>
+                                                                <div style={{ fontSize: '0.82rem', fontWeight: '700' }}>{issue.title} • {issue.category} • {issue.status}</div>
+                                                                <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.62)' }}>{issue.description || '-'}</div>
+                                                                <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)' }}>By {issue.reportedBy} • Step {issue.stepId || '-'} • {new Date(issue.createdAt).toLocaleString()}</div>
+                                                                {issue.rootCause && <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.65)', marginTop: '4px' }}><strong>Root Cause:</strong> {issue.rootCause}</div>}
+                                                                {issue.correctiveAction && <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.65)' }}><strong>Corrective:</strong> {issue.correctiveAction}</div>}
+                                                                {issue.verificationNote && <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.65)' }}><strong>Verification:</strong> {issue.verificationNote}</div>}
+                                                                <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+                                                                    {(CAPA_TRANSITIONS[issue.status] || []).map(next => (
+                                                                        <button
+                                                                            key={`${issue.id}-${next}`}
+                                                                            className="btn-pro"
+                                                                            disabled={!canManageCAPA}
+                                                                            onClick={() => handleIssueTransition(issue.id, next)}
+                                                                            style={{ padding: '5px 8px', fontSize: '0.7rem', backgroundColor: 'rgba(59,130,246,0.14)', color: '#93c5fd', borderColor: 'rgba(59,130,246,0.35)', opacity: canManageCAPA ? 1 : 0.5 }}
+                                                                        >
+                                                                            {next}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Sprint Next: Electronic Signature */}
+                                        <div style={{ marginBottom: '24px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>
+                                                    Electronic Signature
+                                                </div>
+                                                <button className="btn-pro" disabled={!canSign} title={!canSign ? 'Approver/Admin only' : ''} onClick={handleSignElectronic} style={{ padding: '6px 10px', fontSize: '0.75rem', backgroundColor: 'rgba(59,130,246,0.14)', color: '#93c5fd', borderColor: 'rgba(59,130,246,0.35)', opacity: canSign ? 1 : 0.5 }}>
+                                                    <CheckCircle size={12} /> Sign
+                                                </button>
+                                            </div>
+
+                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                                                {(guide.eSignatures || []).length === 0 ? (
+                                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No signatures yet.</div>
+                                                ) : (
+                                                    <div style={{ display: 'grid', gap: '8px', maxHeight: '160px', overflowY: 'auto' }}>
+                                                        {(guide.eSignatures || []).map(sig => (
+                                                            <div key={sig.id} style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 10px' }}>
+                                                                <div style={{ fontSize: '0.82rem', fontWeight: '700' }}>{sig.signerName} • {sig.role}</div>
+                                                                <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.62)' }}>{sig.reason || '-'}</div>
+                                                                <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)' }}>PIN: {sig.pinMasked} • v{sig.targetVersion} • {new Date(sig.signedAt).toLocaleString()}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* P2: Assignment + Sign-off */}
+                                        <div style={{ marginBottom: '24px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>
+                                                    Assignment & Sign-off
+                                                </div>
+                                                <button className="btn-pro" onClick={handleAddAssignment} style={{ padding: '6px 10px', fontSize: '0.75rem', backgroundColor: 'rgba(16,185,129,0.15)', color: '#6ee7b7', borderColor: 'rgba(16,185,129,0.35)' }}>
+                                                    <Plus size={12} /> Add Assignment
+                                                </button>
+                                            </div>
+
+                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                                                {assignments.length === 0 ? (
+                                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No assignments yet.</div>
+                                                ) : (
+                                                    <div style={{ display: 'grid', gap: '8px' }}>
+                                                        {assignments.map(a => (
+                                                            <div key={a.id} style={{ display: 'grid', gridTemplateColumns: '1fr 130px 140px auto', gap: '8px', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 10px' }}>
+                                                                <div style={{ fontSize: '0.82rem' }}>
+                                                                    <strong>{a.assignee}</strong> • {a.team || '-'} • {a.shift || '-'} • Due: {a.dueAt || '-'}
+                                                                    {a.signedOffBy && <div style={{ fontSize: '0.72rem', color: 'rgba(110,231,183,0.9)' }}>Signed off by {a.signedOffBy}</div>}
+                                                                </div>
+                                                                <select className="pro-select" value={a.status} onChange={(e) => handleAssignmentStatusChange(a.id, e.target.value)}>
+                                                                    <option value="Not Started">Not Started</option>
+                                                                    <option value="In Progress">In Progress</option>
+                                                                    <option value="Done">Done</option>
+                                                                    <option value="Overdue">Overdue</option>
+                                                                </select>
+                                                                <div style={{ fontSize: '0.76rem', color: 'rgba(255,255,255,0.55)' }}>{a.completedAt ? `Completed ${new Date(a.completedAt).toLocaleString()}` : 'Not completed'}</div>
+                                                                <button className="btn-pro" onClick={() => handleSignOffAssignment(a.id)} style={{ padding: '6px 10px', fontSize: '0.72rem', backgroundColor: 'rgba(59,130,246,0.14)', color: '#93c5fd', borderColor: 'rgba(59,130,246,0.35)' }}>
+                                                                    Sign-off
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* P2: Compliance Dashboard */}
+                                        <div style={{ marginBottom: '24px' }}>
+                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '10px' }}>
+                                                Completion / Compliance Dashboard
+                                            </div>
+                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(120px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+                                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>Completion Rate</div><div style={{ fontWeight: 800, fontSize: '1.15rem' }}>{completionRate}%</div></div>
+                                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>Overdue Rate</div><div style={{ fontWeight: 800, fontSize: '1.15rem' }}>{totalAssignments > 0 ? Math.round((overdueAssignments / totalAssignments) * 100) : 0}%</div></div>
+                                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>First-pass Compliance</div><div style={{ fontWeight: 800, fontSize: '1.15rem' }}>{firstPassCompliance}%</div></div>
+                                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>Avg Completion (h)</div><div style={{ fontWeight: 800, fontSize: '1.15rem' }}>{avgCompletionHours}</div></div>
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(120px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+                                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>Read Ack v{currentVersion}</div><div style={{ fontWeight: 800, fontSize: '1.15rem' }}>{readAckRate}%</div></div>
+                                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>Open CAPA</div><div style={{ fontWeight: 800, fontSize: '1.15rem' }}>{openCapaCount}</div></div>
+                                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>Closed CAPA</div><div style={{ fontWeight: 800, fontSize: '1.15rem' }}>{closedCapaCount}</div></div>
+                                                </div>
+                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)' }}>
+                                                    Top non-compliance steps: {guide.steps.filter(s => !operatorChecks[s.id]?.completed).slice(0, 3).map(s => s.title).join(', ') || '-'}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Read & Acknowledge */}
+                                        <div style={{ marginBottom: '24px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>
+                                                    Read & Acknowledge (v{currentVersion})
+                                                </div>
+                                                <button className="btn-pro" disabled={!canAcknowledge} onClick={handleAcknowledgeCurrentVersion} style={{ padding: '6px 10px', fontSize: '0.75rem', backgroundColor: 'rgba(16,185,129,0.15)', color: '#6ee7b7', borderColor: 'rgba(16,185,129,0.35)', opacity: canAcknowledge ? 1 : 0.5 }}>
+                                                    <CheckCircle size={12} /> Acknowledge This Version
+                                                </button>
+                                            </div>
+                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                                                {currentVersionAcks.length === 0 ? (
+                                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No acknowledgements yet for this version.</div>
+                                                ) : (
+                                                    <div style={{ display: 'grid', gap: '8px', maxHeight: '150px', overflowY: 'auto' }}>
+                                                        {currentVersionAcks.map(ack => (
+                                                            <div key={ack.id} style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 10px' }}>
+                                                                <div style={{ fontSize: '0.82rem', fontWeight: '700' }}>{ack.userName} • {ack.role}</div>
+                                                                <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)' }}>{new Date(ack.acknowledgedAt).toLocaleString()}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* P2: Audit Trail */}
+                                        <div style={{ marginBottom: '24px' }}>
+                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '10px' }}>
+                                                Audit Trail
+                                            </div>
+                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)', maxHeight: '180px', overflowY: 'auto' }}>
+                                                {(guide.auditTrail || []).length === 0 ? (
+                                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No audit records yet.</div>
+                                                ) : (
+                                                    <div style={{ display: 'grid', gap: '8px' }}>
+                                                        {(guide.auditTrail || []).map(log => (
+                                                            <div key={log.id} style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 10px' }}>
+                                                                <div style={{ fontSize: '0.82rem', fontWeight: '700' }}>{log.action}</div>
+                                                                <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.6)' }}>{log.details}</div>
+                                                                <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)' }}>{log.actor} • {log.timestamp ? new Date(log.timestamp).toLocaleString() : '-'}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div style={{ opacity: canEditManual ? 1 : 0.65, pointerEvents: canEditManual ? 'auto' : 'none' }}>
+                                            <StepEditor step={activeStep} onChange={handleStepChange} onCaptureImage={handleCaptureFrame} onAiImprove={handleAiImprove} onAiGenerate={handleAiGenerate} onAiGenerateFromVideo={handleVideoAiGenerate} isAiLoading={isAiLoading} />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1373,7 +2715,7 @@ function ManualCreation() {
                     </div>
 
                     {/* Right: Video Source */}
-                    {!isPreviewMode && (
+                    {!isPreviewMode && !isOperatorMode && (
                         <div style={{
                             width: '320px',
                             backgroundColor: 'rgba(255, 255, 255, 0.01)',

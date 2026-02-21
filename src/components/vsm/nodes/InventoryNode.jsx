@@ -5,8 +5,17 @@ import { useLanguage } from '../../../contexts/LanguageContext';
 const InventoryNode = ({ data, selected, showDetails: propShowDetails }) => {
     const { t } = useLanguage();
     const showDetails = propShowDetails !== undefined ? propShowDetails : data.showDetails;
+    const kanbanState = data?.kanbanState;
+    const alertSeverity = (data?.alertSeverity || '').toLowerCase();
+    const alertClass = alertSeverity ? `vsm-alert-${alertSeverity}` : '';
+    const kanbanRisk = kanbanState && (
+        kanbanState.below_rop ||
+        kanbanState.below_safety_stock ||
+        kanbanState.no_active_kanban_below_rop ||
+        kanbanState.kanban_overdue
+    );
     return (
-        <div style={{ position: 'relative', width: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div className={alertClass} style={{ position: 'relative', width: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Handle type="target" position={Position.Left} id="left" style={{ background: '#555' }} />
             <Handle type="source" position={Position.Left} id="left-source" style={{ background: '#555', top: '60%' }} />
 
@@ -42,6 +51,26 @@ const InventoryNode = ({ data, selected, showDetails: propShowDetails }) => {
                             ? `-${data.simulationResult.shortage}`
                             : `+${data.simulationResult.final}`
                         }
+                    </div>
+                )}
+
+                {kanbanState && (
+                    <div style={{
+                        position: 'absolute',
+                        bottom: '-16px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        backgroundColor: kanbanRisk ? '#c50f1f' : '#107c10',
+                        color: 'white',
+                        padding: '2px 6px',
+                        borderRadius: '8px',
+                        fontSize: '0.55rem',
+                        fontWeight: 'bold',
+                        border: '1px solid white',
+                        zIndex: 11,
+                        whiteSpace: 'nowrap'
+                    }}>
+                        🃏 {kanbanState.active_withdrawal_kanban || 0}/{kanbanState.kanban_count || 0}
                     </div>
                 )}
 

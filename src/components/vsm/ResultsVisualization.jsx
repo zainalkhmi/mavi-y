@@ -349,6 +349,18 @@ const ResultsVisualization = ({ result, nodes, viewMode = 'results' }) => {
         });
 
     const bottlenecks = capacityData.filter(d => d.isBottleneck);
+    const kanbanStates = Object.values(result.kanbanNodeStates || {});
+    const tpsAlerts = Array.isArray(result.alerts) ? result.alerts : [];
+    const vsmSummary = result.vsmSummary || null;
+
+    const severityColor = (severity) => {
+        switch ((severity || '').toLowerCase()) {
+            case 'andon': return '#ff1744';
+            case 'critical': return '#ff5722';
+            case 'warning': return '#ffc107';
+            default: return '#4caf50';
+        }
+    };
 
     const safe = (n) => Number(n || 0);
     const fmtMoney = (n) => `$${safe(n).toFixed(2)}`;
@@ -595,6 +607,67 @@ const ResultsVisualization = ({ result, nodes, viewMode = 'results' }) => {
                     </div>
                 )}
             </div>
+
+            {/* TPS / e-Kanban Summary */}
+            {(vsmSummary || kanbanStates.length > 0) && (
+                <div style={{
+                    padding: '16px',
+                    borderRadius: '8px',
+                    background: 'rgba(0, 188, 212, 0.08)',
+                    border: '1px solid rgba(0, 188, 212, 0.45)'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                        <Package size={18} color="#00bcd4" />
+                        <strong style={{ color: '#00e5ff' }}>TPS e-Kanban Summary</strong>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: '10px', fontSize: '0.82rem' }}>
+                        <div style={{ color: '#ddd' }}><b style={{ color: '#fff' }}>Bottleneck:</b> {vsmSummary?.bottleneck || '-'}</div>
+                        <div style={{ color: '#ddd' }}><b style={{ color: '#fff' }}>Throughput:</b> {vsmSummary?.throughput ?? 0}</div>
+                        <div style={{ color: '#ddd' }}><b style={{ color: '#fff' }}>Lead Time (s):</b> {vsmSummary?.lead_time_seconds ?? 0}</div>
+                        <div style={{ color: '#ddd' }}><b style={{ color: '#fff' }}>Stockout Incidents:</b> {vsmSummary?.stockout_incidents ?? 0}</div>
+                        <div style={{ color: '#ddd' }}><b style={{ color: '#fff' }}>Kanban Adherence:</b> {(vsmSummary?.kanban_adherence ?? 0).toFixed ? vsmSummary.kanban_adherence.toFixed(1) : (vsmSummary?.kanban_adherence ?? 0)}%</div>
+                        <div style={{ color: '#ddd' }}><b style={{ color: '#fff' }}>Alerts:</b> {vsmSummary?.alert_count ?? tpsAlerts.length}</div>
+                    </div>
+                </div>
+            )}
+
+            {/* TPS Alert Panel (Andon-ready payload) */}
+            {tpsAlerts.length > 0 && (
+                <div style={{
+                    padding: '15px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 152, 0, 0.08)',
+                    border: '1px solid rgba(255, 152, 0, 0.45)'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                        <AlertTriangle size={20} color="#ff9800" />
+                        <strong style={{ color: '#ff9800' }}>TPS Alerts ({tpsAlerts.length})</strong>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {tpsAlerts.map((alert, idx) => (
+                            <div key={`${alert.rule_code || 'RULE'}-${idx}`} style={{
+                                border: `1px solid ${severityColor(alert.severity)}`,
+                                background: 'rgba(0,0,0,0.2)',
+                                borderRadius: '6px',
+                                padding: '8px'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                                    <span style={{ color: severityColor(alert.severity), fontWeight: 'bold' }}>
+                                        {(alert.severity || 'info').toUpperCase()} • {alert.rule_code || 'TPS_RULE'}
+                                    </span>
+                                    <span style={{ color: '#aaa', fontSize: '0.75rem' }}>SLA: {alert.sla_minutes ?? alert.sla ?? '-'} min</span>
+                                </div>
+                                <div style={{ color: '#fff', marginTop: '4px', fontSize: '0.82rem' }}>{alert.message}</div>
+                                {Array.isArray(alert.suggested_actions) && alert.suggested_actions.length > 0 && (
+                                    <div style={{ color: '#ccc', marginTop: '4px', fontSize: '0.75rem' }}>
+                                        ▶ {alert.suggested_actions.join(' | ')}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* --- PROFESSIONAL COST ANALYSIS REPORT --- */}
             {result.costBreakdown && (

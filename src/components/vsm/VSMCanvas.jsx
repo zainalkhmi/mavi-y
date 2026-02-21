@@ -34,10 +34,14 @@ import { analyzeVSM, getStoredApiKey, generateVSMFromPrompt, generateVSMFromImag
 import { saveVSM, getVSMById } from '../../utils/vsmDB';
 import ReactMarkdown from 'react-markdown';
 import AIChatOverlay from '../features/AIChatOverlay';
-import { Brain, Sparkles, X, Wand2, HelpCircle, MessageSquare, ImagePlus, PanelRightClose, PanelRightOpen, Eye, EyeOff, BarChart3, Repeat, Undo, Redo, ArrowLeft, ArrowUp, Save, Folder, Layout, Network, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { Brain, Sparkles, X, Wand2, HelpCircle, MessageSquare, ImagePlus, PanelRightClose, PanelRightOpen, Eye, EyeOff, BarChart3, Repeat, Undo, Redo, ArrowLeft, ArrowUp, Save, Folder, Layout, Network, ChevronDown, ChevronUp, Trash2, Activity } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { SupplyChainEngine } from '../../utils/supplyChainEngine';
+import { DEFAULT_ANIMATION_FLAGS, normalizeSimulationPayload, computeAnimationFrame } from '../../utils/vsmAnimationEngine';
 import TemplateSelectionModal from './TemplateSelectionModal';
+import KanbanAnimationLayer from './animation/KanbanAnimationLayer';
+import AndonAlertLayer from './animation/AndonAlertLayer';
+import KanbanManagementSimulationModal from './KanbanManagementSimulationModal';
 
 import SupplyChainModal from './SupplyChainModal';
 import TemplateActionModal from './TemplateActionModal';
@@ -137,6 +141,7 @@ const VSMCanvasContent = () => {
     const [supplyChainInitialTab, setSupplyChainInitialTab] = useState('flow');
     const [showActionModal, setShowActionModal] = useState(false); // Replace/Merge Dialog
     const [pendingTemplateKey, setPendingTemplateKey] = useState(null); // Key waiting for confirmation
+    const [showKanbanSimulationModal, setShowKanbanSimulationModal] = useState(false);
 
     // Simulation State
     const [isSimulating, setIsSimulating] = useState(false);
@@ -144,6 +149,31 @@ const VSMCanvasContent = () => {
     const simRef = useRef(null);
     const [globalTakt, setGlobalTakt] = useState(60); // Default 60s
     const [lastSimulationResult, setLastSimulationResult] = useState(null); // Store last Sim result for AI
+    const [animationFlags] = useState(DEFAULT_ANIMATION_FLAGS);
+    const [playbackPayload, setPlaybackPayload] = useState(null);
+    const [animationFrame, setAnimationFrame] = useState({ activeKanbanEvents: [], nodeStateMap: {}, alerts: [] });
+    const alertDedupRef = useRef(new Map());
+
+    const toAnimKanbanState = useCallback((ns = {}, existing = null) => {
+        if (!ns) return existing;
+        return {
+            ...(existing || {}),
+            below_rop: Boolean(ns.belowRop),
+            below_safety_stock: Boolean(ns.belowSafety),
+            no_active_kanban_below_rop: Boolean(ns.belowRop && !ns.kanbanTriggered),
+            fifo_violation: Boolean(ns.fifoViolation),
+            wip_cap_exceeded: Boolean(ns.wipCap > 0 && ns.wip > ns.wipCap),
+            production_without_kanban: Boolean(ns.processingState === 'blocked' && !ns.kanbanTriggered),
+            kanban_overdue: Boolean(ns.processingState === 'blocked' && ns.kanbanTriggered),
+            active_production_kanban: existing?.active_production_kanban || 0,
+            active_withdrawal_kanban: existing?.active_withdrawal_kanban || 0,
+            kanban_count: existing?.kanban_count || 0
+        };
+    }, []);
+
+    const buildPlaybackPayload = useCallback((result) => {
+        return normalizeSimulationPayload(result || {}, nodes, edges);
+    }, [nodes, edges]);
 
     // Sync showNodeDetails state to all nodes for performance
     useEffect(() => {
@@ -206,6 +236,8 @@ const VSMCanvasContent = () => {
 
     const handleStartSimulation = () => {
         setIsSimulating(true);
+        alertDedupRef.current = new Map();
+        setPlaybackPayload(buildPlaybackPayload(lastSimulationResult));
         // Initial setup for nodes to have 'simulating' and 'progress' data
         setNodes(nds => nds.map(node => ({
             ...node,
@@ -220,6 +252,7 @@ const VSMCanvasContent = () => {
     const handleStopSimulation = () => {
         setIsSimulating(false);
         if (simRef.current) clearInterval(simRef.current);
+        setAnimationFrame({ activeKanbanEvents: [], nodeStateMap: {}, alerts: [] });
         setNodes(nds => nds.map(node => ({
             ...node,
             data: { ...node.data, simulating: false }
@@ -346,6 +379,67 @@ const VSMCanvasContent = () => {
         }
         return () => { if (simRef.current) clearInterval(simRef.current); };
     }, [isSimulating]);
+
+    useEffect(() => {
+        if (!isSimulating || !playbackPayload) return;
+        const start = Date.now();
+        const timer = setInterval(() => {
+            const frame = computeAnimationFrame({
+                payload: playbackPayload,
+                elapsedMs: Date.now() - start,
+                dedupAlertMap: alertDedupRef.current
+            });
+            setAnimationFrame(frame);
+        }, 250);
+        return () => clearInterval(timer);
+    }, [isSimulating, playbackPayload]);
+
+    useEffect(() => {
+        const nodeStateMap = animationFrame?.nodeStateMap || {};
+        const alerts = animationFrame?.alerts || [];
+        if (!Object.keys(nodeStateMap).length && !alerts.length) return;
+
+        const severityRank = { info: 0, warning: 1, critical: 2, andon: 3 };
+        const severityByNode = {};
+        alerts.forEach((a) => {
+            const nodeId = a.nodeId || a.entity_id;
+            if (!nodeId) return;
+            const sev = (a.severity || 'info').toLowerCase();
+            if (!severityByNode[nodeId] || severityRank[sev] > severityRank[severityByNode[nodeId]]) {
+                severityByNode[nodeId] = sev;
+            }
+        });
+
+        setNodes((nds) => nds.map((node) => {
+            const ns = nodeStateMap[node.id];
+            const sev = severityByNode[node.id] || null;
+            if (!ns && !sev) return node;
+
+            return {
+                ...node,
+                data: {
+                    ...node.data,
+                    kanbanAnimState: ns || node.data.kanbanAnimState,
+                    kanbanState: ns ? toAnimKanbanState(ns, node.data.kanbanState) : node.data.kanbanState,
+                    alertSeverity: sev,
+                    kanbanTriggered: ns ? Boolean(ns.kanbanTriggered) : node.data.kanbanTriggered,
+                    isShortage: ns ? Boolean(ns.shortageRisk) : node.data.isShortage
+                }
+            };
+        }));
+
+        setEdges((eds) => eds.map((edge) => {
+            const hasToken = (animationFrame.activeKanbanEvents || []).some((evt) => evt.edgeId === edge.id);
+            return {
+                ...edge,
+                animated: hasToken || edge.animated,
+                data: {
+                    ...edge.data,
+                    kanbanActive: hasToken || edge.data?.kanbanActive
+                }
+            };
+        }));
+    }, [animationFrame, toAnimKanbanState]);
 
     // Load by ID from database if provided
     useEffect(() => {
@@ -2186,6 +2280,98 @@ const VSMCanvasContent = () => {
                     { "id": "e-shipment", "source": "supermarket-finish", "target": "customer-pull", "type": "default" }
                 ]
             },
+            kanbanTPS: {
+                name: t('vsm.templates.ekanbanTps', 'TPS e-Kanban Control Loop'),
+                description: t('vsm.templates.descEkanbanTps', 'Template pull-based e-Kanban dengan ROP/safety stock, FIFO, WIP cap, quality gate, dan alarm TPS.'),
+                globalTakt: 52,
+                nodes: [
+                    { "id": "k-supplier", "type": "generic", "position": { "x": 60, "y": 340 }, "data": { "symbolType": "supplier", "name": "Steel Supplier", "leadTime": 2, "reliability": 97, "moq": 300, "globalTakt": 52 } },
+                    { "id": "k-inbound", "type": "generic", "position": { "x": 200, "y": 260 }, "data": { "symbolType": "truck", "name": "Inbound Transport", "frequency": 3, "capacity": 900, "leadTime": 0.5, "distance": 80, "costPerKm": 1.1, "globalTakt": 52 } },
+
+                    { "id": "k-rm-supermarket", "type": "generic", "position": { "x": 360, "y": 340 }, "data": { "symbolType": "supermarket", "name": "RM Supermarket", "amount": 700, "inventory": 700, "minStock": 350, "maxStock": 1200, "reorderPoint": 500, "safetyStock": 250, "consumptionRate": 120, "incomingQty": 120, "reservedQty": 60, "blockedQcQty": 10, "activeProductionKanban": 2, "activeWithdrawalKanban": 3, "kanbanCardCapacity": 100, "kanbanLeadTime": 2, "kanbanSafetyFactor": 0.2, "openKanbanAgeHours": 6, "fifoEnabled": true, "fifoQueueAges": [1, 2, 3], "globalTakt": 52 } },
+
+                    { "id": "k-cutting", "type": "process", "position": { "x": 560, "y": 340 }, "data": { "name": "Cutting", "ct": 42, "co": 15, "uptime": 95, "yield": 98, "performance": 92, "va": 36, "shiftPattern": 2, "operators": 2, "wipLimit": 500, "wipCap": 450, "kanbanLimit": 400, "requiresActiveKanban": true, "activeProductionKanban": 4, "kanbanCardCapacity": 100, "kanbanLeadTime": 1.5, "kanbanSafetyFactor": 0.15, "fifoEnabled": true, "globalTakt": 52 } },
+
+                    { "id": "k-fifo", "type": "generic", "position": { "x": 730, "y": 340 }, "data": { "symbolType": "fifo", "name": "FIFO Lane", "amount": 220, "inventory": 220, "maxCapacity": 300, "wipCap": 280, "fifoEnabled": true, "fifoQueueAges": [1, 2, 4], "globalTakt": 52 } },
+
+                    { "id": "k-welding", "type": "process", "position": { "x": 900, "y": 340 }, "data": { "name": "Welding", "ct": 58, "co": 20, "uptime": 90, "yield": 96, "performance": 87, "va": 50, "shiftPattern": 2, "operators": 3, "wipLimit": 320, "wipCap": 300, "kanbanLimit": 300, "requiresActiveKanban": true, "activeProductionKanban": 3, "kanbanCardCapacity": 80, "kanbanLeadTime": 2, "kanbanSafetyFactor": 0.2, "fifoEnabled": true, "globalTakt": 52 } },
+
+                    { "id": "k-qc", "type": "generic", "position": { "x": 1070, "y": 250 }, "data": { "symbolType": "eye_observation", "name": "Quality Gate", "blockedQcQty": 20, "globalTakt": 52 } },
+                    { "id": "k-fg-buffer", "type": "inventory", "position": { "x": 1070, "y": 340 }, "data": { "name": "FG Buffer", "amount": 260, "inventory": 260, "unit": "pcs", "minStock": 140, "maxStock": 600, "reorderPoint": 220, "safetyStock": 120, "consumptionRate": 90, "incomingQty": 80, "reservedQty": 30, "blockedQcQty": 15, "activeProductionKanban": 2, "activeWithdrawalKanban": 1, "kanbanCardCapacity": 80, "kanbanLeadTime": 1.2, "kanbanSafetyFactor": 0.15, "openKanbanAgeHours": 18, "fifoEnabled": true, "fifoQueueAges": [1, 3, 2], "globalTakt": 52 } },
+
+                    { "id": "k-assembly", "type": "process", "position": { "x": 1250, "y": 340 }, "data": { "name": "Assembly", "ct": 50, "co": 18, "uptime": 96, "yield": 99, "performance": 91, "va": 44, "shiftPattern": 2, "operators": 3, "processType": "pacemaker", "wipLimit": 260, "wipCap": 240, "kanbanLimit": 240, "requiresActiveKanban": true, "activeProductionKanban": 2, "kanbanCardCapacity": 100, "kanbanLeadTime": 1, "kanbanSafetyFactor": 0.1, "fifoEnabled": true, "globalTakt": 52 } },
+
+                    { "id": "k-fg-supermarket", "type": "generic", "position": { "x": 1420, "y": 340 }, "data": { "symbolType": "supermarket", "name": "FG Supermarket", "amount": 400, "inventory": 400, "minStock": 200, "maxStock": 800, "reorderPoint": 320, "safetyStock": 160, "consumptionRate": 100, "incomingQty": 60, "reservedQty": 40, "blockedQcQty": 0, "activeProductionKanban": 3, "activeWithdrawalKanban": 2, "kanbanCardCapacity": 120, "kanbanLeadTime": 1.5, "kanbanSafetyFactor": 0.15, "openKanbanAgeHours": 4, "fifoEnabled": true, "fifoQueueAges": [1, 2, 3], "globalTakt": 52 } },
+
+                    { "id": "k-outbound", "type": "generic", "position": { "x": 1600, "y": 260 }, "data": { "symbolType": "truck", "name": "Outbound Transport", "frequency": 4, "capacity": 700, "leadTime": 0.5, "distance": 120, "costPerKm": 1.3, "globalTakt": 52 } },
+                    { "id": "k-customer", "type": "generic", "position": { "x": 1780, "y": 340 }, "data": { "symbolType": "customer", "name": "OEM Customer", "demand": 1100, "unit": "pcs", "availableTime": 480, "shifts": 2, "packSize": 20, "globalTakt": 52 } },
+
+                    { "id": "k-control", "type": "generic", "position": { "x": 980, "y": 80 }, "data": { "symbolType": "production_control", "name": "Production Control", "planningFreq": "Daily", "horizon": 14, "globalTakt": 52 } }
+                ],
+                edges: [
+                    { "id": "k-e1", "source": "k-supplier", "target": "k-inbound", "type": "default", "data": { "transportTime": 0.5, "transportCost": 75, "transitQty": 120 } },
+                    { "id": "k-e2", "source": "k-inbound", "target": "k-rm-supermarket", "type": "default", "data": { "transportTime": 0.25, "transportCost": 30, "transitQty": 100 } },
+                    { "id": "k-e3", "source": "k-rm-supermarket", "target": "k-cutting", "type": "default" },
+                    { "id": "k-e4", "source": "k-cutting", "target": "k-fifo", "type": "default" },
+                    { "id": "k-e5", "source": "k-fifo", "target": "k-welding", "type": "default" },
+                    { "id": "k-e6", "source": "k-welding", "target": "k-qc", "type": "default", "style": { "stroke": "#ff9800", "strokeDasharray": "4 4" } },
+                    { "id": "k-e7", "source": "k-qc", "target": "k-fg-buffer", "type": "default" },
+                    { "id": "k-e8", "source": "k-fg-buffer", "target": "k-assembly", "type": "default" },
+                    { "id": "k-e9", "source": "k-assembly", "target": "k-fg-supermarket", "type": "default" },
+                    { "id": "k-e10", "source": "k-fg-supermarket", "target": "k-outbound", "type": "default", "data": { "transportTime": 0.5, "transportCost": 50, "transitQty": 90 } },
+                    { "id": "k-e11", "source": "k-outbound", "target": "k-customer", "type": "default", "data": { "transportTime": 0.5, "transportCost": 90 } },
+
+                    { "id": "k-i1", "source": "k-customer", "target": "k-control", "type": "smoothstep", "animated": true, "style": { "stroke": "#00ffff", "strokeDasharray": "5 5" }, "data": { "type": "electronic" } },
+                    { "id": "k-i2", "source": "k-control", "target": "k-assembly", "type": "smoothstep", "animated": true, "style": { "stroke": "#ff9900", "strokeDasharray": "5 5" }, "data": { "symbolType": "signal_kanban" }, "label": "production kanban" },
+                    { "id": "k-i3", "source": "k-fg-supermarket", "target": "k-assembly", "type": "smoothstep", "animated": true, "style": { "stroke": "#ff9900", "strokeDasharray": "6 4" }, "data": { "symbolType": "kanban_withdrawal" }, "label": "withdrawal kanban" },
+                    { "id": "k-i4", "source": "k-fg-buffer", "target": "k-welding", "type": "smoothstep", "animated": true, "style": { "stroke": "#ff9900", "strokeDasharray": "6 4" }, "data": { "symbolType": "signal_kanban" }, "label": "production kanban" },
+                    { "id": "k-i5", "source": "k-control", "target": "k-supplier", "type": "smoothstep", "animated": true, "style": { "stroke": "#00ffff", "strokeDasharray": "5 5" }, "data": { "type": "electronic" } }
+                ]
+            },
+            kanbanMovementSupplyChainCost: {
+                name: t('vsm.templates.kanbanMovementSupplyChainCost', 'Complete Kanban Movement + Supply Chain + Cost Analysis'),
+                description: t('vsm.templates.descKanbanMovementSupplyChainCost', 'Template lengkap end-to-end dari supplier hingga customer, termasuk pergerakan kartu kanban, control loop supply chain, dan parameter cost accounting.'),
+                globalTakt: 50,
+                nodes: [
+                    { "id": "kmc-supplier", "type": "generic", "position": { "x": 40, "y": 360 }, "data": { "symbolType": "supplier", "name": "Raw Material Supplier", "leadTime": 2, "reliability": 97, "moq": 400, "unitPrice": 7.5, "globalTakt": 50 } },
+                    { "id": "kmc-inbound-truck", "type": "generic", "position": { "x": 210, "y": 255 }, "data": { "symbolType": "truck", "name": "Inbound Truck", "frequency": 3, "capacity": 1200, "leadTime": 0.5, "distance": 95, "costPerKm": 1.15, "fixedTripCost": 85, "unitPrice": 7.5, "dutyRate": 0, "insuranceRate": 0.4, "portFees": 0, "globalTakt": 50 } },
+                    { "id": "kmc-receiving", "type": "generic", "position": { "x": 360, "y": 360 }, "data": { "symbolType": "warehouse_receiving", "name": "Warehouse / Receiving", "amount": 1400, "inventory": 1400, "safetyStock": 280, "holdingCostPerDay": 0.18, "globalTakt": 50 } },
+                    { "id": "kmc-rm-supermarket", "type": "generic", "position": { "x": 550, "y": 360 }, "data": { "symbolType": "supermarket", "name": "RM Supermarket", "amount": 900, "inventory": 900, "minStock": 450, "maxStock": 1600, "reorderPoint": 700, "safetyStock": 320, "consumptionRate": 140, "incomingQty": 140, "reservedQty": 40, "blockedQcQty": 12, "activeProductionKanban": 3, "activeWithdrawalKanban": 3, "kanbanCardCapacity": 100, "kanbanLeadTime": 2, "kanbanSafetyFactor": 0.2, "openKanbanAgeHours": 5, "fifoEnabled": true, "fifoQueueAges": [1, 2, 3], "holdingCostPerDay": 0.22, "globalTakt": 50 } },
+
+                    { "id": "kmc-cutting", "type": "process", "position": { "x": 760, "y": 360 }, "data": { "name": "Cutting", "ct": 38, "co": 18, "uptime": 95, "yield": 98, "performance": 92, "va": 32, "shiftPattern": 2, "operators": 2, "wipLimit": 500, "wipCap": 450, "kanbanLimit": 450, "requiresActiveKanban": true, "activeProductionKanban": 4, "kanbanCardCapacity": 100, "kanbanLeadTime": 1.5, "kanbanSafetyFactor": 0.12, "fifoEnabled": true, "costPerUnit": 1.8, "directMaterialCost": 1.2, "directLaborCost": 0.7, "machineCost": 0.5, "fohPerUnit": 0.35, "holdingCostPerDay": 0.05, "globalTakt": 50 } },
+                    { "id": "kmc-fifo-wip", "type": "inventory", "position": { "x": 940, "y": 360 }, "data": { "name": "FIFO WIP", "amount": 260, "inventory": 260, "safetyStock": 90, "minStock": 120, "maxStock": 520, "reorderPoint": 220, "consumptionRate": 110, "incomingQty": 80, "reservedQty": 20, "blockedQcQty": 10, "activeProductionKanban": 2, "activeWithdrawalKanban": 2, "kanbanCardCapacity": 80, "kanbanLeadTime": 1.4, "kanbanSafetyFactor": 0.15, "openKanbanAgeHours": 10, "fifoEnabled": true, "fifoQueueAges": [1, 2, 4], "holdingCostPerDay": 0.28, "globalTakt": 50 } },
+
+                    { "id": "kmc-assembly", "type": "process", "position": { "x": 1140, "y": 360 }, "data": { "name": "Assembly (Pacemaker)", "ct": 52, "co": 22, "uptime": 92, "yield": 97, "performance": 88, "va": 44, "shiftPattern": 2, "operators": 3, "processType": "pacemaker", "wipLimit": 350, "wipCap": 320, "kanbanLimit": 320, "requiresActiveKanban": true, "activeProductionKanban": 3, "kanbanCardCapacity": 100, "kanbanLeadTime": 1.3, "kanbanSafetyFactor": 0.15, "fifoEnabled": true, "costPerUnit": 2.7, "directMaterialCost": 0.8, "directLaborCost": 1.0, "machineCost": 0.9, "fohPerUnit": 0.55, "holdingCostPerDay": 0.08, "globalTakt": 50 } },
+                    { "id": "kmc-fg-supermarket", "type": "generic", "position": { "x": 1330, "y": 360 }, "data": { "symbolType": "supermarket", "name": "FG Supermarket", "amount": 500, "inventory": 500, "minStock": 220, "maxStock": 1000, "reorderPoint": 420, "safetyStock": 180, "consumptionRate": 105, "incomingQty": 70, "reservedQty": 55, "blockedQcQty": 0, "activeProductionKanban": 3, "activeWithdrawalKanban": 2, "kanbanCardCapacity": 120, "kanbanLeadTime": 1.2, "kanbanSafetyFactor": 0.12, "openKanbanAgeHours": 6, "fifoEnabled": true, "fifoQueueAges": [1, 2, 3], "holdingCostPerDay": 0.4, "unitPrice": 24, "globalTakt": 50 } },
+                    { "id": "kmc-outbound-truck", "type": "generic", "position": { "x": 1510, "y": 255 }, "data": { "symbolType": "truck", "name": "Outbound Truck", "frequency": 4, "capacity": 900, "leadTime": 0.5, "distance": 140, "costPerKm": 1.35, "fixedTripCost": 95, "unitPrice": 24, "dutyRate": 0, "insuranceRate": 0.25, "portFees": 0, "globalTakt": 50 } },
+                    { "id": "kmc-customer", "type": "generic", "position": { "x": 1690, "y": 360 }, "data": { "symbolType": "customer", "name": "Customer OEM", "demand": 1000, "unit": "pcs", "availableTime": 480, "shifts": 2, "packSize": 20, "globalTakt": 50 } },
+
+                    { "id": "kmc-control", "type": "generic", "position": { "x": 980, "y": 70 }, "data": { "symbolType": "production_control", "name": "Production Control", "planningFreq": "Daily", "horizon": 21, "globalTakt": 50 } },
+                    { "id": "kmc-kanban-post", "type": "generic", "position": { "x": 980, "y": 170 }, "data": { "symbolType": "kanban_post", "name": "Kanban Post", "globalTakt": 50 } },
+                    { "id": "kmc-kanban-production", "type": "generic", "position": { "x": 1080, "y": 170 }, "data": { "symbolType": "kanban_production", "name": "Production Kanban Card", "globalTakt": 50 } },
+                    { "id": "kmc-kanban-withdrawal", "type": "generic", "position": { "x": 1280, "y": 170 }, "data": { "symbolType": "kanban_withdrawal", "name": "Withdrawal Kanban Card", "globalTakt": 50 } }
+                ],
+                edges: [
+                    { "id": "kmc-e1", "source": "kmc-supplier", "target": "kmc-inbound-truck", "type": "default", "data": { "transportTime": 0.5, "transportCost": 90, "transitQty": 120 } },
+                    { "id": "kmc-e2", "source": "kmc-inbound-truck", "target": "kmc-receiving", "type": "default", "data": { "transportTime": 0.25, "transportCost": 40, "transitQty": 100 } },
+                    { "id": "kmc-e3", "source": "kmc-receiving", "target": "kmc-rm-supermarket", "type": "default", "data": { "transportTime": 0.15, "transportCost": 15 } },
+                    { "id": "kmc-e4", "source": "kmc-rm-supermarket", "target": "kmc-cutting", "type": "default" },
+                    { "id": "kmc-e5", "source": "kmc-cutting", "target": "kmc-fifo-wip", "type": "default" },
+                    { "id": "kmc-e6", "source": "kmc-fifo-wip", "target": "kmc-assembly", "type": "default" },
+                    { "id": "kmc-e7", "source": "kmc-assembly", "target": "kmc-fg-supermarket", "type": "default" },
+                    { "id": "kmc-e8", "source": "kmc-fg-supermarket", "target": "kmc-outbound-truck", "type": "default", "data": { "transportTime": 0.5, "transportCost": 60, "transitQty": 90 } },
+                    { "id": "kmc-e9", "source": "kmc-outbound-truck", "target": "kmc-customer", "type": "default", "data": { "transportTime": 0.5, "transportCost": 95 } },
+
+                    { "id": "kmc-i1", "source": "kmc-customer", "target": "kmc-control", "type": "smoothstep", "animated": true, "style": { "stroke": "#00ffff", "strokeDasharray": "5 5" }, "data": { "type": "electronic" } },
+                    { "id": "kmc-i2", "source": "kmc-control", "target": "kmc-supplier", "type": "smoothstep", "animated": true, "style": { "stroke": "#00ffff", "strokeDasharray": "5 5" }, "data": { "type": "electronic" } },
+                    { "id": "kmc-i3", "source": "kmc-control", "target": "kmc-kanban-post", "type": "smoothstep", "animated": true, "style": { "stroke": "#ffffff", "strokeDasharray": "4 4" }, "data": { "type": "manual" } },
+                    { "id": "kmc-i4", "source": "kmc-kanban-post", "target": "kmc-kanban-production", "type": "smoothstep", "animated": true, "style": { "stroke": "#ff9900", "strokeDasharray": "6 4" }, "data": { "symbolType": "signal_kanban" }, "label": "production kanban" },
+                    { "id": "kmc-i5", "source": "kmc-kanban-post", "target": "kmc-kanban-withdrawal", "type": "smoothstep", "animated": true, "style": { "stroke": "#ff9900", "strokeDasharray": "6 4" }, "data": { "symbolType": "kanban_withdrawal" }, "label": "withdrawal kanban" },
+                    { "id": "kmc-i6", "source": "kmc-kanban-production", "target": "kmc-cutting", "type": "smoothstep", "animated": true, "style": { "stroke": "#ff9900", "strokeDasharray": "6 4" }, "data": { "symbolType": "signal_kanban" } },
+                    { "id": "kmc-i7", "source": "kmc-kanban-withdrawal", "target": "kmc-fg-supermarket", "type": "smoothstep", "animated": true, "style": { "stroke": "#ff9900", "strokeDasharray": "6 4" }, "data": { "symbolType": "kanban_withdrawal" } },
+                    { "id": "kmc-i8", "source": "kmc-fg-supermarket", "target": "kmc-assembly", "type": "smoothstep", "animated": true, "style": { "stroke": "#ff9900", "strokeDasharray": "6 4" }, "data": { "symbolType": "signal_kanban" }, "label": "production trigger" }
+                ]
+            },
             expert: {
                 name: t('vsm.templates.expert', 'Expert VSM Future State'),
                 description: t('vsm.templates.descExpert', 'Comprehensive template with Logistics, Push/Pull mix, and QC.'),
@@ -2353,18 +2539,21 @@ const VSMCanvasContent = () => {
     const handleSimulationResult = (result) => {
         if (!result) return;
         setLastSimulationResult(result); // Save for AI Context
+        setPlaybackPayload(buildPlaybackPayload(result));
 
         if (!result.nodeStatus) return;
 
         setNodes(nds => nds.map(node => {
             const status = result.nodeStatus[node.id];
+            const kanbanState = result.kanbanNodeStates?.[node.id];
             // Only update if status exists
-            if (status) {
+            if (status || kanbanState) {
                 return {
                     ...node,
                     data: {
                         ...node.data,
-                        simulationResult: status
+                        simulationResult: status,
+                        kanbanState: kanbanState || null
                     }
                 };
             }
@@ -2374,6 +2563,23 @@ const VSMCanvasContent = () => {
             return node;
         }));
     };
+
+    const handleFocusKanbanEvent = useCallback((evt) => {
+        if (!evt) return;
+        const sourceNode = evt.sourceNodeId ? nodes.find((n) => n.id === evt.sourceNodeId) : null;
+        const targetNode = evt.targetNodeId ? nodes.find((n) => n.id === evt.targetNodeId) : null;
+        const edge = evt.edgeId ? edges.find((e) => e.id === evt.edgeId) : null;
+
+        setSelectedNode(targetNode || sourceNode || null);
+        setSelectedEdge(edge || null);
+        setEdgeMenuPosition(null);
+    }, [nodes, edges]);
+
+    const handleJumpToKanbanEvent = useCallback((evt) => {
+        handleFocusKanbanEvent(evt);
+        const jumpTick = Math.max(0, Math.floor((Number(evt?.startTs) || 0) / 1000));
+        setSimTime(jumpTick);
+    }, [handleFocusKanbanEvent]);
 
     // --- Render Helpers ---
     const Separator = () => <div style={{ width: '1px', height: '20px', backgroundColor: '#555', margin: '0 5px' }} />;
@@ -2665,6 +2871,15 @@ const VSMCanvasContent = () => {
                         >
                             🔄
                         </button>
+                        {animationFlags.enableKanbanSimulationModal && (
+                            <button
+                                style={{ ...btnStyle, backgroundColor: '#0ea5e9' }}
+                                onClick={() => setShowKanbanSimulationModal(true)}
+                                title="Kanban Management Simulation"
+                            >
+                                <Activity size={14} /> Kanban Mgmt
+                            </button>
+                        )}
                     </div>
 
                     <Separator />
@@ -2796,6 +3011,17 @@ const VSMCanvasContent = () => {
                         <MiniMap style={{ backgroundColor: '#333' }} nodeColor="#555" maskColor="rgba(0, 0, 0, 0.7)" />
                         <Background color="#555" gap={15} size={1} variant="dots" />
                     </ReactFlow>
+
+                    <KanbanAnimationLayer
+                        enabled={animationFlags.enableKanbanAnimation && isSimulating}
+                        nodes={nodes}
+                        edges={edges}
+                        events={animationFrame.activeKanbanEvents}
+                    />
+                    <AndonAlertLayer
+                        enabled={animationFlags.enableAlertAnimation}
+                        alerts={animationFrame.alerts}
+                    />
 
                     <TimelineLadder
                         nodes={nodes}
@@ -3067,6 +3293,26 @@ const VSMCanvasContent = () => {
 
                                         {/* WIP Limit */}
                                         <PropertyField label={t('vsm.analysis.wipLimit') || 'WIP Limit (units)'} field="wipLimit" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+
+                                        <div style={{ borderTop: '1px solid #444', marginTop: '10px', paddingTop: '10px' }}>
+                                            <h4 style={{ color: '#facc15', fontSize: '0.85rem', marginBottom: '10px' }}>🃏 TPS e-Kanban</h4>
+                                            <PropertyField label="WIP Cap" field="wipCap" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                            <PropertyField label="Kanban Limit" field="kanbanLimit" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                            <PropertyField label="Active Production Kanban" field="activeProductionKanban" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                            <PropertyField label="Card Capacity" field="kanbanCardCapacity" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                            <PropertyField label="Lead Time (days)" field="kanbanLeadTime" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                            <PropertyField label="Safety Factor" field="kanbanSafetyFactor" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                            <div style={{ marginBottom: '10px' }}>
+                                                <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={Boolean(selectedNode.data.requiresActiveKanban)}
+                                                        onChange={(e) => { updateNodeData(selectedNode.id, 'requiresActiveKanban', e.target.checked); onPropertyChangeComplete(); }}
+                                                    />
+                                                    Requires Active Kanban
+                                                </label>
+                                            </div>
+                                        </div>
                                     </div>
                                 </>
                             )}
@@ -3126,6 +3372,31 @@ const VSMCanvasContent = () => {
                                                     <PropertyField label="Holding Cost/Day ($)" field="holdingCostPerDay" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                                 </>
                                             )}
+
+                                            <div style={{ borderTop: '1px solid #444', marginTop: '10px', paddingTop: '10px' }}>
+                                                <h4 style={{ color: '#facc15', fontSize: '0.85rem', marginBottom: '10px' }}>🃏 TPS e-Kanban</h4>
+                                                <PropertyField label="Reorder Point (ROP)" field="reorderPoint" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                                <PropertyField label="Consumption Rate" field="consumptionRate" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                                <PropertyField label="Incoming Qty" field="incomingQty" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                                <PropertyField label="Reserved Qty" field="reservedQty" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                                <PropertyField label="Blocked QC Qty" field="blockedQcQty" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                                <PropertyField label="Active Production Kanban" field="activeProductionKanban" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                                <PropertyField label="Active Withdrawal Kanban" field="activeWithdrawalKanban" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                                <PropertyField label="Card Capacity" field="kanbanCardCapacity" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                                <PropertyField label="Kanban Lead Time (days)" field="kanbanLeadTime" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                                <PropertyField label="Kanban Safety Factor" field="kanbanSafetyFactor" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                                <PropertyField label="Open Kanban Age (hours)" field="openKanbanAgeHours" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                                <div style={{ marginBottom: '10px' }}>
+                                                    <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={Boolean(selectedNode.data.fifoEnabled)}
+                                                            onChange={(e) => { updateNodeData(selectedNode.id, 'fifoEnabled', e.target.checked); onPropertyChangeComplete(); }}
+                                                        />
+                                                        FIFO Enabled
+                                                    </label>
+                                                </div>
+                                            </div>
                                         </div>
                                     </>
                                 )}
@@ -3633,6 +3904,18 @@ const VSMCanvasContent = () => {
                         currentLanguage={currentLanguage}
                         onSimulationResult={handleSimulationResult}
                         vsmId={vsmId}
+                    />
+
+                    <KanbanManagementSimulationModal
+                        isOpen={showKanbanSimulationModal && animationFlags.enableKanbanSimulationModal}
+                        onClose={() => setShowKanbanSimulationModal(false)}
+                        playbackPayload={playbackPayload}
+                        animationFrame={animationFrame}
+                        lastSimulationResult={lastSimulationResult}
+                        isSimulating={isSimulating}
+                        simTime={simTime}
+                        onFocusEvent={handleFocusKanbanEvent}
+                        onJumpToEvent={handleJumpToKanbanEvent}
                     />
 
                     {/* Template Action (Confirm) Modal */}

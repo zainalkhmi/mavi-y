@@ -42,6 +42,21 @@ const SCHEMA_QUERIES = [
     updated_at TEXT NOT NULL
   )`,
 
+    // Public SOP manuals table (for QR cross-device access)
+    `CREATE TABLE IF NOT EXISTS manuals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cloud_id TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    description TEXT,
+    version TEXT DEFAULT '1.0',
+    status TEXT DEFAULT 'Draft',
+    author TEXT,
+    document_number TEXT,
+    content_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`,
+
     // Create indexes for better performance
     `CREATE INDEX IF NOT EXISTS idx_licenses_email ON licenses(email)`,
     `CREATE INDEX IF NOT EXISTS idx_licenses_status ON licenses(status)`,
@@ -49,6 +64,8 @@ const SCHEMA_QUERIES = [
     `CREATE INDEX IF NOT EXISTS idx_licenses_bound_ip ON licenses(bound_ip)`,
     `CREATE INDEX IF NOT EXISTS idx_youtube_category ON youtube_links(category)`,
     `CREATE INDEX IF NOT EXISTS idx_youtube_module ON youtube_links(module_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_manuals_cloud_id ON manuals(cloud_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_manuals_updated_at ON manuals(updated_at DESC)`,
 
     `CREATE TABLE IF NOT EXISTS license_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

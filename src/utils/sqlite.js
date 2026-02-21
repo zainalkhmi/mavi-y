@@ -113,6 +113,7 @@ let worker = null;
 let pendingRequests = new Map();
 let requestIdCounter = 0;
 let initPromise = null;
+let workerStorageMode = 'WASM (Worker)';
 
 export const getSqliteDb = async () => {
   if (db) return db;
@@ -133,6 +134,10 @@ export const getSqliteDb = async () => {
 
               if (type === 'ready') {
                 console.log('SQLite WASM Worker ready');
+                workerStorageMode = e.data?.mode || 'WASM (Worker)';
+                if (String(workerStorageMode).toLowerCase().includes('transient')) {
+                  console.warn('[SQLite] Running in transient storage mode. Data may not persist after reload.');
+                }
                 db = {
                   execute: (sql, params = []) => {
                     const id = requestIdCounter++;
@@ -151,7 +156,7 @@ export const getSqliteDb = async () => {
                   getStatus: () => ({
                     isConfigured: false,
                     isOnline: navigator.onLine,
-                    mode: 'WASM (Worker)'
+                    mode: workerStorageMode
                   }),
                   syncToCloud: async () => ({ success: false, message: 'Cloud sync removed' })
                 };

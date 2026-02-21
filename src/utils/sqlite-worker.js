@@ -9,6 +9,7 @@ async function loadSqliteModule() {
 }
 
 let db = null;
+let storageMode = 'Unknown';
 
 const SCHEMA_QUERIES = [
     `CREATE TABLE IF NOT EXISTS projects (
@@ -130,13 +131,16 @@ async function init() {
             try {
                 db = new sqlite3.oo1.OpfsDb('/motion_study.sqlite', 'c');
                 console.log('Using OPFS for persistent storage in worker');
+                storageMode = 'WASM (OPFS Persistent)';
             } catch (opfsErr) {
                 console.error('Failed to create OPFS DB, falling back to transient:', opfsErr);
                 db = new sqlite3.oo1.DB('/motion_study.sqlite', 'c');
+                storageMode = 'WASM (Transient Memory)';
             }
         } else {
             db = new sqlite3.oo1.DB('/motion_study.sqlite', 'c');
             console.warn('OPFS not available in worker, using transient storage');
+            storageMode = 'WASM (Transient Memory)';
         }
 
         // Initialize schema
@@ -152,7 +156,7 @@ async function init() {
         try { db.exec(`ALTER TABLE knowledge_base ADD COLUMN syncStatus TEXT;`); } catch (e) { }
         try { db.exec(`CREATE TABLE IF NOT EXISTS vsm_data (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, data TEXT, thumbnail TEXT, createdAt TEXT, lastModified TEXT, folderId INTEGER);`); } catch (e) { }
 
-        self.postMessage({ type: 'ready' });
+        self.postMessage({ type: 'ready', mode: storageMode });
     } catch (err) {
         console.error('Worker initialization failed:', err);
         self.postMessage({ type: 'error', error: err.message });

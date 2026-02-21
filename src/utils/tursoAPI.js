@@ -201,6 +201,150 @@ const lookupFromIpify = async () => {
     };
 };
 
+const generateCloudId = () => `mnl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+const parseManualRow = (row) => {
+    if (!row) return null;
+    let content = row.content_json;
+    if (typeof content === 'string') {
+        try {
+            content = JSON.parse(content);
+        } catch {
+            content = null;
+        }
+    }
+
+    return {
+        id: row.id,
+        cloudId: row.cloud_id,
+        title: row.title,
+        description: row.description || '',
+        version: row.version || '1.0',
+        status: row.status || 'Draft',
+        author: row.author || '',
+        documentNumber: row.document_number || '',
+        content: content || {},
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        type: 'manual',
+        category: 'Work Instruction'
+    };
+};
+
+// ===== MANUALS (PUBLIC SOP) =====
+
+export const upsertManual = async (manual) => {
+    const client = await getTursoClient();
+    const now = new Date().toISOString();
+
+    const cloudId = safeString(manual?.cloudId) || safeString(manual?.cloud_id) || generateCloudId();
+    const title = safeString(manual?.title, 'Untitled Manual');
+    const description = safeString(manual?.description, '');
+    const version = safeString(manual?.version, '1.0');
+    const status = safeString(manual?.status, 'Draft');
+    const author = safeString(manual?.author, '');
+    const documentNumber = safeString(manual?.documentNumber || manual?.document_number, '');
+    const contentJson = JSON.stringify(manual?.content || {});
+
+    try {
+        const existing = await client.execute({
+            sql: 'SELECT id, created_at FROM manuals WHERE cloud_id = ? LIMIT 1',
+            args: [cloudId]
+        });
+
+        const existingRow = existing.rows?.[0];
+
+        if (existingRow) {
+            await client.execute({
+                sql: `UPDATE manuals
+                      SET title = ?, description = ?, version = ?, status = ?, author = ?, document_number = ?, content_json = ?, updated_at = ?
+                      WHERE cloud_id = ?`,
+                args: [title, description, version, status, author, documentNumber, contentJson, now, cloudId]
+            });
+
+            return { id: existingRow.id, cloudId, createdAt: existingRow.created_at, updatedAt: now };
+        }
+
+        const result = await client.execute({
+            sql: `INSERT INTO manuals
+                  (cloud_id, title, description, version, status, author, document_number, content_json, created_at, updated_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            args: [cloudId, title, description, version, status, author, documentNumber, contentJson, now, now]
+        });
+
+        return { id: Number(result.lastInsertRowid), cloudId, createdAt: now, updatedAt: now };
+    } catch (error) {
+        console.error('❌ Failed to upsert manual:', error);
+        throw error;
+    }
+};
+
+export const getManualByCloudId = async (cloudId) => {
+    const client = await getTursoClient();
+    try {
+        const result = await client.execute({
+            sql: 'SELECT * FROM manuals WHERE cloud_id = ? LIMIT 1',
+            args: [cloudId]
+        });
+        return parseManualRow(result.rows?.[0] || null);
+    } catch (error) {
+        console.error('❌ Failed to get manual by cloud id:', error);
+        return null;
+    }
+};
+
+export const getManualById = async (id) => {
+    const client = await getTursoClient();
+    try {
+        const result = await client.execute({
+            sql: 'SELECT * FROM manuals WHERE id = ? LIMIT 1',
+            args: [id]
+        });
+        return parseManualRow(result.rows?.[0] || null);
+    } catch (error) {
+        console.error('❌ Failed to get manual by id:', error);
+        return null;
+    }
+};
+
+export const listManuals = async () => {
+    const client = await getTursoClient();
+    try {
+        const result = await client.execute('SELECT * FROM manuals ORDER BY updated_at DESC');
+        return (result.rows || []).map(parseManualRow).filter(Boolean);
+    } catch (error) {
+        console.error('❌ Failed to list manuals:', error);
+        return [];
+    }
+};
+
+export const appendManualAcknowledgement = async (cloudId, ackPayload) => {
+    const existing = await getManualByCloudId(cloudId);
+    if (!existing) {
+        throw new Error('Manual not found in cloud');
+    }
+
+    const content = existing.content && typeof existing.content === 'object' ? existing.content : {};
+    const currentAcks = Array.isArray(content.readAcks) ? content.readAcks : [];
+    const nextAcks = [ackPayload, ...currentAcks];
+
+    await upsertManual({
+        cloudId: existing.cloudId,
+        title: existing.title,
+        description: existing.description,
+        version: existing.version,
+        status: existing.status,
+        author: existing.author,
+        documentNumber: existing.documentNumber,
+        content: {
+            ...content,
+            readAcks: nextAcks
+        }
+    });
+
+    return nextAcks;
+};
+
 /**
  * Best-effort fetch public IP and country from CORS-friendly endpoints.
  * Uses session cache to avoid repeated requests (helps in React StrictMode/dev).
@@ -1111,6 +1255,13 @@ export const deleteCloudInstaller = async (id) => {
 };
 
 export default {
+    // Manuals (public SOP)
+    upsertManual,
+    getManualByCloudId,
+    getManualById,
+    listManuals,
+    appendManualAcknowledgement,
+
     // License functions
     createLicense,
     getAllLicenses,

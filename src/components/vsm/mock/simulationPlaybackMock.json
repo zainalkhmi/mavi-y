@@ -1,0 +1,116 @@
+{
+    "kanbanEvents": [
+        {
+            "id": "evt-prod-1",
+            "type": "production",
+            "status": "in_transit",
+            "sourceNodeId": "k-control",
+            "targetNodeId": "k-assembly",
+            "edgeId": "k-i2",
+            "startTs": 0,
+            "endTs": 8000,
+            "overdue": false,
+            "blocked": false
+        },
+        {
+            "id": "evt-wdr-1",
+            "type": "withdrawal",
+            "status": "blocked",
+            "sourceNodeId": "k-fg-supermarket",
+            "targetNodeId": "k-assembly",
+            "edgeId": "k-i3",
+            "startTs": 500,
+            "endTs": 7000,
+            "overdue": false,
+            "blocked": true
+        },
+        {
+            "id": "evt-prod-2",
+            "type": "production",
+            "status": "overdue",
+            "sourceNodeId": "k-fg-buffer",
+            "targetNodeId": "k-welding",
+            "edgeId": "k-i4",
+            "startTs": 1000,
+            "endTs": 5000,
+            "overdue": true,
+            "blocked": false
+        }
+    ],
+    "alerts": [
+        {
+            "alertId": "al-1",
+            "severity": "warning",
+            "ruleCode": "TPS_BELOW_ROP",
+            "nodeId": "k-fg-buffer",
+            "message": "FG Buffer below reorder point",
+            "status": "active",
+            "createdAt": 0,
+            "count": 1
+        },
+        {
+            "alertId": "al-2",
+            "severity": "critical",
+            "ruleCode": "TPS_WIP_CAP_EXCEEDED",
+            "nodeId": "k-welding",
+            "message": "WIP cap exceeded at Welding",
+            "status": "active",
+            "createdAt": 300,
+            "count": 1
+        },
+        {
+            "alertId": "al-3",
+            "severity": "andon",
+            "ruleCode": "TPS_STOCKOUT_TIME_ANDON",
+            "nodeId": "k-rm-supermarket",
+            "message": "Stockout predicted in < 2h",
+            "status": "active",
+            "createdAt": 600,
+            "count": 1
+        }
+    ],
+    "nodeStates": [
+        {
+            "nodeId": "k-rm-supermarket",
+            "onHandQty": 140,
+            "rop": 220,
+            "safetyStock": 160,
+            "wip": 180,
+            "wipCap": 280,
+            "shortageRisk": true,
+            "processingState": "blocked",
+            "fifoViolation": false,
+            "belowRop": true,
+            "belowSafety": true,
+            "kanbanTriggered": true
+        },
+        {
+            "nodeId": "k-welding",
+            "onHandQty": 260,
+            "rop": 180,
+            "safetyStock": 120,
+            "wip": 340,
+            "wipCap": 300,
+            "shortageRisk": true,
+            "processingState": "processing",
+            "fifoViolation": true,
+            "belowRop": false,
+            "belowSafety": false,
+            "kanbanTriggered": false
+        },
+        {
+            "nodeId": "k-fg-buffer",
+            "onHandQty": 190,
+            "rop": 220,
+            "safetyStock": 120,
+            "wip": 140,
+            "wipCap": 240,
+            "shortageRisk": true,
+            "processingState": "starved",
+            "fifoViolation": false,
+            "belowRop": true,
+            "belowSafety": false,
+            "kanbanTriggered": true
+        }
+    ]
+}

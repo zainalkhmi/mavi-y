@@ -39,10 +39,123 @@ const CAPA_TRANSITIONS = {
 };
 
 function ManualCreation() {
-    const { t } = useLanguage();
-    const tt = (key, fallback) => {
-        const value = t(key);
-        return !value || value === key ? fallback : value;
+    const { t: i18nT, currentLanguage } = useLanguage();
+
+    const manualLocalFallbacks = {
+        en: {
+            'manual.createVersionSnapshot': 'Create Version Snapshot',
+            'manual.newVersion': 'New Ver',
+            'manual.operatorOn': 'Operator ON',
+            'manual.exportPdfDocument': 'PDF Document',
+            'manual.exportWordDocument': 'MS Word (.docx)',
+            'manual.exportPowerPoint': 'PowerPoint (.pptx)',
+            'manual.layoutStandard': 'Standard',
+            'manual.layoutCompact': 'Compact',
+            'manual.layoutSinglePage': 'Single Page',
+            'manual.user': 'User',
+            'manual.completion': 'Completion',
+            'manual.noOperatorSteps': 'No steps available for operator mode.',
+            'manual.noVideoLoaded': 'No video loaded',
+            'manual.analyzeFullVideo': 'Analyze Full Video',
+            'manual.analyzingVideo': 'Analyzing Video...',
+            'manual.uploadingToAI': 'Uploading to AI...',
+            'manual.openMaviChat': 'Open Mavi Chat',
+            'manual.hideMaviChat': 'Hide Mavi Chat',
+            'manual.statuses.draft': 'Draft',
+            'manual.statuses.proposed': 'Proposed',
+            'manual.statuses.review': 'In Review',
+            'manual.statuses.approved': 'Approved',
+            'manual.statuses.released': 'Released',
+            'manual.alerts.enterTitle': 'Please enter manual title first.',
+            'manual.alerts.saveSuccess': 'Manual saved successfully!',
+            'manual.alerts.updateSuccess': 'Manual updated successfully!',
+            'manual.alerts.saveFailed': 'Failed to save manual: {{message}}',
+            'manual.alerts.loadManualsFailed': 'Failed to load saved manuals.',
+            'manual.alerts.confirmDeleteStep': 'Delete this step?',
+            'manual.alerts.generateContentFailed': 'Failed to generate AI content: {{message}}',
+            'manual.alerts.uploadVideoFirst': 'Please upload video first.',
+            'manual.alerts.apiKeyMissing': 'Gemini API key is missing. Please set it in settings.',
+            'manual.alerts.videoPrepareFailed': 'Failed to prepare video for AI analysis.',
+            'manual.alerts.confirmOverwriteSteps': 'Overwrite existing steps with {{count}} AI steps?',
+            'manual.alerts.confirmAppendSteps': 'Append {{count}} AI steps to current manual?',
+            'manual.alerts.analyzeVideoFailed': 'Failed to analyze video: {{message}}',
+            'manual.alerts.uploadVideoSourceFirst': 'Please upload source video first.',
+            'manual.alerts.captureFrameFailed': 'Failed to capture frame from video.',
+            'manual.alerts.improveContentFailed': 'Failed to improve content: {{message}}',
+            'manual.alerts.noStepsToExport': 'No steps available to export.',
+            'manual.alerts.exportFailed': 'Export failed: {{message}}',
+            'manual.alerts.wordExportFailed': 'Word export failed: {{message}}',
+            'manual.alerts.powerPointExportFailed': 'PowerPoint export failed: {{message}}',
+            'manual.alerts.excelEmpty': 'Excel file is empty.',
+            'manual.alerts.confirmAppendExcelSteps': 'Append {{count}} steps from Excel?',
+            'manual.alerts.excelImportFailed': 'Excel import failed: {{message}}',
+            'manual.alerts.confirmAppendWordSteps': 'Append {{count}} steps from Word?',
+            'manual.alerts.noStepsInWord': 'No step headings found in Word document.',
+            'manual.alerts.wordImportFailed': 'Word import failed: {{message}}'
+        },
+        id: {
+            'manual.createVersionSnapshot': 'Buat Snapshot Versi',
+            'manual.newVersion': 'Versi Baru',
+            'manual.operatorOn': 'Operator AKTIF',
+            'manual.exportPdfDocument': 'Dokumen PDF',
+            'manual.exportWordDocument': 'MS Word (.docx)',
+            'manual.exportPowerPoint': 'PowerPoint (.pptx)',
+            'manual.layoutStandard': 'Standar',
+            'manual.layoutCompact': 'Ringkas',
+            'manual.layoutSinglePage': 'Satu Halaman',
+            'manual.user': 'Pengguna',
+            'manual.completion': 'Progres',
+            'manual.noOperatorSteps': 'Tidak ada langkah untuk mode operator.',
+            'manual.noVideoLoaded': 'Belum ada video dimuat',
+            'manual.analyzeFullVideo': 'Analisis Video Penuh',
+            'manual.analyzingVideo': 'Menganalisis Video...',
+            'manual.uploadingToAI': 'Mengunggah ke AI...',
+            'manual.openMaviChat': 'Buka Mavi Chat',
+            'manual.hideMaviChat': 'Sembunyikan Mavi Chat',
+            'manual.statuses.draft': 'Draft',
+            'manual.statuses.proposed': 'Usulan',
+            'manual.statuses.review': 'Dalam Review',
+            'manual.statuses.approved': 'Disetujui',
+            'manual.statuses.released': 'Dirilis'
+        },
+        ja: {
+            'manual.createVersionSnapshot': 'バージョンスナップショット作成',
+            'manual.newVersion': '新規版',
+            'manual.operatorOn': 'オペレーター ON',
+            'manual.exportPdfDocument': 'PDFドキュメント',
+            'manual.exportWordDocument': 'MS Word (.docx)',
+            'manual.exportPowerPoint': 'PowerPoint (.pptx)',
+            'manual.layoutStandard': '標準',
+            'manual.layoutCompact': 'コンパクト',
+            'manual.layoutSinglePage': '1ページ',
+            'manual.user': 'ユーザー',
+            'manual.completion': '進捗',
+            'manual.noOperatorSteps': 'オペレーターモードで使用できる手順がありません。',
+            'manual.noVideoLoaded': 'ビデオ未読み込み',
+            'manual.analyzeFullVideo': '動画全体を解析',
+            'manual.analyzingVideo': '動画を解析中...',
+            'manual.uploadingToAI': 'AIへアップロード中...',
+            'manual.openMaviChat': 'Maviチャットを開く',
+            'manual.hideMaviChat': 'Maviチャットを閉じる',
+            'manual.statuses.draft': '下書き',
+            'manual.statuses.proposed': '提案済み',
+            'manual.statuses.review': 'レビュー中',
+            'manual.statuses.approved': '承認済み',
+            'manual.statuses.released': '公開済み'
+        }
+    };
+
+    const interpolate = (str, params = {}) => String(str).replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k) => params?.[k] ?? '');
+    const t = (key, params) => {
+        const value = i18nT(key, params);
+        if (value && value !== key) return value;
+        const lang = manualLocalFallbacks[currentLanguage] ? currentLanguage : 'en';
+        const local = manualLocalFallbacks[lang]?.[key] ?? manualLocalFallbacks.en?.[key];
+        return local ? interpolate(local, params) : value;
+    };
+    const tt = (key, fallback, params) => {
+        const value = t(key, params);
+        return !value || value === key ? interpolate(fallback, params) : value;
     };
     const { currentProject } = useProject();
     const { showAlert, showConfirm } = useDialog();
@@ -334,6 +447,17 @@ function ManualCreation() {
     });
 
     const hasAnyRole = (...roles) => currentUserRole === 'Admin' || roles.includes(currentUserRole);
+
+    const getWorkflowStatusLabel = (status) => {
+        const map = {
+            Draft: tt('manual.statuses.draft', 'Draft'),
+            Proposed: tt('manual.statuses.proposed', 'Proposed'),
+            'In Review': tt('manual.statuses.review', 'In Review'),
+            Approved: tt('manual.statuses.approved', 'Approved'),
+            Released: tt('manual.statuses.released', 'Released')
+        };
+        return map[status] || status;
+    };
     const canEditManual = hasAnyRole('Author');
     const canSubmitApproval = hasAnyRole('Author');
     const canApprove = hasAnyRole('Approver');
@@ -1823,7 +1947,7 @@ function ManualCreation() {
                             style={{ paddingRight: '32px', minWidth: '135px' }}
                         >
                             {WORKFLOW_STATUSES.map((statusItem) => (
-                                <option key={statusItem} value={statusItem}>{statusItem}</option>
+                                <option key={statusItem} value={statusItem}>{getWorkflowStatusLabel(statusItem)}</option>
                             ))}
                         </select>
                         <Activity size={14} style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'rgba(255, 255, 255, 0.4)' }} />
@@ -1833,10 +1957,10 @@ function ManualCreation() {
                         onClick={handleCreateVersion}
                         className="btn-pro"
                         style={{ backgroundColor: 'rgba(37, 99, 235, 0.15)', color: '#93c5fd', borderColor: 'rgba(59, 130, 246, 0.35)' }}
-                        title="Create Version Snapshot"
+                        title={tt('manual.createVersionSnapshot', 'Create Version Snapshot')}
                     >
                         <Layers size={16} />
-                        New Ver
+                        {tt('manual.newVersion', 'New Ver')}
                     </button>
 
                     <button
@@ -1855,7 +1979,7 @@ function ManualCreation() {
                         }}
                     >
                         <Play size={16} />
-                        {isOperatorMode ? 'Operator ON' : 'Operator'}
+                        {isOperatorMode ? tt('manual.operatorOn', 'Operator ON') : tt('manual.operator', 'Operator')}
                     </button>
 
 
@@ -1877,9 +2001,9 @@ function ManualCreation() {
                             style={{ paddingRight: '32px', minWidth: '140px' }}
                         >
                             <option value="">{tt('common.exportAs', 'Export As...')}</option>
-                            <option value="pdf">📄 PDF Document</option>
-                            <option value="word">📝 MS Word (.docx)</option>
-                            <option value="pptx">📊 PowerPoint (.pptx)</option>
+                            <option value="pdf">📄 {tt('manual.exportPdfDocument', 'PDF Document')}</option>
+                            <option value="word">📝 {tt('manual.exportWordDocument', 'MS Word (.docx)')}</option>
+                            <option value="pptx">📊 {tt('manual.exportPowerPoint', 'PowerPoint (.pptx)')}</option>
                         </select>
                         <FileDown size={14} style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'rgba(255, 255, 255, 0.4)' }} />
                     </div>
@@ -1909,9 +2033,9 @@ function ManualCreation() {
                             className="pro-select"
                             style={{ paddingRight: '32px', minWidth: '130px' }}
                         >
-                            <option value="standard">📐 Standard</option>
-                            <option value="compact">📋 Compact</option>
-                            <option value="one-per-page">📄 Single Page</option>
+                            <option value="standard">📐 {tt('manual.layoutStandard', 'Standard')}</option>
+                            <option value="compact">📋 {tt('manual.layoutCompact', 'Compact')}</option>
+                            <option value="one-per-page">📄 {tt('manual.layoutSinglePage', 'Single Page')}</option>
                         </select>
                         <Layers size={14} style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'rgba(255, 255, 255, 0.4)' }} />
                     </div>
@@ -1938,7 +2062,7 @@ function ManualCreation() {
                         className="pro-select"
                         value={currentUserName}
                         onChange={(e) => setCurrentUserName(e.target.value)}
-                        placeholder="User"
+                        placeholder={tt('manual.user', 'User')}
                         style={{ minWidth: '120px' }}
                     />
                     <select
@@ -1969,7 +2093,7 @@ function ManualCreation() {
                                         <div>
                                             <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Operator Execution Mode</h3>
                                             <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', marginTop: '4px' }}>
-                                                Completion: {operatorCompletedCount}/{operatorTotalSteps} steps
+                                                {tt('manual.completion', 'Completion')}: {operatorCompletedCount}/{operatorTotalSteps} {tt('manual.steps', 'steps')}
                                             </div>
                                         </div>
                                         <div style={{ color: '#6ee7b7', fontWeight: 800, fontSize: '1.1rem' }}>{operatorProgress}%</div>
@@ -1996,7 +2120,7 @@ function ManualCreation() {
                                                 }}
                                             >
                                                 <CheckCircle size={16} />
-                                                {operatorChecks[operatorCurrentStep.id]?.completed ? 'Completed' : 'Mark Complete'}
+                                                {operatorChecks[operatorCurrentStep.id]?.completed ? tt('manual.completed', 'Completed') : tt('manual.markComplete', 'Mark Complete')}
                                             </button>
                                         </div>
 
@@ -2057,7 +2181,7 @@ function ManualCreation() {
                                                     color: '#fff'
                                                 }}
                                             >
-                                                Back
+                                                {tt('manual.back', 'Back')}
                                             </button>
                                             <button
                                                 onClick={handleOperatorNext}
@@ -2071,13 +2195,13 @@ function ManualCreation() {
                                                     borderColor: 'rgba(59,130,246,0.35)'
                                                 }}
                                             >
-                                                Next
+                                                {tt('manual.next', 'Next')}
                                             </button>
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="glass-panel" style={{ padding: '28px', textAlign: 'center', color: 'rgba(255,255,255,0.55)' }}>
-                                        No steps available for operator mode.
+                                        {tt('manual.noOperatorSteps', 'No steps available for operator mode.')}
                                     </div>
                                 )}
                             </div>
@@ -2105,7 +2229,7 @@ function ManualCreation() {
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.85rem' }}>
                                             <Activity size={14} style={{ color: '#10b981' }} />
-                                            {guide.status || 'Draft'}
+                                            {getWorkflowStatusLabel(guide.status || 'Draft')}
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.85rem' }}>
                                             <FileText size={14} style={{ color: '#f59e0b' }} />
@@ -2295,7 +2419,7 @@ function ManualCreation() {
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <div>
                                                     <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>Workflow</div>
-                                                    <div style={{ marginTop: '4px', fontWeight: '700' }}>{guide.workflow?.status || guide.status || 'Draft'}</div>
+                                                    <div style={{ marginTop: '4px', fontWeight: '700' }}>{getWorkflowStatusLabel(guide.workflow?.status || guide.status || 'Draft')}</div>
                                                 </div>
                                                 <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>
                                                     Updated by {guide.workflow?.updatedBy || 'System'} • {guide.workflow?.updatedAt ? new Date(guide.workflow.updatedAt).toLocaleString() : '-'}

@@ -34,7 +34,7 @@ import { analyzeVSM, getStoredApiKey, generateVSMFromPrompt, generateVSMFromImag
 import { saveVSM, getVSMById } from '../../utils/vsmDB';
 import ReactMarkdown from 'react-markdown';
 import AIChatOverlay from '../features/AIChatOverlay';
-import { Brain, Sparkles, X, Wand2, HelpCircle, MessageSquare, ImagePlus, PanelRightClose, PanelRightOpen, Eye, EyeOff, BarChart3, Repeat, Undo, Redo, ArrowLeft, ArrowUp, Save, Folder, Layout, Network, ChevronDown, ChevronUp } from 'lucide-react';
+import { Brain, Sparkles, X, Wand2, HelpCircle, MessageSquare, ImagePlus, PanelRightClose, PanelRightOpen, Eye, EyeOff, BarChart3, Repeat, Undo, Redo, ArrowLeft, ArrowUp, Save, Folder, Layout, Network, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { SupplyChainEngine } from '../../utils/supplyChainEngine';
 import TemplateSelectionModal from './TemplateSelectionModal';
@@ -134,6 +134,7 @@ const VSMCanvasContent = () => {
 
     const [showTemplateModal, setShowTemplateModal] = useState(false); // Template Dialog
     const [showSupplyChainModal, setShowSupplyChainModal] = useState(false); // Supply Chain Dialog
+    const [supplyChainInitialTab, setSupplyChainInitialTab] = useState('flow');
     const [showActionModal, setShowActionModal] = useState(false); // Replace/Merge Dialog
     const [pendingTemplateKey, setPendingTemplateKey] = useState(null); // Key waiting for confirmation
 
@@ -668,14 +669,29 @@ const VSMCanvasContent = () => {
             let hasChanged = false;
 
             if (node.type === 'process' || node.data?.symbolType === VSMSymbols.PROJECT) {
-                const nodeCT = Number(node.data.ct || 0);
-                const nodeVA = Number(node.data.va || nodeCT);
+                let nodeCT = Number(node.data.ct || 0);
+                let nodeVA = Number(node.data.va || nodeCT);
+
+                // --- MIXED MODEL: Weighted Average CT ---
+                const variants = node.data.variants || [];
+                if (variants.length > 0) {
+                    const totalRatio = variants.reduce((sum, v) => sum + (parseFloat(v.ratio) || 0), 0) || 1;
+                    nodeCT = variants.reduce((sum, v) => sum + (Number(v.ct || 0) * (Number(v.ratio || 0) / totalRatio)), 0);
+                    nodeVA = variants.reduce((sum, v) => sum + (Number(v.va || v.ct || 0) * (Number(v.ratio || 0) / totalRatio)), 0);
+
+                    // Update visual CT/VA if it differs from weighted average
+                    if (Math.abs(node.data.weightedCT - nodeCT) > 0.01) {
+                        newNode.data = { ...newNode.data, weightedCT: nodeCT, weightedVA: nodeVA };
+                        hasChanged = true;
+                    }
+                }
+
                 ct += nodeCT;
                 va += nodeVA;
 
                 // Sync global takt to process nodes for visual feedback
                 if (node.data.globalTakt !== effectiveTakt) {
-                    newNode.data = { ...node.data, globalTakt: effectiveTakt };
+                    newNode.data = { ...newNode.data, globalTakt: effectiveTakt };
                     hasChanged = true;
                 }
             }
@@ -2098,6 +2114,50 @@ const VSMCanvasContent = () => {
                     { "id": "isc-e8", "source": "isc-shipping", "target": "isc-customer", "type": "default" }
                 ]
             },
+            completeCostAnalysis: {
+                name: t('vsm.templates.completeCost', 'Complete Cost Analysis VSM'),
+                description: t('vsm.templates.descCompleteCost', 'Template lengkap VSM dengan parameter biaya untuk analisa cost accounting.'),
+                globalTakt: 52,
+                nodes: [
+                    { "id": "cca-supplier-1", "type": "generic", "position": { "x": 60, "y": 220 }, "data": { "symbolType": "supplier", "name": "Supplier Steel", "leadTime": 2, "reliability": 96, "moq": 500, "costPerUnit": 8, "globalTakt": 52 } },
+                    { "id": "cca-supplier-2", "type": "generic", "position": { "x": 60, "y": 360 }, "data": { "symbolType": "supplier", "name": "Supplier Components", "leadTime": 1, "reliability": 98, "moq": 300, "costPerUnit": 5, "globalTakt": 52 } },
+
+                    { "id": "cca-inbound-truck", "type": "generic", "position": { "x": 240, "y": 180 }, "data": { "symbolType": "truck", "name": "Inbound Truck", "frequency": 3, "capacity": 2000, "leadTime": 0.5, "distance": 120, "costPerKm": 1.2, "fixedTripCost": 80, "unitPrice": 0, "dutyRate": 0, "insuranceRate": 0.5, "portFees": 0, "globalTakt": 52 } },
+                    { "id": "cca-raw-inv", "type": "inventory", "position": { "x": 360, "y": 300 }, "data": { "name": "Raw Material WH", "amount": 2400, "inventory": 2400, "safetyStock": 400, "holdingCostPerDay": 0.2, "unitPrice": 8, "globalTakt": 52 } },
+
+                    { "id": "cca-proc-cut", "type": "process", "position": { "x": 560, "y": 300 }, "data": { "name": "Cutting", "ct": 40, "co": 20, "uptime": 94, "yield": 98, "performance": 90, "va": 35, "shiftPattern": 2, "overtimeAllowed": true, "wipLimit": 500, "costPerUnit": 2, "directMaterialCost": 1.5, "directLaborCost": 0.8, "machineCost": 0.6, "fohPerUnit": 0.4, "globalTakt": 52 } },
+                    { "id": "cca-wip-1", "type": "inventory", "position": { "x": 740, "y": 300 }, "data": { "name": "WIP Buffer 1", "amount": 600, "inventory": 600, "safetyStock": 150, "holdingCostPerDay": 0.35, "globalTakt": 52 } },
+
+                    { "id": "cca-proc-weld", "type": "process", "position": { "x": 900, "y": 300 }, "data": { "name": "Welding", "ct": 62, "co": 25, "uptime": 90, "yield": 96, "performance": 86, "va": 50, "shiftPattern": 2, "overtimeAllowed": true, "wipLimit": 400, "costPerUnit": 3, "directMaterialCost": 0.9, "directLaborCost": 1.2, "machineCost": 1.1, "fohPerUnit": 0.6, "globalTakt": 52 } },
+                    { "id": "cca-wip-2", "type": "inventory", "position": { "x": 1080, "y": 300 }, "data": { "name": "WIP Buffer 2", "amount": 350, "inventory": 350, "safetyStock": 100, "holdingCostPerDay": 0.4, "globalTakt": 52 } },
+
+                    { "id": "cca-proc-assy", "type": "process", "position": { "x": 1240, "y": 300 }, "data": { "name": "Assembly", "ct": 48, "co": 18, "uptime": 96, "yield": 99, "performance": 92, "va": 42, "shiftPattern": 2, "overtimeAllowed": false, "wipLimit": 350, "costPerUnit": 2.5, "directMaterialCost": 0.7, "directLaborCost": 1.1, "machineCost": 0.5, "fohPerUnit": 0.5, "globalTakt": 52 } },
+
+                    { "id": "cca-fg", "type": "generic", "position": { "x": 1420, "y": 300 }, "data": { "symbolType": "finished_goods", "name": "Finished Goods", "amount": 900, "inventory": 900, "safetyStock": 200, "holdingCostPerDay": 0.45, "unitPrice": 28, "globalTakt": 52 } },
+                    { "id": "cca-outbound-truck", "type": "generic", "position": { "x": 1600, "y": 180 }, "data": { "symbolType": "truck", "name": "Outbound Truck", "frequency": 4, "capacity": 1600, "leadTime": 0.75, "distance": 180, "costPerKm": 1.4, "fixedTripCost": 95, "unitPrice": 28, "dutyRate": 0, "insuranceRate": 0.3, "portFees": 0, "globalTakt": 52 } },
+                    { "id": "cca-customer", "type": "generic", "position": { "x": 1780, "y": 300 }, "data": { "symbolType": "customer", "name": "Customer OEM", "demand": 1200, "unit": "pcs", "availableTime": 480, "shifts": 2, "packSize": 20, "globalTakt": 52 } },
+
+                    { "id": "cca-prod-control", "type": "generic", "position": { "x": 930, "y": 80 }, "data": { "symbolType": "production_control", "name": "Production Control", "planningFreq": "Daily", "horizon": 30, "globalTakt": 52 } }
+                ],
+                edges: [
+                    { "id": "cca-e1", "source": "cca-supplier-1", "target": "cca-inbound-truck", "type": "default", "data": { "transportTime": 1, "transportCost": 120, "priority": 1 } },
+                    { "id": "cca-e2", "source": "cca-supplier-2", "target": "cca-inbound-truck", "type": "default", "data": { "transportTime": 0.5, "transportCost": 80, "priority": 2 } },
+                    { "id": "cca-e3", "source": "cca-inbound-truck", "target": "cca-raw-inv", "type": "default", "data": { "transportTime": 0.5, "transportCost": 60 } },
+                    { "id": "cca-e4", "source": "cca-raw-inv", "target": "cca-proc-cut", "type": "default" },
+                    { "id": "cca-e5", "source": "cca-proc-cut", "target": "cca-wip-1", "type": "default" },
+                    { "id": "cca-e6", "source": "cca-wip-1", "target": "cca-proc-weld", "type": "default" },
+                    { "id": "cca-e7", "source": "cca-proc-weld", "target": "cca-wip-2", "type": "default" },
+                    { "id": "cca-e8", "source": "cca-wip-2", "target": "cca-proc-assy", "type": "default" },
+                    { "id": "cca-e9", "source": "cca-proc-assy", "target": "cca-fg", "type": "default" },
+                    { "id": "cca-e10", "source": "cca-fg", "target": "cca-outbound-truck", "type": "default", "data": { "transportTime": 0.75, "transportCost": 140 } },
+                    { "id": "cca-e11", "source": "cca-outbound-truck", "target": "cca-customer", "type": "default", "data": { "transportTime": 0.75, "transportCost": 180 } },
+
+                    { "id": "cca-i1", "source": "cca-customer", "target": "cca-prod-control", "type": "smoothstep", "animated": true, "style": { "stroke": "#00ffff", "strokeDasharray": "5 5" }, "data": { "type": "electronic" } },
+                    { "id": "cca-i2", "source": "cca-prod-control", "target": "cca-proc-assy", "type": "smoothstep", "animated": true, "style": { "stroke": "#ff9900", "strokeDasharray": "5 5" }, "data": { "symbolType": "signal_kanban" } },
+                    { "id": "cca-i3", "source": "cca-prod-control", "target": "cca-supplier-1", "type": "smoothstep", "animated": true, "style": { "stroke": "#00ffff", "strokeDasharray": "5 5" }, "data": { "type": "electronic" } },
+                    { "id": "cca-i4", "source": "cca-prod-control", "target": "cca-supplier-2", "type": "smoothstep", "animated": true, "style": { "stroke": "#00ffff", "strokeDasharray": "5 5" }, "data": { "type": "electronic" } }
+                ]
+            },
             pullSystem: {
                 name: t('vsm.templates.pull'),
                 description: t('vsm.templates.descPull'),
@@ -2281,6 +2341,12 @@ const VSMCanvasContent = () => {
 
     // Handle Supply Chain Simulation (CTP) - New Logic opens Modal
     const handleSupplyChainSim = () => {
+        setSupplyChainInitialTab('flow');
+        setShowSupplyChainModal(true);
+    };
+
+    const handleCostAnalysis = () => {
+        setSupplyChainInitialTab('analysis');
         setShowSupplyChainModal(true);
     };
 
@@ -2426,17 +2492,9 @@ const VSMCanvasContent = () => {
 
                 <Separator />
 
-                <div style={{ ...toolbarGroupStyle, backgroundColor: showLeadTimeView ? 'rgba(16,124,16,0.3)' : 'transparent', paddingRight: '10px' }}>
-                    <button
-                        style={{ ...btnStyle, backgroundColor: showLeadTimeView ? '#107c10' : '#444' }}
-                        onClick={() => setShowLeadTimeView((v) => !v)}
-                        title="Lead Time View"
-                    >
-                        {showLeadTimeView ? <Eye size={14} /> : <EyeOff size={14} />} LT View
-                    </button>
-
-                    {showLeadTimeView && (
-                        <>
+                {showLeadTimeView && (
+                    <>
+                        <div style={{ ...toolbarGroupStyle, backgroundColor: 'rgba(16,124,16,0.3)', paddingRight: '10px' }}>
                             <select
                                 value={waitTimeMethod}
                                 onChange={(e) => setWaitTimeMethod(e.target.value)}
@@ -2454,11 +2512,10 @@ const VSMCanvasContent = () => {
                                 title="Base wait time (minutes)"
                             />
                             <span style={{ fontSize: '0.72rem', color: '#ddd' }}>min</span>
-                        </>
-                    )}
-                </div>
-
-                <Separator />
+                        </div>
+                        <Separator />
+                    </>
+                )}
 
                 <div style={toolbarGroupStyle}>
                     <button style={btnStyle} onClick={() => handleAlign('left')} title={t('common.alignLeft') || 'Align Left'}>
@@ -2520,6 +2577,14 @@ const VSMCanvasContent = () => {
                         title={t('vsm.simulation.title')}
                     >
                         <Network size={14} />
+                    </button>
+
+                    <button
+                        style={{ ...btnStyle, backgroundColor: '#4caf50' }}
+                        onClick={handleCostAnalysis}
+                        title={t('vsm.analysis.costAnalysis') || 'Cost Analysis'}
+                    >
+                        <BarChart3 size={14} />
                     </button>
 
                     <button
@@ -2994,6 +3059,10 @@ const VSMCanvasContent = () => {
 
                                         {/* Cost Fields */}
                                         <PropertyField label={t('vsm.analysis.costPerUnit') || 'Cost per Unit ($)'} field="costPerUnit" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        <PropertyField label={t('vsm.analysis.directMaterialCost') || 'Direct Material ($)'} field="directMaterialCost" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        <PropertyField label={t('vsm.analysis.directLaborCost') || 'Direct Labor ($)'} field="directLaborCost" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        <PropertyField label={t('vsm.analysis.machineCost') || 'Machine Cost ($)'} field="machineCost" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        <PropertyField label={t('vsm.analysis.fohPerUnit') || 'FOH per Unit ($)'} field="fohPerUnit" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                         <PropertyField label={t('vsm.analysis.holdingCost') || 'Holding Cost/Day ($)'} field="holdingCostPerDay" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
 
                                         {/* WIP Limit */}
@@ -3129,12 +3198,22 @@ const VSMCanvasContent = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <PropertyField label={t('vsm.leadTime') + ' (min)'} field="leadTime" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                        <PropertyField label="Taxes (%)" field="taxes" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
-                                        <PropertyField label="Duties (%)" field="duties" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+
+                                    <div style={{ borderTop: '1px solid #444', marginTop: '15px', paddingTop: '15px' }}>
+                                        <h4 style={{ color: '#4caf50', fontSize: '0.85rem', marginBottom: '10px' }}>💰 Landed Costing</h4>
+                                        <PropertyField label="Unit Price ($)" field="unitPrice" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                            <PropertyField label="Distance (km)" field="distance" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                            <PropertyField label="$/km" field="costPerKm" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        </div>
+                                        <PropertyField label="Fixed Trip Cost ($)" field="fixedTripCost" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        <PropertyField label="Lead Time (min)" field="leadTime" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                            <PropertyField label="Duty Rate (%)" field="dutyRate" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                            <PropertyField label="Insurance (%)" field="insuranceRate" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        </div>
+                                        <PropertyField label="Port/Handling Fees ($)" field="portFees" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                     </div>
-                                    <PropertyField label="Port/Handling Fees ($)" field="portFees" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                 </>
                             )}
 
@@ -3167,13 +3246,17 @@ const VSMCanvasContent = () => {
                                         <div>Monthly Capacity: <b>{((selectedNode.data.frequency || 1) * (selectedNode.data.vehicleCount || 1) * (selectedNode.data.loadPerTrip || 1000)).toLocaleString()}</b> pcs</div>
                                     </div>
 
-                                    <PropertyField label="Lead Time (days)" field="leadTime" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
-                                    <PropertyField label="Cost per Shipment ($)" field="costPerShipment" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                        <PropertyField label="Taxes (%)" field="taxes" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
-                                        <PropertyField label="Duties (%)" field="duties" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                    <div style={{ borderTop: '1px solid #444', marginTop: '15px', paddingTop: '15px' }}>
+                                        <h4 style={{ color: '#4caf50', fontSize: '0.85rem', marginBottom: '10px' }}>💰 Landed Costing</h4>
+                                        <PropertyField label="Unit Price ($)" field="unitPrice" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        <PropertyField label="Cost per Shipment ($)" field="fixedTripCost" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        <PropertyField label="Lead Time (days)" field="leadTime" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                            <PropertyField label="Duty Rate (%)" field="dutyRate" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                            <PropertyField label="Insurance (%)" field="insuranceRate" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
+                                        </div>
+                                        <PropertyField label="Port/Handling Fees ($)" field="portFees" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                     </div>
-                                    <PropertyField label="Port/Handling Fees ($)" field="portFees" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                 </>
                             )}
 
@@ -3255,6 +3338,16 @@ const VSMCanvasContent = () => {
                                     <PropertyField label="Freq (Daily/Weekly)" field="planningFreq" type="text" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                     <PropertyField label="Horizon (days)" field="horizon" node={selectedNode} update={updateNodeData} commit={onPropertyChangeComplete} />
                                 </>
+                            )}
+
+                            {/* MIXED MODEL VARIANT EDITOR */}
+                            {(selectedNode.type === 'process' || selectedNode.data.symbolType === VSMSymbols.CUSTOMER || selectedNode.data.symbolType === VSMSymbols.PROJECT) && (
+                                <VariantEditor
+                                    node={selectedNode}
+                                    update={updateNodeData}
+                                    commit={onPropertyChangeComplete}
+                                    isCustomer={selectedNode.data.symbolType === VSMSymbols.CUSTOMER}
+                                />
                             )}
 
                             <button onClick={() => deleteNode(selectedNode.id)} style={{ width: '100%', padding: '8px', backgroundColor: '#333', color: '#c50f1f', border: '1px solid #c50f1f', borderRadius: '4px', cursor: 'pointer', marginTop: '20px' }}>{t('vsm.clear')} {t('vsm.nodes.noteDefault')}</button>
@@ -3536,6 +3629,7 @@ const VSMCanvasContent = () => {
                         onClose={() => setShowSupplyChainModal(false)}
                         nodes={nodes}
                         edges={edges}
+                        initialTab={supplyChainInitialTab}
                         currentLanguage={currentLanguage}
                         onSimulationResult={handleSimulationResult}
                         vsmId={vsmId}
@@ -3757,6 +3851,79 @@ const PropertyField = ({ label, field, node, update, commit, type = 'number' }) 
         />
     </div>
 );
+
+const VariantEditor = ({ node, update, commit, isCustomer }) => {
+    const variants = node.data.variants || (isCustomer ? node.data.productMix : []) || [];
+    const fieldName = isCustomer ? 'productMix' : 'variants';
+
+    const addVariant = () => {
+        const newVariants = [...variants, { id: Date.now(), name: 'SKU-' + (variants.length + 1), ratio: 0.1, ct: node.data.ct || 60, va: node.data.va || 60 }];
+        update(node.id, fieldName, newVariants);
+        commit();
+    };
+
+    const updateVariant = (id, field, value) => {
+        const newVariants = variants.map(v => v.id === id ? { ...v, [field]: value } : v);
+        update(node.id, fieldName, newVariants);
+    };
+
+    const removeVariant = (id) => {
+        const newVariants = variants.filter(v => v.id !== id);
+        update(node.id, fieldName, newVariants);
+        commit();
+    };
+
+    return (
+        <div style={{ borderTop: '1px solid #444', marginTop: '15px', paddingTop: '15px' }}>
+            <h4 style={{ color: '#facc15', fontSize: '0.85rem', marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                {isCustomer ? '📦 Product Mix' : '🔄 Mixed Model Variants'}
+                <button onClick={addVariant} style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#facc15', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>+ Add</button>
+            </h4>
+
+            {variants.length === 0 && <div style={{ fontSize: '0.7rem', color: '#666', fontStyle: 'italic' }}>No variants defined. Using single model.</div>}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {variants.map(v => (
+                    <div key={v.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 24px', gap: '5px', alignItems: 'center' }}>
+                        <input
+                            style={{ ...inputStyle, padding: '4px' }}
+                            value={v.name}
+                            onChange={(e) => updateVariant(v.id, 'name', e.target.value)}
+                            onBlur={commit}
+                            placeholder="SKU"
+                        />
+                        <input
+                            type="number"
+                            style={{ ...inputStyle, padding: '4px' }}
+                            value={v.ratio}
+                            onChange={(e) => updateVariant(v.id, 'ratio', parseFloat(e.target.value) || 0)}
+                            onBlur={commit}
+                            placeholder="Mix %"
+                        />
+                        {!isCustomer && (
+                            <input
+                                type="number"
+                                style={{ ...inputStyle, padding: '4px' }}
+                                value={v.ct}
+                                onChange={(e) => updateVariant(v.id, 'ct', parseFloat(e.target.value) || 0)}
+                                onBlur={commit}
+                                placeholder="CT"
+                            />
+                        )}
+                        <button onClick={() => removeVariant(v.id)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', padding: 0 }}>
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
+                ))}
+            </div>
+            {variants.length > 0 && (
+                <div style={{ fontSize: '0.6rem', color: '#888', marginTop: '5px' }}>
+                    Total Ratio: {(variants.reduce((sum, v) => sum + (parseFloat(v.ratio) || 0), 0) * 100).toFixed(0)}%
+                </div>
+            )}
+        </div>
+    );
+};
 
 const ToolbarButton = ({ children, onClick, title, disabled, color }) => (
     <button

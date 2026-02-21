@@ -107,6 +107,7 @@ export const evaluateFacilityLayout = ({
     flows = [],
     constraints = {},
     optimizationMode = 'network',
+    bounds,
 }) => {
     const areaById = new Map(areas.map((a) => [a.id, a]));
 
@@ -146,7 +147,14 @@ export const evaluateFacilityLayout = ({
 
     let overlapPenalty = 0;
     let spacingPenalty = 0;
+    let aislePenalty = 0;
+    let emergencyPenalty = 0;
+    let boundaryClearancePenalty = 0;
     const minSpacing = Number(constraints.minSpacing) || 20;
+    const minAisleWidth = Math.max(0, Number(constraints.minAisleWidth) || 0);
+    const emergencyCorridorWidth = Math.max(0, Number(constraints.emergencyCorridorWidth) || 0);
+    const enforceBoundaryClearance = Boolean(constraints.enforceBoundaryClearance);
+    const boundaryClearance = Math.max(0, Number(constraints.boundaryClearance) || 0);
 
     for (let i = 0; i < areas.length; i++) {
         for (let j = i + 1; j < areas.length; j++) {
@@ -161,6 +169,64 @@ export const evaluateFacilityLayout = ({
             if (d < minSpacing) {
                 spacingPenalty += (minSpacing - d) * 200;
             }
+
+            if (minAisleWidth > 0) {
+                const ax1 = Number(a.x) || 0;
+                const ay1 = Number(a.y) || 0;
+                const ax2 = ax1 + (Number(a.width) || 0);
+                const ay2 = ay1 + (Number(a.height) || 0);
+                const bx1 = Number(b.x) || 0;
+                const by1 = Number(b.y) || 0;
+                const bx2 = bx1 + (Number(b.width) || 0);
+                const by2 = by1 + (Number(b.height) || 0);
+
+                const overlapX = Math.max(0, Math.min(ax2, bx2) - Math.max(ax1, bx1));
+                const overlapY = Math.max(0, Math.min(ay2, by2) - Math.max(ay1, by1));
+                const gapX = Math.max(0, Math.max(ax1, bx1) - Math.min(ax2, bx2));
+                const gapY = Math.max(0, Math.max(ay1, by1) - Math.min(ay2, by2));
+
+                let corridorGap = Infinity;
+                if (overlapY > 0 && gapX > 0) corridorGap = Math.min(corridorGap, gapX);
+                if (overlapX > 0 && gapY > 0) corridorGap = Math.min(corridorGap, gapY);
+
+                if (Number.isFinite(corridorGap) && corridorGap < minAisleWidth) {
+                    aislePenalty += (minAisleWidth - corridorGap) * 180;
+                }
+            }
+        }
+
+        if (bounds && emergencyCorridorWidth > 0) {
+            const area = areas[i];
+            const x = Number(area.x) || 0;
+            const y = Number(area.y) || 0;
+            const w = Number(area.width) || 0;
+            const h = Number(area.height) || 0;
+            const right = x + w;
+            const top = y + h;
+
+            if (x < emergencyCorridorWidth) emergencyPenalty += (emergencyCorridorWidth - x) * 220;
+            if (y < emergencyCorridorWidth) emergencyPenalty += (emergencyCorridorWidth - y) * 220;
+            if (right > bounds.width - emergencyCorridorWidth) {
+                emergencyPenalty += (right - (bounds.width - emergencyCorridorWidth)) * 220;
+            }
+            if (top > bounds.height - emergencyCorridorWidth) {
+                emergencyPenalty += (top - (bounds.height - emergencyCorridorWidth)) * 220;
+            }
+        }
+
+        if (bounds && enforceBoundaryClearance && boundaryClearance > 0) {
+            const area = areas[i];
+            const x = Number(area.x) || 0;
+            const y = Number(area.y) || 0;
+            const w = Number(area.width) || 0;
+            const h = Number(area.height) || 0;
+            const rightGap = bounds.width - (x + w);
+            const topGap = bounds.height - (y + h);
+
+            if (x < boundaryClearance) boundaryClearancePenalty += (boundaryClearance - x) * 160;
+            if (y < boundaryClearance) boundaryClearancePenalty += (boundaryClearance - y) * 160;
+            if (rightGap < boundaryClearance) boundaryClearancePenalty += (boundaryClearance - rightGap) * 160;
+            if (topGap < boundaryClearance) boundaryClearancePenalty += (boundaryClearance - topGap) * 160;
         }
     }
 
@@ -203,7 +269,7 @@ export const evaluateFacilityLayout = ({
         });
     }
 
-    const totalCost = flowCost + overlapPenalty + spacingPenalty + fixedViolation + flowControlPenalty + structurePenalty + leadTimePenalty;
+    const totalCost = flowCost + overlapPenalty + spacingPenalty + fixedViolation + flowControlPenalty + structurePenalty + leadTimePenalty + aislePenalty + emergencyPenalty + boundaryClearancePenalty;
 
     return {
         totalCost,
@@ -213,6 +279,9 @@ export const evaluateFacilityLayout = ({
         averageLeadTime,
         overlapPenalty,
         spacingPenalty,
+        aislePenalty,
+        emergencyPenalty,
+        boundaryClearancePenalty,
         fixedViolation,
         flowControlPenalty,
         structurePenalty,
@@ -263,13 +332,13 @@ export const optimizeFacilityLayout = ({
     iterations = 600,
 }) => {
     let current = areas.map((a) => ({ ...a }));
-    let currentScore = evaluateFacilityLayout({ areas: current, flows, constraints, optimizationMode }).totalCost;
+    let currentScore = evaluateFacilityLayout({ areas: current, flows, constraints, optimizationMode, bounds }).totalCost;
     let best = current.map((a) => ({ ...a }));
     let bestScore = currentScore;
 
     for (let t = 0; t < iterations; t++) {
         const candidate = Math.random() < 0.25 ? randomSwap(current) : randomMove(current, bounds);
-        const candidateScore = evaluateFacilityLayout({ areas: candidate, flows, constraints, optimizationMode }).totalCost;
+        const candidateScore = evaluateFacilityLayout({ areas: candidate, flows, constraints, optimizationMode, bounds }).totalCost;
         const temperature = Math.max(0.01, 1 - t / iterations);
         const accept = candidateScore < currentScore || Math.random() < Math.exp((currentScore - candidateScore) / (temperature * 1000));
 
@@ -286,7 +355,7 @@ export const optimizeFacilityLayout = ({
 
     return {
         areas: best,
-        kpis: evaluateFacilityLayout({ areas: best, flows, constraints, optimizationMode }),
+        kpis: evaluateFacilityLayout({ areas: best, flows, constraints, optimizationMode, bounds }),
     };
 };
 
@@ -297,7 +366,7 @@ export const generateFacilityScenarios = ({
     bounds,
     optimizationMode = 'network',
 }) => {
-    const baselineKpis = evaluateFacilityLayout({ areas, flows, constraints, optimizationMode });
+    const baselineKpis = evaluateFacilityLayout({ areas, flows, constraints, optimizationMode, bounds });
     const baseline = {
         id: 'baseline',
         name: 'Baseline',

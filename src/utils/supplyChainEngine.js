@@ -51,6 +51,15 @@ export class SupplyChainEngine {
             duties: 0,
             fees: 0,
             wip: 0,
+            foh: 0,
+            directMaterial: 0,
+            directLabor: 0,
+            machine: 0,
+            qualityLoss: 0,
+            valueAddedCost: 0,
+            nonValueAddedCost: 0,
+            directCost: 0,
+            indirectCost: 0,
             total: 0
         };
 
@@ -105,12 +114,36 @@ export class SupplyChainEngine {
             };
         });
 
-        // Calculate total cost
-        this.costBreakdown.total =
-            this.costBreakdown.production +
-            this.costBreakdown.inventory +
+        // Cost Control (Cost Accounting):
+        // Direct Cost = Process/Production + Transportation + Taxes + Duties + Fees
+        // Indirect Cost = Inventory + WIP + FOH
+        this.costBreakdown.directCost =
+            this.costBreakdown.directMaterial +
+            this.costBreakdown.directLabor +
+            this.costBreakdown.machine +
             this.costBreakdown.transportation +
-            this.costBreakdown.wip;
+            this.costBreakdown.taxes +
+            this.costBreakdown.duties +
+            this.costBreakdown.fees;
+
+        this.costBreakdown.indirectCost =
+            this.costBreakdown.inventory +
+            this.costBreakdown.wip +
+            this.costBreakdown.foh +
+            this.costBreakdown.qualityLoss;
+
+        this.costBreakdown.total = this.costBreakdown.directCost + this.costBreakdown.indirectCost;
+
+        // VA vs NVA Cost Calculation
+        this.costBreakdown.valueAddedCost = this.costBreakdown.directLabor + this.costBreakdown.machine;
+        this.costBreakdown.nonValueAddedCost =
+            this.costBreakdown.inventory +
+            this.costBreakdown.wip +
+            this.costBreakdown.transportation +
+            this.costBreakdown.qualityLoss +
+            this.costBreakdown.taxes +
+            this.costBreakdown.duties +
+            this.costBreakdown.fees;
 
         // BOTTLENECK SHORTAGE ANALYSIS
         // Calculate shortage based on Takt Time vs Cycle Time
@@ -232,13 +265,24 @@ export class SupplyChainEngine {
 
             // 2. High Utilization / Bottleneck Potential
             const takt = parseFloat(n.data?.globalTakt) || 0;
-            const ct = parseFloat(n.data?.ct || n.data?.cycleTime) || 0;
+            const ct = parseFloat(n.data?.weightedCT || n.data?.ct || n.data?.cycleTime) || 0;
             if (takt > 0 && ct > takt * 0.9) {
                 this.riskNodes.push({
                     nodeId: n.id,
                     type: 'Capacity Risk',
                     severity: ct > takt ? 'high' : 'medium',
-                    message: `High utilization risk at ${n.data?.label || n.id}.`
+                    message: `High utilization risk at ${n.data?.label || n.id}. ${ct > takt ? 'Bottleneck detected.' : 'Near capacity limit.'}`
+                });
+            }
+
+            // 3. Mixed Model Complexity Risk
+            const variants = n.data?.variants || [];
+            if (variants.length > 5) {
+                this.riskNodes.push({
+                    nodeId: n.id,
+                    type: 'Complexity Risk',
+                    severity: 'low',
+                    message: `${n.data?.label || n.id} handles ${variants.length} product variants. High changeover risk.`
                 });
             }
         });
@@ -280,11 +324,19 @@ export class SupplyChainEngine {
             // Logistics: data.leadTime (days) or data.cycleTime (seconds)
 
             let nodeCycleTime = 0;
-            if (node.data.mt) nodeCycleTime = parseFloat(node.data.mt); // Manual Cycle Time?
-            else if (node.data.ct) nodeCycleTime = parseFloat(node.data.ct);
-            else if (node.data.time) nodeCycleTime = parseFloat(node.data.time);
-            else if (node.data.processingTime) nodeCycleTime = parseFloat(node.data.processingTime) * 3600;
-            else if (node.data.cycleTime) nodeCycleTime = parseFloat(node.data.cycleTime);
+            const variants = node.data.variants || [];
+            if (variants.length > 0) {
+                // Weighted Cycle Time for Mixed Model
+                const totalRatio = variants.reduce((sum, v) => sum + (parseFloat(v.ratio) || 0), 0) || 1;
+                nodeCycleTime = variants.reduce((sum, v) => sum + (Number(v.ct || 0) * (Number(v.ratio || 0) / totalRatio)), 0);
+                this.log(`[MIXED MODEL] ${nodeName}: Using weighted CT ${nodeCycleTime.toFixed(2)}s from ${variants.length} variants.`);
+            } else {
+                if (node.data.mt) nodeCycleTime = parseFloat(node.data.mt);
+                else if (node.data.ct) nodeCycleTime = parseFloat(node.data.ct);
+                else if (node.data.time) nodeCycleTime = parseFloat(node.data.time);
+                else if (node.data.processingTime) nodeCycleTime = parseFloat(node.data.processingTime) * 3600;
+                else if (node.data.cycleTime) nodeCycleTime = parseFloat(node.data.cycleTime);
+            }
 
             const nodeLeadTimeSeconds = parseFloat(node.data.leadTime) * 28800; // Lead time in days (work days)
 
@@ -421,32 +473,74 @@ export class SupplyChainEngine {
             this.log(`Operation ${nodeName} Feasible! Committing plan.`);
             this.bookCapacity(node, quantity, startDate);
 
-            // Cost Calculation
-            let unitCost = parseFloat(node.data.costPerUnit) || 0;
+            // --- ADVANCED COSTING (Landed Cost) ---
+            let productionCost = 0;
 
-            // Landed Cost (Add taxes, duties, port fees for logistics)
             if (isTransport) {
-                const taxRate = parseFloat(node.data.taxes) || 0;
+                // Trip-based and Distance-based Logistics Cost
+                const unitPrice = parseFloat(node.data.unitPrice) || 0;
+                const distance = parseFloat(node.data.distance) || 0;
+                const costPerKm = parseFloat(node.data.costPerKm) || 0;
+                const fixedTripCost = parseFloat(node.data.fixedTripCost) || 0;
+                const taxRate = parseFloat(node.data.taxes || node.data.taxRate) || 0;
+                const dutyRate = parseFloat(node.data.dutyRate || node.data.duties) || 0;
+                const insuranceRate = parseFloat(node.data.insuranceRate) || 0;
                 const portFees = parseFloat(node.data.portFees) || 0;
-                const dutyRate = parseFloat(node.data.duties) || 0;
 
-                const baseTransportCost = unitCost * quantity;
-                const taxes = baseTransportCost * (taxRate / 100);
-                const duties = baseTransportCost * (dutyRate / 100);
+                const baseValue = unitPrice * quantity;
+                const distanceCost = distance * costPerKm;
+                const variableTransportCost = (parseFloat(node.data.costPerUnit) || 0) * quantity;
 
-                unitCost = unitCost + (taxes + duties + portFees) / quantity;
+                const baseTransportCost = variableTransportCost + fixedTripCost + distanceCost;
+                const taxes = (baseValue + baseTransportCost) * (taxRate / 100);
+                const duties = (baseValue + baseTransportCost) * (dutyRate / 100);
+                const insurance = (baseValue + baseTransportCost) * (insuranceRate / 100);
+
+                this.costBreakdown.transportation += baseTransportCost;
                 this.costBreakdown.taxes += taxes;
                 this.costBreakdown.duties += duties;
-                this.costBreakdown.fees += portFees;
-                this.log(`[LANDED COST] ${nodeName}: Taxes ($${taxes.toFixed(2)}), Duties ($${duties.toFixed(2)}), Fees ($${portFees.toFixed(2)})`);
+                this.costBreakdown.fees += portFees + insurance;
+
+                productionCost = baseTransportCost + taxes + duties + insurance + portFees;
+                this.log(`[LANDED COST] ${nodeName}: Base=$${baseTransportCost.toFixed(2)}, Tax=$${taxes.toFixed(2)}, Duty=$${duties.toFixed(2)}, Ins/Fees=$${(insurance + portFees).toFixed(2)}`);
+            } else {
+                // Process Node Cost
+                const unitCost = parseFloat(node.data.costPerUnit || node.data.operatingCost) || 0;
+
+                // Professional Accounting Breakdown
+                const materialCost = (parseFloat(node.data.directMaterialCost) || 0) * quantity;
+                const laborCost = (parseFloat(node.data.directLaborCost) || 0) * quantity;
+                const machineCost = (parseFloat(node.data.machineCost) || 0) * quantity;
+                const fohPerUnit = parseFloat(node.data.fohPerUnit) || 0;
+                const nodeFoh = fohPerUnit * quantity;
+
+                // If specialized costs are provided, they override the generic production cost
+                if (materialCost > 0 || laborCost > 0 || machineCost > 0) {
+                    productionCost = materialCost + laborCost + machineCost;
+                } else {
+                    productionCost = unitCost * quantity;
+                    // Fallback to simple labor/machine split if not specified (50/50 for example, but better to keep empty)
+                }
+
+                this.costBreakdown.production += productionCost;
+                this.costBreakdown.directMaterial += materialCost;
+                this.costBreakdown.directLabor += laborCost;
+                this.costBreakdown.machine += machineCost;
+                this.costBreakdown.foh += nodeFoh;
+
+                // Quality Loss (COPQ) calculation
+                const yieldRate = parseFloat(node.data.yield) || 100;
+                if (yieldRate < 100) {
+                    const scrapQuantity = quantity * ((100 - yieldRate) / 100);
+                    const costPerUnit = (materialCost + laborCost + machineCost + nodeFoh) / quantity;
+                    const scrapCost = scrapQuantity * costPerUnit;
+                    this.costBreakdown.qualityLoss += scrapCost;
+                    this.log(`[QUALITY LOSS] ${nodeName}: Yield ${yieldRate}%. Loss cost for ${scrapQuantity.toFixed(2)} units: $${scrapCost.toFixed(2)}`, 'warn');
+                }
             }
 
-            const productionCost = unitCost * quantity;
-            if (!isTransport) this.costBreakdown.production += productionCost;
-            else this.costBreakdown.transportation += (parseFloat(node.data.costPerUnit) || 0) * quantity;
-
             if (productionCost > 0) {
-                this.log(`[COST] Total cost at ${nodeName}: $${productionCost.toFixed(2)}`);
+                this.log(`[COST] Total node cost at ${nodeName}: $${productionCost.toFixed(2)}`);
             }
 
             this.trackWIP(nodeId, quantity);
@@ -606,7 +700,7 @@ export class SupplyChainEngine {
             this.log(`[INVENTORY] ${nodeName} Stock Available: ${availableStock} >= ${quantity}. Deducting.`, 'success');
             this.tentativeStock.set(node.id, currentStock - quantity);
 
-            const holdingCostPerDay = parseFloat(node.data.holdingCostPerDay) || 0;
+            const holdingCostPerDay = parseFloat(node.data.holdingCostPerDay || node.data.carryingCost) || 0;
             const inventoryCost = holdingCostPerDay * quantity;
             this.costBreakdown.inventory += inventoryCost;
 

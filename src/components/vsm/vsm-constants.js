@@ -58,131 +58,152 @@ export const INITIAL_DATA = {
         co: 30, // Changeover (min)
         uptime: 95, // %
         yield: 99, // %
-        performance: 90, // % (New)
+        performance: 90, // %
         va: 60, // VA Time (sec)
-        operators: 1, // Count
+        operators: 1,
         shifts: 1,
-        startTime: '08:00', // NEW: Start of shift
-        endTime: '17:00', // NEW: End of shift
-        processType: 'normal'
+        startTime: '08:00',
+        endTime: '17:00',
+        processType: 'normal',
+        variants: [], // Array of { id, name, ratio, ct, va } for mixed model
+        inventoryCost: 0, // NEW: Carrying cost per unit/day
+        operatingCost: 0, // NEW: Hourly process cost
+        fohPerUnit: 0,
+        directMaterialCost: 0,
+        directLaborCost: 0,
+        machineCost: 0
     },
     inventory: {
         amount: 0,
         unit: 'pcs',
         time: 0,
-        minStock: 100, // NEW: Red line/threshold
-        maxStock: 1000 // NEW: Capacity limit
+        minStock: 100,
+        maxStock: 1000,
+        holdingCost: 0 // NEW: Cost per unit per day
     },
     supplier: {
         name: 'Supplier',
-        reliability: 98, //%,
-        leadTime: 5, // days
-        moq: 100 // Minimum Order Quantity
+        reliability: 98,
+        leadTime: 5,
+        moq: 100,
+        unitPrice: 0 // NEW: For cost analysis
     },
     customer: {
         name: 'Customer',
         demand: 1000,
         unit: 'pcs',
-        availableTime: 480, // min/shift
+        availableTime: 480,
         shifts: 1,
-        daysPerMonth: 20, // NEW: Working days per month
-        packSize: 1, // Standard pack for Pitch calculation
-        taktTime: 0
-    }, // Enhanced
+        daysPerMonth: 20,
+        packSize: 1,
+        taktTime: 0,
+        productMix: [] // NEW: Demand per variant
+    },
     kaizen_burst: { name: 'Problem/Idea' },
     production_control: {
         name: 'Production Control',
-        planningFreq: 'Daily', // Daily, Weekly
-        horizon: 30 // days
+        planningFreq: 'Daily',
+        horizon: 30
     },
     heijunka_box: {
         name: 'Heijunka Box',
         description: 'Load Leveling',
-        interval: 20, // mins
-        pitch: 20 // mins (should match pitch metric)
+        interval: 20,
+        pitch: 20
     },
     warehouse_receiving: {
         name: 'Warehouse / Receiving',
         capacity: 5000,
-        processingTime: 2, // hrs (unload/sort)
+        processingTime: 2,
         dockDoors: 2
     },
     truck: {
         name: 'Milk Run (Truck)',
-        frequency: 4, // times/shift
-        capacity: 100, // pcs/trip
-        leadTime: 30, // min (travel time)
-        startTime: '08:00', // NEW: Only works regular hours
-        endTime: '17:00'
+        frequency: 4,
+        capacity: 100,
+        leadTime: 30,
+        startTime: '08:00',
+        endTime: '17:00',
+        distance: 0,
+        costPerKm: 0, // NEW: Landed cost calculation
+        fixedTripCost: 0, // NEW
+        emissionsFactor: 0.18 // kg CO2/km
     },
     forklift: {
         name: 'Forklift',
-        distance: 50, // meters
-        speed: 60, // m/min
-        capacity: 1, // pallets/pcs
-        loadTime: 2, // min
-        unloadTime: 2 // min
+        distance: 50,
+        speed: 60,
+        capacity: 1,
+        loadTime: 2,
+        unloadTime: 2,
+        operatingCost: 0 // NEW
     },
     trolley: {
         name: 'Trolley',
-        distance: 20, // meters
-        speed: 40, // m/min
-        capacity: 10, // pcs
-        tripsPerShift: 10
+        distance: 20,
+        speed: 40,
+        capacity: 10,
+        tripsPerShift: 10,
+        operatingCost: 0 // NEW
     },
     safety_stock: {
         name: 'Safety Stock',
         amount: 100,
-        serviceLevel: 95, // %,
+        serviceLevel: 95,
         demandStdDev: 10,
-        leadTimeVar: 2 // days
+        leadTimeVar: 2
     },
     supermarket: {
         name: 'Supermarket',
         minStock: 50,
         maxStock: 500,
         reorderPoint: 100,
-        replenishTime: 4 // hours
+        replenishTime: 4
     },
     buffer: {
         name: 'Buffer',
         amount: 0,
         maxCapacity: 200,
-        throughputRate: 50 // pcs/hr
+        throughputRate: 50
     },
     sea: {
         name: 'Sea Freight',
-        frequency: 1, // per month/week
+        frequency: 1,
         capacity: 5000,
-        leadTime: 30, // days
-        costPerShipment: 1000 // currency
+        leadTime: 30,
+        costPerShipment: 1000,
+        dutyRate: 0, // NEW: % Landed cost
+        insuranceRate: 0 // NEW: % Landed cost
     },
     air: {
         name: 'Air Freight',
         frequency: 2,
         capacity: 1000,
-        leadTime: 2, // days
-        costPerShipment: 5000
+        leadTime: 2,
+        costPerShipment: 5000,
+        dutyRate: 0,
+        insuranceRate: 0
     },
-    timeline: { name: 'Timeline', leadTime: 0, vaTime: 0 }, // NEW
-    finished_goods: { name: 'Finished Goods', amount: 0 }, // NEW
-    text_note: { text: 'New Note', color: '#ffff88', fontSize: '14px' }, // NEW
+    timeline: { name: 'Timeline', leadTime: 0, vaTime: 0 },
+    finished_goods: { name: 'Finished Goods', amount: 0 },
+    text_note: { text: 'New Note', color: '#ffff88', fontSize: '14px' },
     project: {
         name: 'Linked Project',
         projectId: null,
         projectName: '',
         ct: 0,
-        outputPcs: 1, // NEW: For dividing total cycle time
-        co: 30, // Changeover (min)
-        uptime: 95, // %
-        yield: 99, // %
-        performance: 90, // % (New)
-        va: 0, // VA Time (sec)
-        operators: 1, // Count
+        outputPcs: 1,
+        co: 30,
+        uptime: 95,
+        yield: 99,
+        performance: 90,
+        va: 0,
+        operators: 1,
         shifts: 1,
-        startTime: '08:00', // NEW: Start of shift
-        endTime: '17:00', // NEW: End of shift
-        processType: 'normal'
-    }, // NEW
+        startTime: '08:00',
+        endTime: '17:00',
+        processType: 'normal',
+        variants: [] // NEW
+    },
     custom: { name: 'Custom Item', description: '' }
 };

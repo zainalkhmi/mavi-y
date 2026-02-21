@@ -52,10 +52,16 @@ export const exportToPDF = (result, nodes, scenarioName = 'Simulation') => {
         yPos += 10;
 
         const costData = [
-            ['Production', `$${result.costBreakdown.production.toFixed(2)}`],
-            ['Inventory', `$${result.costBreakdown.inventory.toFixed(2)}`],
-            ['Transportation', `$${result.costBreakdown.transportation.toFixed(2)}`],
+            ['Direct Material', `$${(result.costBreakdown.directMaterial || 0).toFixed(2)}`],
+            ['Direct Labor', `$${(result.costBreakdown.directLabor || 0).toFixed(2)}`],
+            ['Machine Cost', `$${(result.costBreakdown.machine || 0).toFixed(2)}`],
             ['WIP', `$${result.costBreakdown.wip.toFixed(2)}`],
+            ['FOH', `$${(result.costBreakdown.foh || 0).toFixed(2)}`],
+            ['Quality Loss (COPQ)', `$${(result.costBreakdown.qualityLoss || 0).toFixed(2)}`],
+            ['Direct Cost', `$${(result.costBreakdown.directCost || 0).toFixed(2)}`],
+            ['Indirect Cost', `$${(result.costBreakdown.indirectCost || 0).toFixed(2)}`],
+            ['VA Cost', `$${(result.costBreakdown.valueAddedCost || 0).toFixed(2)}`],
+            ['NVA Cost', `$${(result.costBreakdown.nonValueAddedCost || 0).toFixed(2)}`],
             ['Total', `$${result.costBreakdown.total.toFixed(2)}`]
         ];
 
@@ -160,10 +166,16 @@ export const exportToExcel = (result, nodes, scenarioName = 'Simulation') => {
         summaryData.push(
             [],
             ['Cost Breakdown'],
-            ['Production', result.costBreakdown.production],
-            ['Inventory', result.costBreakdown.inventory],
-            ['Transportation', result.costBreakdown.transportation],
+            ['Direct Material', result.costBreakdown.directMaterial || 0],
+            ['Direct Labor', result.costBreakdown.directLabor || 0],
+            ['Machine Cost', result.costBreakdown.machine || 0],
             ['WIP', result.costBreakdown.wip],
+            ['FOH', result.costBreakdown.foh || 0],
+            ['Quality Loss (COPQ)', result.costBreakdown.qualityLoss || 0],
+            ['Direct Cost', result.costBreakdown.directCost || 0],
+            ['Indirect Cost', result.costBreakdown.indirectCost || 0],
+            ['VA Cost', result.costBreakdown.valueAddedCost || 0],
+            ['NVA Cost', result.costBreakdown.nonValueAddedCost || 0],
             ['Total', result.costBreakdown.total]
         );
     }
@@ -237,10 +249,16 @@ export const exportToCSV = (result, nodes, scenarioName = 'Simulation') => {
     // Cost Breakdown
     if (result.costBreakdown && result.costBreakdown.total > 0) {
         csvContent += 'Cost Breakdown\n';
-        csvContent += `Production,$${result.costBreakdown.production.toFixed(2)}\n`;
-        csvContent += `Inventory,$${result.costBreakdown.inventory.toFixed(2)}\n`;
-        csvContent += `Transportation,$${result.costBreakdown.transportation.toFixed(2)}\n`;
+        csvContent += `Direct Material,$${(result.costBreakdown.directMaterial || 0).toFixed(2)}\n`;
+        csvContent += `Direct Labor,$${(result.costBreakdown.directLabor || 0).toFixed(2)}\n`;
+        csvContent += `Machine Cost,$${(result.costBreakdown.machine || 0).toFixed(2)}\n`;
         csvContent += `WIP,$${result.costBreakdown.wip.toFixed(2)}\n`;
+        csvContent += `FOH,$${(result.costBreakdown.foh || 0).toFixed(2)}\n`;
+        csvContent += `Quality Loss,$${(result.costBreakdown.qualityLoss || 0).toFixed(2)}\n`;
+        csvContent += `Direct Cost,$${(result.costBreakdown.directCost || 0).toFixed(2)}\n`;
+        csvContent += `Indirect Cost,$${(result.costBreakdown.indirectCost || 0).toFixed(2)}\n`;
+        csvContent += `VA Cost,$${(result.costBreakdown.valueAddedCost || 0).toFixed(2)}\n`;
+        csvContent += `NVA Cost,$${(result.costBreakdown.nonValueAddedCost || 0).toFixed(2)}\n`;
         csvContent += `Total,$${result.costBreakdown.total.toFixed(2)}\n\n`;
     }
 

@@ -8,9 +8,15 @@ import ScenarioManager from './ScenarioManager';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { X, Network, Play, Settings, BarChart3, FileText, FolderOpen, Clock, Zap, AlertTriangle } from 'lucide-react';
 
-const SupplyChainModal = ({ isOpen, onClose, nodes, edges, onSimulationResult, vsmId }) => {
+const SupplyChainModal = ({ isOpen, onClose, nodes, edges, onSimulationResult, vsmId, initialTab = 'flow' }) => {
     const { t, currentLanguage } = useLanguage();
-    const [activeTab, setActiveTab] = useState('flow');
+    const [activeTab, setActiveTab] = useState(initialTab);
+
+    const isReportMode = initialTab === 'analysis';
+
+    const [result, setResult] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [currentSimulation, setCurrentSimulation] = useState(null);
 
     // Calculate total demand from all customer nodes
     const initialDemand = React.useMemo(() => {
@@ -27,27 +33,6 @@ const SupplyChainModal = ({ isOpen, onClose, nodes, edges, onSimulationResult, v
         d.setHours(10, 0, 0, 0);
         return d.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
     });
-    // Shift pattern removed as per request (node-specific)
-
-    const [result, setResult] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [currentSimulation, setCurrentSimulation] = useState(null);
-
-    // Update quantity when initialDemand changes (e.g. if nodes change)
-    React.useEffect(() => {
-        setQuantity(initialDemand);
-    }, [initialDemand]);
-
-    // const t = (id, en) => currentLanguage === 'id' ? id : en; // Removed custom helper
-
-    // Initialize active tab to analysis
-    React.useEffect(() => {
-        if (activeTab === 'setup' || activeTab === 'results') {
-            setActiveTab('analysis');
-        }
-    }, []);
-
-    if (!isOpen) return null;
 
     const handleRunSimulation = () => {
         setLoading(true);
@@ -70,9 +55,6 @@ const SupplyChainModal = ({ isOpen, onClose, nodes, edges, onSimulationResult, v
                 const dueDate = new Date(targetDate);
 
                 const engine = new SupplyChainEngine(nodes, edges);
-                // Pass the first customer ID as entry point, but engine should handle multiple or total demand
-                // Assuming engine currently takes one start node. If multiple, we might need engine update.
-                // For now, adhering to existing signature but using total quantity.
                 let simResult = engine.simulate(customerNodes[0].id, parseInt(quantity), dueDate);
 
                 // Run Risk Analysis
@@ -90,9 +72,6 @@ const SupplyChainModal = ({ isOpen, onClose, nodes, edges, onSimulationResult, v
                 if (onSimulationResult) {
                     onSimulationResult(simResult);
                 }
-
-                // Auto-switch removed (already same tab)
-                // setActiveTab('results'); 
             } catch (e) {
                 console.error(e);
                 setResult({
@@ -105,6 +84,35 @@ const SupplyChainModal = ({ isOpen, onClose, nodes, edges, onSimulationResult, v
             }
         }, 100);
     };
+
+    // Update quantity when initialDemand changes (e.g. if nodes change)
+    React.useEffect(() => {
+        setQuantity(initialDemand);
+    }, [initialDemand]);
+
+    // Sync tab every time modal is opened from different entry buttons
+    React.useEffect(() => {
+        if (isOpen) {
+            setActiveTab(initialTab === 'analysis' ? 'analysis' : 'flow');
+        }
+    }, [isOpen, initialTab]);
+
+    // Auto-run simulation when in report mode if no result exists
+    React.useEffect(() => {
+        if (isOpen && isReportMode && !result && !loading) {
+            handleRunSimulation();
+        }
+    }, [isOpen, isReportMode, result, loading]);
+
+    // Initialize active tab to analysis
+    React.useEffect(() => {
+        if (activeTab === 'setup' || activeTab === 'results') {
+            setActiveTab('analysis');
+        }
+    }, []);
+
+    if (!isOpen) return null;
+
 
     const handleLoadScenario = (scenario) => {
         if (scenario.parameters) {
@@ -150,7 +158,9 @@ const SupplyChainModal = ({ isOpen, onClose, nodes, edges, onSimulationResult, v
                         <Network size={24} color="white" />
                         <div>
                             <h2 style={{ margin: 0, color: 'white', fontSize: '1.2rem' }}>
-                                {t('vsm.supplyChain.title')}
+                                {activeTab === 'analysis'
+                                    ? t('vsm.analysis.costReport', 'Cost Analysis Report')
+                                    : t('vsm.supplyChain.title')}
                             </h2>
                         </div>
                     </div>
@@ -165,49 +175,50 @@ const SupplyChainModal = ({ isOpen, onClose, nodes, edges, onSimulationResult, v
                     </button>
                 </div>
 
-                {/* Tabs */}
-                {/* Using a cleaner tab style directly integrated into content area if needed, but keeping top tabs for now */}
-                <div style={{
-                    display: 'flex',
-                    borderBottom: '1px solid #333',
-                    backgroundColor: '#252525'
-                }}>
-                    {tabs.map(tab => {
-                        const Icon = tab.icon;
-                        const isActive = activeTab === tab.id;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                style={{
-                                    flex: 1,
-                                    padding: '15px 20px',
-                                    border: 'none',
-                                    background: isActive ? '#1e1e1e' : 'transparent',
-                                    color: isActive ? '#2196f3' : '#bbb',
-                                    cursor: 'pointer',
-                                    fontSize: '0.9rem',
-                                    fontWeight: isActive ? 'bold' : 'normal',
-                                    borderBottom: isActive ? '2px solid #2196f3' : '2px solid transparent',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                    transition: 'all 0.2s'
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (!isActive) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    if (!isActive) e.currentTarget.style.background = 'transparent';
-                                }}
-                            >
-                                <Icon size={18} />
-                                {tab.label}
-                            </button>
-                        );
-                    })}
-                </div>
+                {/* Tabs - Hidden in Report Mode */}
+                {!isReportMode && (
+                    <div style={{
+                        display: 'flex',
+                        borderBottom: '1px solid #333',
+                        backgroundColor: '#252525'
+                    }}>
+                        {tabs.map(tab => {
+                            const Icon = tab.icon;
+                            const isActive = activeTab === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    style={{
+                                        flex: 1,
+                                        padding: '15px 20px',
+                                        border: 'none',
+                                        background: isActive ? '#1e1e1e' : 'transparent',
+                                        color: isActive ? '#2196f3' : '#bbb',
+                                        cursor: 'pointer',
+                                        fontSize: '0.9rem',
+                                        fontWeight: isActive ? 'bold' : 'normal',
+                                        borderBottom: isActive ? '2px solid #2196f3' : '2px solid transparent',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!isActive) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (!isActive) e.currentTarget.style.background = 'transparent';
+                                    }}
+                                >
+                                    <Icon size={18} />
+                                    {tab.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
 
                 {/* Tab Content */}
                 <div style={{
@@ -222,40 +233,42 @@ const SupplyChainModal = ({ isOpen, onClose, nodes, edges, onSimulationResult, v
                     {activeTab === 'flow' && (
                         <div style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', gap: '20px', flex: 1 }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: '150px' }}>
-                                        <label style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: '4px' }}>{t('vsm.supplyChain.demandQty')}</label>
-                                        <input
-                                            type="number"
-                                            value={quantity}
-                                            onChange={(e) => setQuantity(e.target.value)}
-                                            style={{ padding: '8px', backgroundColor: '#333', border: '1px solid #444', borderRadius: '4px', color: 'white' }}
-                                        />
+                                {!isReportMode && (
+                                    <div style={{ display: 'flex', gap: '20px', flex: 1 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: '150px' }}>
+                                            <label style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: '4px' }}>{t('vsm.supplyChain.demandQty')}</label>
+                                            <input
+                                                type="number"
+                                                value={quantity}
+                                                onChange={(e) => setQuantity(e.target.value)}
+                                                style={{ padding: '8px', backgroundColor: '#333', border: '1px solid #444', borderRadius: '4px', color: 'white' }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: '200px' }}>
+                                            <label style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: '4px' }}>{t('vsm.supplyChain.dueDate')}</label>
+                                            <input
+                                                type="datetime-local"
+                                                value={targetDate}
+                                                onChange={(e) => setTargetDate(e.target.value)}
+                                                style={{ padding: '8px', backgroundColor: '#333', border: '1px solid #444', borderRadius: '4px', color: 'white' }}
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={handleRunSimulation}
+                                            disabled={loading}
+                                            style={{
+                                                padding: '0 24px', backgroundColor: '#2196f3',
+                                                border: 'none', borderRadius: '6px', color: 'white',
+                                                cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold',
+                                                display: 'flex', alignItems: 'center', gap: '8px',
+                                                opacity: loading ? 0.7 : 1, marginTop: 'auto', height: '38px'
+                                            }}
+                                        >
+                                            <Zap size={16} fill={loading ? "none" : "white"} />
+                                            {loading ? t('vsm.supplyChain.processing') : t('vsm.supplyChain.run')}
+                                        </button>
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: '200px' }}>
-                                        <label style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: '4px' }}>{t('vsm.supplyChain.dueDate')}</label>
-                                        <input
-                                            type="datetime-local"
-                                            value={targetDate}
-                                            onChange={(e) => setTargetDate(e.target.value)}
-                                            style={{ padding: '8px', backgroundColor: '#333', border: '1px solid #444', borderRadius: '4px', color: 'white' }}
-                                        />
-                                    </div>
-                                    <button
-                                        onClick={handleRunSimulation}
-                                        disabled={loading}
-                                        style={{
-                                            padding: '0 24px', backgroundColor: '#2196f3',
-                                            border: 'none', borderRadius: '6px', color: 'white',
-                                            cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold',
-                                            display: 'flex', alignItems: 'center', gap: '8px',
-                                            opacity: loading ? 0.7 : 1, marginTop: 'auto', height: '38px'
-                                        }}
-                                    >
-                                        <Zap size={16} fill={loading ? "none" : "white"} />
-                                        {loading ? t('vsm.supplyChain.processing') : t('vsm.supplyChain.run')}
-                                    </button>
-                                </div>
+                                )}
 
                                 {result && (
                                     <div style={{
@@ -287,70 +300,72 @@ const SupplyChainModal = ({ isOpen, onClose, nodes, edges, onSimulationResult, v
                     )}
                     {/* Setup & Results Combined (Analysis Tab) */}
                     {activeTab === 'analysis' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                            {/* Setup Panel (Collapsible or always visible on top) */}
-                            <div style={{
-                                padding: '20px',
-                                backgroundColor: '#252525',
-                                borderBottom: '1px solid #333',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '20px',
-                                flexWrap: 'wrap'
-                            }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', minWidth: '200px' }}>
-                                    <label style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: '4px' }}>
-                                        {t('vsm.supplyChain.demandQty')}
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={quantity}
-                                        onChange={(e) => setQuantity(e.target.value)}
+                        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#1e1e1e' }}>
+                            {/* Setup Panel - Hidden in Report Mode */}
+                            {!isReportMode && (
+                                <div style={{
+                                    padding: '20px',
+                                    backgroundColor: '#252525',
+                                    borderBottom: '1px solid #333',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '20px',
+                                    flexWrap: 'wrap'
+                                }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: '200px' }}>
+                                        <label style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: '4px' }}>
+                                            {t('vsm.supplyChain.demandQty')}
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={quantity}
+                                            onChange={(e) => setQuantity(e.target.value)}
+                                            style={{
+                                                padding: '8px',
+                                                backgroundColor: '#333', border: '1px solid #444',
+                                                borderRadius: '4px', color: 'white'
+                                            }}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: '250px' }}>
+                                        <label style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: '4px' }}>
+                                            {t('vsm.supplyChain.dueDate')}
+                                        </label>
+                                        <input
+                                            type="datetime-local"
+                                            value={targetDate}
+                                            onChange={(e) => setTargetDate(e.target.value)}
+                                            style={{
+                                                padding: '8px',
+                                                backgroundColor: '#333', border: '1px solid #444',
+                                                borderRadius: '4px', color: 'white'
+                                            }}
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={handleRunSimulation}
+                                        disabled={loading}
                                         style={{
-                                            padding: '8px',
-                                            backgroundColor: '#333', border: '1px solid #444',
-                                            borderRadius: '4px', color: 'white'
+                                            padding: '10px 20px', backgroundColor: '#2196f3',
+                                            border: 'none', borderRadius: '6px', color: 'white',
+                                            cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold',
+                                            display: 'flex', alignItems: 'center', gap: '8px',
+                                            opacity: loading ? 0.7 : 1,
+                                            marginTop: 'auto',
+                                            height: '40px'
                                         }}
-                                    />
+                                    >
+                                        {loading ? (
+                                            t('vsm.supplyChain.processing')
+                                        ) : (
+                                            <>
+                                                <Play size={16} fill="white" />
+                                                {t('vsm.supplyChain.run')}
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', minWidth: '250px' }}>
-                                    <label style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: '4px' }}>
-                                        {t('vsm.supplyChain.dueDate')}
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        value={targetDate}
-                                        onChange={(e) => setTargetDate(e.target.value)}
-                                        style={{
-                                            padding: '8px',
-                                            backgroundColor: '#333', border: '1px solid #444',
-                                            borderRadius: '4px', color: 'white'
-                                        }}
-                                    />
-                                </div>
-                                <button
-                                    onClick={handleRunSimulation}
-                                    disabled={loading}
-                                    style={{
-                                        padding: '10px 20px', backgroundColor: '#2196f3',
-                                        border: 'none', borderRadius: '6px', color: 'white',
-                                        cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold',
-                                        display: 'flex', alignItems: 'center', gap: '8px',
-                                        opacity: loading ? 0.7 : 1,
-                                        marginTop: 'auto',
-                                        height: '40px'
-                                    }}
-                                >
-                                    {loading ? (
-                                        t('vsm.supplyChain.processing')
-                                    ) : (
-                                        <>
-                                            <Play size={16} fill="white" />
-                                            {t('vsm.supplyChain.run')}
-                                        </>
-                                    )}
-                                </button>
-                            </div>
+                            )}
 
                             {/* Results Area */}
                             <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
@@ -434,4 +449,5 @@ const SupplyChainModal = ({ isOpen, onClose, nodes, edges, onSimulationResult, v
 };
 
 export default SupplyChainModal;
+
 

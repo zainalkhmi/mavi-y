@@ -2,8 +2,104 @@ import React from 'react';
 import { Plus, Trash2, List } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-const StepList = ({ steps, activeStepId, onSelectStep, onAddStep, onDeleteStep, onReorderStep }) => {
+const StepList = ({ steps, activeStepId, onSelectStep, onAddStep, onDeleteStep, onReorderStep, horizontal = false }) => {
     const { t } = useLanguage();
+    const idCounts = React.useMemo(() => {
+        const counts = new Map();
+        (steps || []).forEach((step) => {
+            const id = step?.id;
+            if (!id) return;
+            counts.set(id, (counts.get(id) || 0) + 1);
+        });
+        return counts;
+    }, [steps]);
+
+    if (horizontal) {
+        return (
+            <div style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '0 12px',
+                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                height: '54px',
+                overflowX: 'auto',
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+                WebkitOverflowScrolling: 'touch'
+            }}>
+                <div style={{ display: 'flex', gap: '4px', paddingRight: '12px' }}>
+                    {steps.map((step, index) => (
+                        <div
+                            key={
+                                step?.id && idCounts.get(step.id) === 1
+                                    ? `h-step-${step.id}`
+                                    : `h-step-${step?.id || 'missing-id'}-${index}`
+                            }
+                            onClick={() => onSelectStep(step.id)}
+                            style={{
+                                padding: '8px 16px',
+                                backgroundColor: activeStepId === step.id ? 'rgba(37, 99, 235, 0.2)' : 'transparent',
+                                borderRadius: '8px 8px 0 0',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                border: '1px solid',
+                                borderColor: activeStepId === step.id ? 'rgba(37, 99, 235, 0.4)' : 'transparent',
+                                borderBottom: activeStepId === step.id ? '2px solid #3b82f6' : 'transparent',
+                                transition: 'all 0.2s ease',
+                                whiteSpace: 'nowrap',
+                                minWidth: '100px',
+                                justifyContent: 'center'
+                            }}
+                        >
+                            <div style={{
+                                width: '22px',
+                                height: '22px',
+                                background: activeStepId === step.id ? '#2563eb' : 'rgba(255, 255, 255, 0.08)',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '0.7rem',
+                                color: '#fff',
+                                fontWeight: 'bold'
+                            }}>
+                                {index + 1}
+                            </div>
+                            <span style={{
+                                fontWeight: activeStepId === step.id ? '700' : '500',
+                                color: activeStepId === step.id ? '#fff' : 'rgba(255, 255, 255, 0.6)',
+                                fontSize: '0.8rem'
+                            }}>
+                                {step.title ? (step.title.length > 15 ? step.title.substring(0, 12) + '...' : step.title) : `Step ${index + 1}`}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+                <button
+                    onClick={onAddStep}
+                    className="btn-pro"
+                    style={{
+                        backgroundColor: 'rgba(37, 99, 235, 0.15)',
+                        color: '#60a5fa',
+                        borderColor: 'rgba(37, 99, 235, 0.3)',
+                        padding: '6px 12px',
+                        fontSize: '0.75rem',
+                        height: '32px',
+                        flexShrink: 0
+                    }}
+                >
+                    <Plus size={14} />
+                    {t('common.add') || 'Add'}
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div style={{
             width: '100%',
@@ -42,7 +138,11 @@ const StepList = ({ steps, activeStepId, onSelectStep, onAddStep, onDeleteStep, 
             <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {steps.map((step, index) => (
                     <div
-                        key={step.id}
+                        key={
+                            step?.id && idCounts.get(step.id) === 1
+                                ? `step-${step.id}`
+                                : `step-${step?.id || 'missing-id'}-${index}`
+                        }
                         onClick={() => onSelectStep(step.id)}
                         style={{
                             padding: '12px',

@@ -194,6 +194,86 @@ export const listGoogleDriveProjectFiles = async () => {
     return data.files || [];
 };
 
+export const listGoogleDriveKnowledgeBaseFiles = async () => {
+    const settings = getGoogleDriveSettings();
+    const folderFilter = settings.defaultFolderId
+        ? ` and '${settings.defaultFolderId}' in parents`
+        : '';
+
+    const q = encodeURIComponent(`mimeType='application/json' and trashed=false and appProperties has { key='source' and value='mavi-y' } and appProperties has { key='type' and value='knowledge-base-backup' }${folderFilter}`);
+    const fields = encodeURIComponent('files(id,name,createdTime,modifiedTime,size,webViewLink,owners(displayName,emailAddress))');
+
+    const resp = await driveApi(`/files?q=${q}&fields=${fields}&orderBy=modifiedTime desc`, {
+        interactive: false
+    });
+    const data = await resp.json();
+    return data.files || [];
+};
+
+export const uploadKnowledgeBaseBackupToGoogleDrive = async (payload, filename, folderId = null) => {
+    const settings = getGoogleDriveSettings();
+    const parentId = folderId || settings.defaultFolderId || null;
+
+    const metadata = {
+        name: filename,
+        mimeType: 'application/json',
+        appProperties: {
+            source: 'mavi-y',
+            type: 'knowledge-base-backup'
+        }
+    };
+
+    if (parentId) metadata.parents = [parentId];
+
+    const fileBlob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+
+    const boundary = 'mavi_boundary_' + Date.now();
+    const delimiter = `\r\n--${boundary}\r\n`;
+    const closeDelimiter = `\r\n--${boundary}--`;
+
+    const metadataPart = `${delimiter}Content-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}`;
+    const filePartHeader = `${delimiter}Content-Type: application/json\r\n\r\n`;
+
+    const body = new Blob([metadataPart, filePartHeader, fileBlob, closeDelimiter], {
+        type: `multipart/related; boundary=${boundary}`
+    });
+
+    const token = await getGoogleDriveAccessToken({ interactive: true });
+    const uploadResponse = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,modifiedTime,size', {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': `multipart/related; boundary=${boundary}`
+        },
+        body
+    });
+
+    if (!uploadResponse.ok) {
+        const errText = await uploadResponse.text().catch(() => 'Unknown error');
+        throw new Error(`Upload failed (${uploadResponse.status}): ${errText}`);
+    }
+
+    return await uploadResponse.json();
+};
+
+export const importKnowledgeBaseBackupFromGoogleDriveFile = async (fileId) => {
+    const blob = await downloadGoogleDriveFileBlob(fileId);
+    const text = await blob.text();
+
+    let payload = null;
+    try {
+        payload = JSON.parse(text);
+    } catch {
+        throw new Error('Invalid JSON backup file');
+    }
+
+    if (!payload || !Array.isArray(payload.items)) {
+        throw new Error('Backup format is invalid (items array missing)');
+    }
+
+    return payload;
+};
+
 export const uploadProjectZipToGoogleDrive = async (zipBlob, filename, folderId = null) => {
     const settings = getGoogleDriveSettings();
     const parentId = folderId || settings.defaultFolderId || null;

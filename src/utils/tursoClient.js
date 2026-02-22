@@ -97,7 +97,77 @@ const SCHEMA_QUERIES = [
     updated_by TEXT,
     updated_at TEXT NOT NULL
   )`,
-    `CREATE INDEX IF NOT EXISTS idx_menu_visibility_path ON menu_visibility(menu_path)`
+    `CREATE INDEX IF NOT EXISTS idx_menu_visibility_path ON menu_visibility(menu_path)`,
+
+    // Knowledge Base table for cloud-synced items
+    `CREATE TABLE IF NOT EXISTS knowledge_base (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        content TEXT,
+        type TEXT,
+        category TEXT,
+        industry TEXT,
+        cloudId TEXT,
+        createdAt TEXT,
+        updatedAt TEXT,
+        syncStatus TEXT,
+        viewCount INTEGER DEFAULT 0,
+        usageCount INTEGER DEFAULT 0,
+        averageRating REAL DEFAULT 0,
+        ratingCount INTEGER DEFAULT 0
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_kb_type ON knowledge_base(type)`,
+    `CREATE INDEX IF NOT EXISTS idx_kb_category ON knowledge_base(category)`,
+    `CREATE INDEX IF NOT EXISTS idx_kb_cloudId ON knowledge_base(cloudId)`,
+
+    // KB Tags table
+    `CREATE TABLE IF NOT EXISTS kb_tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        kbId INTEGER,
+        tag TEXT,
+        FOREIGN KEY (kbId) REFERENCES knowledge_base (id) ON DELETE CASCADE
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_kb_tags_id ON kb_tags(kbId)`,
+    `CREATE INDEX IF NOT EXISTS idx_kb_tags_tag ON kb_tags(tag)`,
+
+    // KB Ratings table
+    `CREATE TABLE IF NOT EXISTS kb_ratings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        kbId INTEGER,
+        rating INTEGER,
+        feedback TEXT,
+        createdAt TEXT,
+        FOREIGN KEY (kbId) REFERENCES knowledge_base (id) ON DELETE CASCADE
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_kb_ratings_id ON kb_ratings(kbId)`,
+
+    // VSM Data table
+    `CREATE TABLE IF NOT EXISTS vsm_data (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        data TEXT,
+        thumbnail TEXT,
+        createdAt TEXT,
+        lastModified TEXT,
+        folderId INTEGER
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_vsm_name ON vsm_data(name)`,
+
+    // Projects table (Metadata only for Cloud)
+    `CREATE TABLE IF NOT EXISTS cloud_projects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        projectName TEXT UNIQUE,
+        videoName TEXT,
+        measurements TEXT,
+        createdAt TEXT,
+        lastModified TEXT,
+        folderId INTEGER,
+        swcsData TEXT,
+        standardWorkLayoutData TEXT,
+        facilityLayoutData TEXT
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_cloud_project_name ON cloud_projects(projectName)`
 ];
 
 /**

@@ -1,16 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Grid, List, Plus, Star, Eye, TrendingUp, Calendar, Tag, BookOpen } from 'lucide-react';
+import { Search, Filter, Grid, List, Plus, Star, Eye, TrendingUp, Calendar, Tag, BookOpen, Cloud, RefreshCw, Download } from 'lucide-react';
 import {
     getAllKnowledgeBaseItems,
     searchKnowledgeBase,
     sortKnowledgeBase,
     getAllTags,
-    incrementViewCount
+    incrementViewCount,
+    addKnowledgeBaseItem,
+    updateKnowledgeBaseItem,
+    getKnowledgeBaseItem
 } from '../utils/knowledgeBaseDB';
 import KnowledgeBaseDetail from './features/KnowledgeBaseDetail';
 import TemplateUpload from './features/TemplateUpload';
+import { useDialog } from '../contexts/DialogContext';
+import {
+    isGoogleDriveEnabled,
+    listGoogleDriveKnowledgeBaseFiles,
+    uploadKnowledgeBaseBackupToGoogleDrive,
+    importKnowledgeBaseBackupFromGoogleDriveFile,
+    downloadGoogleDriveFileBlob
+} from '../utils/googleDrive';
 
 function KnowledgeBase({ onLoadVideo }) {
+    const { showAlert, showConfirm } = useDialog();
     const [items, setItems] = useState([]);
     const [filteredItems, setFilteredItems] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -23,6 +35,9 @@ function KnowledgeBase({ onLoadVideo }) {
     const [selectedItem, setSelectedItem] = useState(null);
     const [showUploadForm, setShowUploadForm] = useState(false);
     const [allTags, setAllTags] = useState([]);
+    const [showDrivePanel, setShowDrivePanel] = useState(false);
+    const [driveFiles, setDriveFiles] = useState([]);
+    const [driveBusy, setDriveBusy] = useState(false);
 
     // Load items on mount
     useEffect(() => {
@@ -76,6 +91,117 @@ function KnowledgeBase({ onLoadVideo }) {
         loadTags();
     };
 
+    const loadDriveFiles = async () => {
+        if (!isGoogleDriveEnabled()) {
+            setDriveFiles([]);
+            return;
+        }
+
+        setDriveBusy(true);
+        try {
+            const files = await listGoogleDriveKnowledgeBaseFiles();
+            setDriveFiles(files || []);
+        } catch (error) {
+            console.error('Failed to load KB backups from Drive:', error);
+            await showAlert('Google Drive', error.message || 'Failed to load backup files from Google Drive.');
+        } finally {
+            setDriveBusy(false);
+        }
+    };
+
+    const handleUploadBackupToDrive = async () => {
+        if (!isGoogleDriveEnabled()) {
+            await showAlert('Google Drive', 'Enable Google Drive first in Global Settings > Cloud Storage.');
+            return;
+        }
+
+        setDriveBusy(true);
+        try {
+            const kbItems = await getAllKnowledgeBaseItems();
+            const cleanItems = kbItems.map(({ contentUrl, ...rest }) => rest);
+            const payload = {
+                exportedAt: new Date().toISOString(),
+                source: 'mavi-y',
+                type: 'knowledge-base-backup',
+                count: cleanItems.length,
+                items: cleanItems
+            };
+
+            const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `knowledge-base-backup-${stamp}.json`;
+            await uploadKnowledgeBaseBackupToGoogleDrive(payload, filename);
+            await showAlert('Success', `Knowledge Base backup uploaded: ${filename}`);
+            await loadDriveFiles();
+        } catch (error) {
+            console.error('KB backup upload failed:', error);
+            await showAlert('Google Drive', error.message || 'Failed to upload backup to Google Drive.');
+        } finally {
+            setDriveBusy(false);
+        }
+    };
+
+    const handleImportBackupFromDrive = async (file) => {
+        if (!await showConfirm('Import Backup', `Import backup file "${file.name}"?`)) return;
+
+        setDriveBusy(true);
+        try {
+            const payload = await importKnowledgeBaseBackupFromGoogleDriveFile(file.id);
+            const backupItems = Array.isArray(payload?.items) ? payload.items : [];
+
+            let importedCount = 0;
+            for (const item of backupItems) {
+                const existing = item?.id ? await getKnowledgeBaseItem(item.id) : null;
+                const nextData = {
+                    title: item.title || 'Untitled',
+                    description: item.description || '',
+                    content: item.content || '',
+                    type: item.type || 'document',
+                    category: item.category || '',
+                    industry: item.industry || '',
+                    cloudId: item.cloudId || null,
+                    createdAt: item.createdAt,
+                    updatedAt: item.updatedAt,
+                    syncStatus: item.syncStatus || 'local'
+                };
+
+                if (existing && item?.id) {
+                    await updateKnowledgeBaseItem(item.id, nextData);
+                } else {
+                    await addKnowledgeBaseItem(nextData);
+                }
+                importedCount += 1;
+            }
+
+            await loadItems();
+            await showAlert('Success', `Backup imported successfully (${importedCount} item).`);
+        } catch (error) {
+            console.error('KB backup import failed:', error);
+            await showAlert('Google Drive', error.message || 'Failed to import backup from Google Drive.');
+        } finally {
+            setDriveBusy(false);
+        }
+    };
+
+    const handleDownloadBackupFromDrive = async (file) => {
+        setDriveBusy(true);
+        try {
+            const blob = await downloadGoogleDriveFileBlob(file.id);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = file.name || `${file.id}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('KB backup download failed:', error);
+            await showAlert('Google Drive', error.message || 'Failed to download backup file.');
+        } finally {
+            setDriveBusy(false);
+        }
+    };
+
     const getTypeIcon = (type) => {
         switch (type) {
             case 'template': return '📋';
@@ -121,26 +247,114 @@ function KnowledgeBase({ onLoadVideo }) {
                             Access templates, guides, and community insights to optimize your workflow.
                         </p>
                     </div>
-                    <button
-                        onClick={() => setShowUploadForm(true)}
-                        style={{
-                            padding: '12px 24px',
-                            background: 'linear-gradient(135deg, #0078d4 0%, #00b4d8 100%)',
-                            border: 'none',
-                            borderRadius: '12px',
-                            color: 'white',
-                            cursor: 'pointer',
-                            fontWeight: '600',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            boxShadow: '0 4px 15px rgba(0, 120, 212, 0.3)',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        <Plus size={20} /> Add New Item
-                    </button>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                            onClick={async () => {
+                                const next = !showDrivePanel;
+                                setShowDrivePanel(next);
+                                if (next) await loadDriveFiles();
+                            }}
+                            style={{
+                                padding: '12px 18px',
+                                background: showDrivePanel ? 'rgba(0,120,212,0.2)' : 'rgba(255,255,255,0.06)',
+                                border: '1px solid rgba(255,255,255,0.12)',
+                                borderRadius: '12px',
+                                color: 'white',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}
+                        >
+                            <Cloud size={18} /> Google Drive
+                        </button>
+                        <button
+                            onClick={() => setShowUploadForm(true)}
+                            style={{
+                                padding: '12px 24px',
+                                background: 'linear-gradient(135deg, #0078d4 0%, #00b4d8 100%)',
+                                border: 'none',
+                                borderRadius: '12px',
+                                color: 'white',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                boxShadow: '0 4px 15px rgba(0, 120, 212, 0.3)',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            <Plus size={20} /> Add New Item
+                        </button>
+                    </div>
                 </div>
+
+                {showDrivePanel && (
+                    <div style={{
+                        marginBottom: '16px',
+                        padding: '14px',
+                        backgroundColor: 'rgba(0, 120, 212, 0.08)',
+                        border: '1px solid rgba(0, 120, 212, 0.25)',
+                        borderRadius: '12px'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <div style={{ fontWeight: 700, color: '#9dd7ff' }}>Knowledge Base Backups</div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                    onClick={handleUploadBackupToDrive}
+                                    disabled={driveBusy}
+                                    style={{ padding: '8px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: '#0078d4', color: 'white' }}
+                                >
+                                    Upload Backup
+                                </button>
+                                <button
+                                    onClick={loadDriveFiles}
+                                    disabled={driveBusy}
+                                    style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', background: 'rgba(255,255,255,0.06)', color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                >
+                                    <RefreshCw size={14} /> {driveBusy ? 'Loading...' : 'Refresh'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {driveFiles.length === 0 ? (
+                            <div style={{ color: '#9aa8b6', fontSize: '0.85rem' }}>
+                                No backup files found in Google Drive.
+                            </div>
+                        ) : (
+                            <div style={{ display: 'grid', gap: '8px' }}>
+                                {driveFiles.map(file => (
+                                    <div key={file.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '10px' }}>
+                                        <div>
+                                            <div style={{ color: 'white', fontWeight: 600, fontSize: '0.9rem' }}>{file.name}</div>
+                                            <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
+                                                {file.modifiedTime ? new Date(file.modifiedTime).toLocaleString() : '-'}
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button
+                                                onClick={() => handleImportBackupFromDrive(file)}
+                                                disabled={driveBusy}
+                                                style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#2563eb', color: 'white', cursor: 'pointer' }}
+                                            >
+                                                Import
+                                            </button>
+                                            <button
+                                                onClick={() => handleDownloadBackupFromDrive(file)}
+                                                disabled={driveBusy}
+                                                style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#0f766e', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                            >
+                                                <Download size={14} /> Download
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Search and Controls */}
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>

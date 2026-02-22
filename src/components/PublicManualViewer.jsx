@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getKnowledgeBaseItem, getItemByCloudId, updateKnowledgeBaseItem } from '../utils/knowledgeBaseDB';
 import { getManualByCloudId, appendManualAcknowledgement } from '../utils/tursoAPI';
 
@@ -6,57 +6,51 @@ const PublicManualViewer = ({ manualId, onClose }) => {
     const [manual, setManual] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [currentStepIndex, setCurrentStepIndex] = useState(0);
+    const [stepAnswers, setStepAnswers] = useState({});
+
     const [ackName, setAckName] = useState('');
     const [ackRole, setAckRole] = useState('Operator');
     const [isSubmittingAck, setIsSubmittingAck] = useState(false);
-
-    useEffect(() => {
-        loadManual();
-    }, [manualId]);
-
-    const loadManual = async () => {
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            const numericId = Number(manualId);
-            let data = null;
-
-            // 1) Cloud-first (public QR path)
-            data = await getManualByCloudId(manualId);
-
-            // 2) Legacy local numeric id
-            if (Number.isFinite(numericId)) {
-                data = data || await getKnowledgeBaseItem(numericId);
-            }
-
-            // 3) Legacy local cloudId lookup
-            if (!data) {
-                data = await getItemByCloudId(manualId);
-            }
-
-            if (data) {
-                setManual(data);
-            } else {
-                setError('Manual not found');
-            }
-        } catch (err) {
-            console.error('Failed to load manual:', err);
-            setError('Failed to load manual from cloud');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handlePrint = () => {
-        window.print();
-    };
 
     const query = new URLSearchParams(window.location.hash.split('?')[1] || window.location.search.substring(1));
     const requestedVersion = query.get('v');
     const requestedStepId = query.get('stepId');
     const requestedStepNumber = Number(query.get('step') || '');
     const requestedStation = query.get('station');
+
+    useEffect(() => {
+        const loadManual = async () => {
+            setIsLoading(true);
+            setError(null);
+            try {
+                const numericId = Number(manualId);
+                let data = await getManualByCloudId(manualId);
+
+                if (!data && Number.isFinite(numericId)) {
+                    data = await getKnowledgeBaseItem(numericId);
+                }
+
+                if (!data) {
+                    data = await getItemByCloudId(manualId);
+                }
+
+                if (!data) {
+                    setError('Manual not found');
+                    return;
+                }
+
+                setManual(data);
+            } catch (err) {
+                console.error('Failed to load manual:', err);
+                setError('Failed to load manual from cloud');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadManual();
+    }, [manualId]);
 
     const contentObj = manual?.content && typeof manual.content === 'object' && !Array.isArray(manual.content)
         ? manual.content
@@ -66,7 +60,7 @@ const PublicManualViewer = ({ manualId, onClose }) => {
     const manualVersion = manual?.version || contentObj?.version || '1.0';
     const readAcks = Array.isArray(contentObj?.readAcks) ? contentObj.readAcks : [];
 
-    const focusedStepIndex = useMemo(() => {
+    const deepLinkedStepIndex = useMemo(() => {
         if (!steps.length) return -1;
 
         if (requestedStepId) {
@@ -88,14 +82,56 @@ const PublicManualViewer = ({ manualId, onClose }) => {
     }, [steps, requestedStepId, requestedStepNumber, requestedStation]);
 
     useEffect(() => {
-        if (focusedStepIndex < 0) return;
-        const el = document.getElementById(`public-step-${focusedStepIndex}`);
-        if (el) {
-            setTimeout(() => {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 100);
+        if (!steps.length) {
+            setCurrentStepIndex(0);
+            return;
         }
-    }, [focusedStepIndex]);
+
+        if (deepLinkedStepIndex >= 0 && deepLinkedStepIndex < steps.length) {
+            setCurrentStepIndex(deepLinkedStepIndex);
+        } else {
+            setCurrentStepIndex(0);
+        }
+    }, [deepLinkedStepIndex, steps.length]);
+
+    const currentStep = steps[currentStepIndex] || null;
+
+    const getStepQuestions = (step) => {
+        if (Array.isArray(step?.questions) && step.questions.length > 0) return step.questions;
+        return [
+            {
+                id: 'inspection_result',
+                type: 'select',
+                label: 'What is the inspection result?',
+                options: ['OK', 'Rework', 'Need Review']
+            },
+            {
+                id: 'standard_check',
+                type: 'radio',
+                label: 'Is this step compliant with standard?',
+                options: ['Yes', 'No']
+            },
+            {
+                id: 'operator_note',
+                type: 'textarea',
+                label: 'Operator note'
+            }
+        ];
+    };
+
+    const currentQuestions = currentStep ? getStepQuestions(currentStep) : [];
+    const currentAnswer = stepAnswers[currentStep?.id || currentStepIndex] || {};
+
+    const setAnswer = (questionId, value) => {
+        const key = currentStep?.id || currentStepIndex;
+        setStepAnswers((prev) => ({
+            ...prev,
+            [key]: {
+                ...(prev[key] || {}),
+                [questionId]: value
+            }
+        }));
+    };
 
     const alreadyAcknowledged = readAcks.some(
         (ack) => ack.version === manualVersion && ack.userName?.trim()?.toLowerCase() === ackName.trim().toLowerCase()
@@ -124,30 +160,28 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                 return;
             }
 
-            const nextAcks = [
-                {
-                    id: Math.random().toString(36).slice(2, 10),
-                    version: manualVersion,
-                    userName: ackName.trim(),
-                    role: ackRole,
-                    acknowledgedAt: new Date().toISOString(),
-                    source: 'qrcode-public-viewer'
-                },
-                ...currentAcks
-            ];
+            const newAck = {
+                id: Math.random().toString(36).slice(2, 10),
+                version: manualVersion,
+                userName: ackName.trim(),
+                role: ackRole,
+                acknowledgedAt: new Date().toISOString(),
+                source: 'qrcode-public-viewer'
+            };
 
             const cloudId = manual?.cloudId || manualId;
             let savedToCloud = false;
 
             if (cloudId) {
                 try {
-                    await appendManualAcknowledgement(cloudId, nextAcks[0]);
+                    await appendManualAcknowledgement(cloudId, newAck);
                     savedToCloud = true;
                 } catch (cloudError) {
                     console.warn('Cloud acknowledgement save failed, fallback to local:', cloudError);
                 }
             }
 
+            const nextAcks = [newAck, ...currentAcks];
             if (!savedToCloud && manual?.id) {
                 await updateKnowledgeBaseItem(manual.id, {
                     content: {
@@ -176,352 +210,359 @@ const PublicManualViewer = ({ manualId, onClose }) => {
 
     if (isLoading) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#525659' }}>
-                <div style={{ color: 'white', fontSize: '1.5rem' }}>Loading document...</div>
+            <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#101827', color: 'white' }}>
+                <div style={{ fontSize: '1.2rem' }}>Loading manual...</div>
             </div>
         );
     }
 
     if (error || !manual) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#525659' }}>
-                <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '8px', textAlign: 'center', maxWidth: '400px' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '20px' }}>❌</div>
-                    <h2>Document Not Found</h2>
+            <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#101827' }}>
+                <div style={{ background: 'white', borderRadius: '10px', padding: '28px', width: 'min(420px, 92vw)', textAlign: 'center' }}>
+                    <h2 style={{ marginTop: 0 }}>Document Not Found</h2>
                     <p style={{ color: '#666' }}>{error || 'The requested manual could not be found.'}</p>
-                    <button onClick={onClose} style={{ marginTop: '20px', padding: '10px 20px', backgroundColor: '#0078d4', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Close</button>
+                    <button onClick={onClose} style={{ marginTop: '12px', padding: '8px 14px', borderRadius: '6px', border: 'none', background: '#1674ea', color: 'white', cursor: 'pointer' }}>Close</button>
                 </div>
             </div>
         );
     }
 
-    // A4 dimensions in pixels (approx 96 DPI): 794px x 1123px
-    // Using mm for print accuracy
-    const styles = {
-        container: {
-            backgroundColor: '#525659', // Dark grey background like PDF viewers
-            minHeight: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            padding: '40px 0',
-            fontFamily: '"Segoe UI", "Helvetica Neue", Arial, sans-serif'
-        },
-        page: {
-            backgroundColor: 'white',
-            width: '210mm',
-            minHeight: '297mm', // A4 height
-            padding: '20mm',
-            boxShadow: '0 0 10px rgba(0,0,0,0.5)',
-            marginBottom: '20px',
-            position: 'relative',
-            boxSizing: 'border-box'
-        },
-        controls: {
-            position: 'fixed',
-            bottom: '30px',
-            right: '30px',
-            display: 'flex',
-            gap: '15px',
-            zIndex: 1000
-        },
-        controlButton: {
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            backgroundColor: '#0078d4',
-            color: 'white',
-            border: 'none',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '24px',
-            transition: 'transform 0.2s, background-color 0.2s'
-        },
-        // Document Header
-        docHeader: {
-            borderBottom: '2px solid #333',
-            paddingBottom: '10px',
-            marginBottom: '20px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-end'
-        },
-        title: {
-            fontSize: '24pt',
-            margin: 0,
-            color: '#000',
-            fontWeight: 'bold'
-        },
-        docNumber: {
-            fontSize: '12pt',
-            color: '#666'
-        },
-        // Meta Table
-        metaTable: {
-            width: '100%',
-            borderCollapse: 'collapse',
-            marginBottom: '30px',
-            fontSize: '10pt'
-        },
-        metaCell: {
-            border: '1px solid #000',
-            padding: '6px 10px'
-        },
-        metaLabel: {
-            backgroundColor: '#f0f0f0',
-            fontWeight: 'bold',
-            width: '15%'
-        },
-        // Steps
-        stepContainer: {
-            marginBottom: '20px',
-            breakInside: 'avoid', // Prevent breaking inside a step when printing
-            pageBreakInside: 'avoid'
-        },
-        stepTitle: {
-            fontSize: '14pt',
-            fontWeight: 'bold',
-            color: '#0078d4',
-            borderBottom: '1px solid #eee',
-            paddingBottom: '5px',
-            marginBottom: '10px'
-        },
-        stepContent: {
-            display: 'flex',
-            gap: '20px'
-        },
-        stepImage: {
-            width: '200px',
-            height: 'auto',
-            objectFit: 'contain',
-            border: '1px solid #ddd'
-        },
-        bullet: {
-            fontSize: '10pt',
-            marginBottom: '4px',
-            padding: '5px',
-            borderRadius: '4px'
-        }
-    };
-
     return (
-        <div className="pdf-viewer-container" style={styles.container}>
-            {/* Print Styles */}
+        <div className="dozuki-shell-wrap" style={{ minHeight: '100vh', background: 'radial-gradient(circle at top, #192235 0%, #0f1726 45%, #0a1120 100%)', display: 'grid', placeItems: 'center', padding: '24px' }}>
             <style>{`
-                @media print {
-                    body {
-                        background: none;
-                        margin: 0;
+                .dozuki-shell {
+                    width: min(1260px, 96vw);
+                    height: min(760px, 90vh);
+                    background: #eef1f5;
+                    border-radius: 14px;
+                    box-shadow: 0 28px 80px rgba(0,0,0,0.45);
+                    overflow: hidden;
+                    border: 1px solid rgba(255,255,255,0.18);
+                    display: grid;
+                    grid-template-rows: 72px 1fr;
+                }
+                .dozuki-topbar {
+                    border-bottom: 1px solid #d5dbe6;
+                    background: #f9fafc;
+                    padding: 0 20px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                .dozuki-body {
+                    display: grid;
+                    grid-template-columns: 1.1fr 0.9fr;
+                    min-height: 0;
+                }
+                .dozuki-left {
+                    border-right: 1px solid #d5dbe6;
+                    padding: 18px;
+                    display: grid;
+                    grid-template-rows: 1fr auto;
+                    gap: 14px;
+                    min-height: 0;
+                }
+                .dozuki-media-main {
+                    border: 1px solid #cdd4df;
+                    border-radius: 10px;
+                    background: #d6dde8;
+                    overflow: hidden;
+                    min-height: 280px;
+                    display: grid;
+                    place-items: center;
+                }
+                .dozuki-media-main img,
+                .dozuki-media-main video {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+                .dozuki-thumbs {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+                    gap: 8px;
+                }
+                .dozuki-thumb {
+                    position: relative;
+                    height: 58px;
+                    border-radius: 8px;
+                    border: 1px solid #c7cfdb;
+                    overflow: hidden;
+                    cursor: pointer;
+                    background: #d6dde8;
+                }
+                .dozuki-thumb.active {
+                    border: 2px solid #1674ea;
+                }
+                .dozuki-thumb img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+                .dozuki-thumb-index {
+                    position: absolute;
+                    right: 4px;
+                    bottom: 4px;
+                    background: rgba(0,0,0,0.45);
+                    color: #fff;
+                    border-radius: 99px;
+                    padding: 1px 5px;
+                    font-size: 10px;
+                    font-weight: 700;
+                }
+                .dozuki-right {
+                    padding: 22px 24px;
+                    display: grid;
+                    grid-template-rows: auto auto 1fr auto;
+                    gap: 10px;
+                    min-height: 0;
+                }
+                .dozuki-step-count {
+                    font-size: 28px;
+                    font-weight: 800;
+                    color: #222f41;
+                    margin-bottom: 2px;
+                }
+                .dozuki-step-title {
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: #233247;
+                    line-height: 1.4;
+                    margin-bottom: 8px;
+                }
+                .dozuki-instructions {
+                    font-size: 13px;
+                    color: #334155;
+                    line-height: 1.55;
+                    max-height: 140px;
+                    overflow-y: auto;
+                    padding-right: 4px;
+                }
+                .dozuki-q-panel {
+                    border: 1px solid #d0d8e4;
+                    border-radius: 10px;
+                    background: #fff;
+                    padding: 12px;
+                    overflow-y: auto;
+                }
+                .dozuki-q-label {
+                    display: block;
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: #2f3a49;
+                    margin-bottom: 5px;
+                }
+                .dozuki-input,
+                .dozuki-select,
+                .dozuki-textarea {
+                    width: 100%;
+                    border: 1px solid #c9d1de;
+                    border-radius: 4px;
+                    padding: 8px;
+                    font-size: 12px;
+                    box-sizing: border-box;
+                }
+                .dozuki-radio-row {
+                    display: grid;
+                    gap: 4px;
+                }
+                .dozuki-actions {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                }
+                .dozuki-btn {
+                    border: 1px solid #c7cfdb;
+                    border-radius: 6px;
+                    background: #f1f5f9;
+                    color: #425466;
+                    font-weight: 700;
+                    cursor: pointer;
+                    padding: 10px 16px;
+                    min-width: 105px;
+                }
+                .dozuki-btn.primary {
+                    border-color: #1674ea;
+                    background: #1674ea;
+                    color: #fff;
+                }
+                .dozuki-btn:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+                @media (max-width: 980px) {
+                    .dozuki-shell {
+                        width: min(96vw, 760px);
+                        height: auto;
+                        min-height: 88vh;
                     }
-                    .pdf-viewer-container {
-                        background: none !important;
-                        padding: 0 !important;
-                        display: block !important;
+                    .dozuki-body {
+                        grid-template-columns: 1fr;
+                        grid-template-rows: auto auto;
                     }
-                    .pdf-page {
-                        box-shadow: none !important;
-                        margin: 0 !important;
-                        width: 100% !important;
-                        min-height: auto !important;
-                        page-break-after: always;
-                    }
-                    .pdf-controls {
-                        display: none !important;
-                    }
-                    /* Hide browser header/footer if possible (standard behavior) */
-                    @page {
-                        margin: 0;
-                        size: A4;
+                    .dozuki-left {
+                        border-right: none;
+                        border-bottom: 1px solid #d5dbe6;
                     }
                 }
             `}</style>
 
-            {/* Floating Controls */}
-            <div className="pdf-controls" style={styles.controls}>
-                <button
-                    style={styles.controlButton}
-                    onClick={handlePrint}
-                    title="Print / Save as PDF"
-                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
-                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                >
-                    🖨️
-                </button>
-                {onClose && (
-                    <button
-                        style={{ ...styles.controlButton, backgroundColor: '#666' }}
-                        onClick={onClose}
-                        title="Close Viewer"
-                    >
-                        ✕
-                    </button>
-                )}
-            </div>
-
-            {/* A4 Page(s) */}
-            <div className="pdf-page" style={styles.page}>
-                {manualStatus !== 'Released' && (
-                    <div style={{ marginBottom: '12px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#fff4e5', border: '1px solid #ffcc80', color: '#8a5200', fontSize: '10pt' }}>
-                        This SOP is not released yet (status: <strong>{manualStatus}</strong>). Operator access is read-only.
+            <div className="dozuki-shell">
+                <div className="dozuki-topbar">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ width: 220, height: 8, borderRadius: 999, background: '#d6dbe4' }} />
+                        <div style={{ width: 150, height: 8, borderRadius: 999, background: '#dde2ea' }} />
                     </div>
-                )}
-
-                {requestedVersion && requestedVersion !== manualVersion && (
-                    <div style={{ marginBottom: '12px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#e8f0fe', border: '1px solid #90caf9', color: '#0d47a1', fontSize: '10pt' }}>
-                        You scanned version <strong>{requestedVersion}</strong>, but latest available is <strong>{manualVersion}</strong>.
-                    </div>
-                )}
-
-                {focusedStepIndex >= 0 && (
-                    <div style={{ marginBottom: '12px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#e8f5e9', border: '1px solid #81c784', color: '#1b5e20', fontSize: '10pt' }}>
-                        Deep link target: <strong>Step {focusedStepIndex + 1}</strong> ({steps[focusedStepIndex]?.title || 'Station'}).
-                    </div>
-                )}
-
-                {/* Header */}
-                <div style={styles.docHeader}>
-                    <div>
-                        <h1 style={styles.title}>{manual.title}</h1>
-                        <div style={{ fontSize: '10pt', color: '#666', marginTop: '5px' }}>
-                            {manual.author ? `Authored by: ${manual.author}` : 'MAVi Motion Study'}
-                        </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                        <div style={styles.docNumber}>Doc #: {manual.documentNumber || 'N/A'}</div>
-                        <div style={{ fontSize: '10pt' }}>Rev: {manual.revisionDate || new Date().toLocaleDateString()}</div>
-                        <div style={{ fontSize: '10pt', fontWeight: 'bold' }}>ver {manual.version || '1.0'}</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="dozuki-btn" onClick={() => window.print()}>Print</button>
+                        {onClose && <button className="dozuki-btn" onClick={onClose}>Close</button>}
                     </div>
                 </div>
 
-                {/* Meta Table */}
-                <table style={styles.metaTable}>
-                    <tbody>
-                        <tr>
-                            <td style={{ ...styles.metaCell, ...styles.metaLabel }}>Category</td>
-                            <td style={styles.metaCell}>{manual.category || 'Standard Work'}</td>
-                            <td style={{ ...styles.metaCell, ...styles.metaLabel }}>Status</td>
-                            <td style={styles.metaCell}>{manual.status || 'Draft'}</td>
-                        </tr>
-                        <tr>
-                            <td style={{ ...styles.metaCell, ...styles.metaLabel }}>Difficulty</td>
-                            <td style={styles.metaCell}>{manual.difficulty || 'Moderate'}</td>
-                            <td style={{ ...styles.metaCell, ...styles.metaLabel }}>Time Req.</td>
-                            <td style={styles.metaCell}>{manual.timeRequired || '-'}</td>
-                        </tr>
-                        <tr>
-                            <td style={{ ...styles.metaCell, ...styles.metaLabel }}>Summary</td>
-                            <td colSpan="3" style={styles.metaCell}>
-                                {manual.summary || manual.description || 'No description provided.'}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                {/* Steps Content */}
-                <div>
-                    {steps.map((step, idx) => (
-                        <div
-                            key={step.id || idx}
-                            id={`public-step-${idx}`}
-                            style={{
-                                ...styles.stepContainer,
-                                border: focusedStepIndex === idx ? '2px solid #0078d4' : 'none',
-                                borderRadius: focusedStepIndex === idx ? '8px' : '0px',
-                                padding: focusedStepIndex === idx ? '8px' : '0px',
-                                backgroundColor: focusedStepIndex === idx ? '#f5fbff' : 'transparent'
-                            }}
-                        >
-                            <div style={styles.stepTitle}>Step {idx + 1}: {step.title}</div>
-                            <div style={styles.stepContent}>
-                                {step.media && step.media.url && (
-                                    <div style={{ flexShrink: 0 }}>
-                                        <img src={step.media.url} alt="Step Visual" style={styles.stepImage} />
-                                    </div>
-                                )}
-                                <div style={{ flex: 1 }}>
-                                    <div
-                                        style={{ fontSize: '11pt', lineHeight: '1.4', marginBottom: '10px' }}
-                                        dangerouslySetInnerHTML={{ __html: step.instructions || '' }}
-                                    />
-                                    {step.bullets && step.bullets.length > 0 && (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                            {step.bullets.map((b, i) => (
-                                                <div key={i} style={{
-                                                    ...styles.bullet,
-                                                    borderLeft: `3px solid ${b.type === 'warning' ? '#ff9800' : b.type === 'caution' ? '#d13438' : '#0078d4'}`,
-                                                    backgroundColor: '#fafafa'
-                                                }}>
-                                                    <span style={{
-                                                        fontWeight: 'bold',
-                                                        color: b.type === 'warning' ? '#ff9800' : b.type === 'caution' ? '#d13438' : '#0078d4'
-                                                    }}>
-                                                        {b.type.toUpperCase()}:
-                                                    </span> {b.text}
-                                                </div>
-                                            ))}
+                <div className="dozuki-body">
+                    <div className="dozuki-left">
+                        <div className="dozuki-media-main">
+                            {currentStep?.media && (
+                                <div style={{ width: '100%', height: '100%' }}>
+                                    {(!currentStep.media.type || currentStep.media.type === 'image') && currentStep.media.url && (
+                                        <img src={currentStep.media.url} alt={currentStep.title || 'Step media'} />
+                                    )}
+                                    {currentStep.media.type === 'video' && currentStep.media.url && (
+                                        <video
+                                            src={`${currentStep.media.url}#t=${currentStep.startTime || 0}${currentStep.duration ? ',' + (Math.round(((currentStep.startTime || 0) + currentStep.duration) * 10) / 10) : ''}`}
+                                            controls
+                                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                        />
+                                    )}
+                                    {currentStep.media.type === 'youtube' && currentStep.media.youtubeUrl && (
+                                        <div style={{ position: 'relative', width: '100%', height: '100%', background: '#000' }}>
+                                            <iframe
+                                                src={currentStep.media.youtubeUrl.replace('watch?v=', 'embed/').split('&')[0]}
+                                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                                                allowFullScreen
+                                            />
                                         </div>
                                     )}
                                 </div>
+                            )}
+                            {!currentStep?.media && (
+                                <div style={{ color: '#5f6f83', fontWeight: 700 }}>No media for this step</div>
+                            )}
+                        </div>
+
+                        <div className="dozuki-thumbs">
+                            {steps.map((step, idx) => (
+                                <div
+                                    key={step.id || idx}
+                                    className={`dozuki-thumb ${idx === currentStepIndex ? 'active' : ''}`}
+                                    onClick={() => setCurrentStepIndex(idx)}
+                                >
+                                    {step?.media?.url ? (
+                                        <img src={step.media.url} alt={step.title || `Step ${idx + 1}`} />
+                                    ) : (
+                                        <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: '#617489', fontWeight: 700, fontSize: 12 }}>
+                                            Step {idx + 1}
+                                        </div>
+                                    )}
+                                    <div className="dozuki-thumb-index">{idx + 1}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="dozuki-right">
+                        <div>
+                            <div className="dozuki-step-count">Step {Math.min(currentStepIndex + 1, Math.max(steps.length, 1))} of {Math.max(steps.length, 1)}</div>
+                            <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>
+                                {manual.title || 'Manual'} • v{manualVersion}
+                            </div>
+                            <div className="dozuki-step-title">{currentStep?.title || 'Untitled Step'}</div>
+                        </div>
+
+                        <div className="dozuki-instructions" dangerouslySetInnerHTML={{ __html: currentStep?.instructions || '<p>No instruction available.</p>' }} />
+
+                        <div className="dozuki-q-panel">
+                            {currentQuestions.map((q) => (
+                                <div key={q.id} style={{ marginBottom: 12 }}>
+                                    <label className="dozuki-q-label">{q.label}</label>
+                                    {q.type === 'select' && (
+                                        <select className="dozuki-select" value={currentAnswer[q.id] || ''} onChange={(e) => setAnswer(q.id, e.target.value)}>
+                                            <option value="">Select option...</option>
+                                            {(q.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                        </select>
+                                    )}
+                                    {q.type === 'radio' && (
+                                        <div className="dozuki-radio-row">
+                                            {(q.options || []).map(opt => (
+                                                <label key={opt} style={{ fontSize: 12, color: '#334155', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <input
+                                                        type="radio"
+                                                        name={`${currentStepIndex}-${q.id}`}
+                                                        checked={currentAnswer[q.id] === opt}
+                                                        onChange={() => setAnswer(q.id, opt)}
+                                                    />
+                                                    {opt}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {q.type === 'textarea' && (
+                                        <textarea className="dozuki-textarea" rows={4} value={currentAnswer[q.id] || ''} onChange={(e) => setAnswer(q.id, e.target.value)} />
+                                    )}
+                                </div>
+                            ))}
+
+                            {manualStatus !== 'Released' && (
+                                <div style={{ fontSize: 12, color: '#92400e', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6, padding: 8 }}>
+                                    SOP status saat ini <strong>{manualStatus}</strong>. Acknowledge aktif saat status Released.
+                                </div>
+                            )}
+                            {requestedVersion && requestedVersion !== manualVersion && (
+                                <div style={{ marginTop: 8, fontSize: 12, color: '#1d4ed8', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, padding: 8 }}>
+                                    Anda scan versi <strong>{requestedVersion}</strong>, versi terbaru <strong>{manualVersion}</strong>.
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                                <input className="dozuki-input" style={{ width: '170px' }} placeholder="Nama operator" value={ackName} onChange={(e) => setAckName(e.target.value)} />
+                                <select className="dozuki-select" style={{ width: '140px' }} value={ackRole} onChange={(e) => setAckRole(e.target.value)}>
+                                    <option value="Operator">Operator</option>
+                                    <option value="Reviewer">Reviewer</option>
+                                    <option value="Approver">Approver</option>
+                                    <option value="Author">Author</option>
+                                </select>
+                                <button
+                                    className="dozuki-btn primary"
+                                    disabled={isSubmittingAck || manualStatus !== 'Released' || alreadyAcknowledged}
+                                    onClick={handleAcknowledge}
+                                >
+                                    {alreadyAcknowledged ? 'Already Acknowledged' : (isSubmittingAck ? 'Saving...' : 'Acknowledge')}
+                                </button>
+                            </div>
+
+                            <div className="dozuki-actions">
+                                <button
+                                    className="dozuki-btn"
+                                    disabled={currentStepIndex <= 0}
+                                    onClick={() => setCurrentStepIndex((prev) => Math.max(prev - 1, 0))}
+                                >
+                                    Back
+                                </button>
+                                <button
+                                    className="dozuki-btn primary"
+                                    disabled={currentStepIndex >= steps.length - 1}
+                                    onClick={() => setCurrentStepIndex((prev) => Math.min(prev + 1, Math.max(steps.length - 1, 0)))}
+                                >
+                                    Next Step
+                                </button>
                             </div>
                         </div>
-                    ))}
-                </div>
-
-                <div style={{ marginTop: '18px', paddingTop: '12px', borderTop: '1px dashed #ccc' }}>
-                    <div style={{ fontSize: '11pt', fontWeight: 'bold', marginBottom: '6px' }}>Read & Acknowledge (QR)</div>
-                    <div style={{ fontSize: '9pt', color: '#666', marginBottom: '8px' }}>
-                        Version: <strong>{manualVersion}</strong> • Current acknowledgements: <strong>{readAcks.filter((ack) => ack.version === manualVersion).length}</strong>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <input
-                            type="text"
-                            placeholder="Your name"
-                            value={ackName}
-                            onChange={(e) => setAckName(e.target.value)}
-                            style={{ border: '1px solid #ccc', borderRadius: '6px', padding: '8px', minWidth: '180px' }}
-                        />
-                        <select value={ackRole} onChange={(e) => setAckRole(e.target.value)} style={{ border: '1px solid #ccc', borderRadius: '6px', padding: '8px' }}>
-                            <option value="Operator">Operator</option>
-                            <option value="Reviewer">Reviewer</option>
-                            <option value="Approver">Approver</option>
-                            <option value="Author">Author</option>
-                        </select>
-                        <button
-                            onClick={handleAcknowledge}
-                            disabled={isSubmittingAck || manualStatus !== 'Released' || alreadyAcknowledged}
-                            style={{
-                                border: 'none',
-                                borderRadius: '6px',
-                                padding: '8px 14px',
-                                backgroundColor: isSubmittingAck || manualStatus !== 'Released' || alreadyAcknowledged ? '#ccc' : '#0078d4',
-                                color: '#fff',
-                                cursor: isSubmittingAck || manualStatus !== 'Released' || alreadyAcknowledged ? 'not-allowed' : 'pointer'
-                            }}
-                        >
-                            {alreadyAcknowledged ? 'Already Acknowledged' : (isSubmittingAck ? 'Saving...' : 'I Have Read This SOP')}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Footer for Page 1 (simplified, real pagination is complex in HTML/CSS) */}
-                <div style={{
-                    position: 'absolute',
-                    bottom: '10mm',
-                    left: '20mm',
-                    right: '20mm',
-                    borderTop: '1px solid #ddd',
-                    paddingTop: '5px',
-                    textAlign: 'center',
-                    fontSize: '8pt',
-                    color: '#888',
-                    display: 'flex',
-                    justifyContent: 'space-between'
-                }}>
-                    <span>Generated by MAVi Application</span>
-                    <span>{new Date().toLocaleString()}</span>
                 </div>
             </div>
         </div>

@@ -6,6 +6,8 @@ import { upsertManual, listManuals } from '../utils/tursoAPI';
 import HelpButton from './HelpButton';
 import { helpContent } from '../utils/helpContent.jsx';
 import GuideHeader from './manual/GuideHeader';
+import GuideIntroduction from './manual/GuideIntroduction';
+import GuideDetails from './manual/GuideDetails';
 import StepList from './manual/StepList';
 import StepEditor from './manual/StepEditor';
 import {
@@ -19,16 +21,31 @@ import AIChatOverlay from './features/AIChatOverlay';
 import jsPDF from 'jspdf';
 import {
     FileSpreadsheet, FileText, Upload, Sparkles, MessageSquare,
-    Cpu, Loader2, BarChart3, Settings, Book, Layout,
+    Cpu, Loader2, BarChart3, Settings, Book, Layout, List,
     Eye, Save, FolderOpen, FileDown, Globe, Layers,
     ChevronDown, Trash2, Plus, Info, Video, CheckCircle,
-    Activity, Shield, Play, VideoOff, X
+    Activity, Shield, Play, VideoOff, X, BookOpen
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useDialog } from '../contexts/DialogContext';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
+
+const ensureUniqueStepIds = (steps = []) => {
+    if (!Array.isArray(steps)) return [];
+
+    const used = new Set();
+    return steps.map((step) => {
+        let nextId = typeof step?.id === 'string' && step.id.trim() ? step.id.trim() : generateId();
+        while (used.has(nextId)) {
+            nextId = generateId();
+        }
+        used.add(nextId);
+        return { ...step, id: nextId };
+    });
+};
+
 const USER_ROLES = ['Author', 'Reviewer', 'Approver', 'Operator', 'Admin'];
 const CAPA_TRANSITIONS = {
     Open: ['Root Cause'],
@@ -219,7 +236,15 @@ function ManualCreation() {
         notifications: [],
         eSignatures: [],
         readAcks: [],
-        steps: []
+        steps: [],
+        // Dozuki-style Introduction fields
+        guideType: 'Replacement',
+        category: '',
+        introductionText: '',
+        flags: ['In Progress'],
+        accessControl: { isPublic: true, teams: [], individuals: [] },
+        editPermissions: 0,
+        tags: []
     });
 
     const normalizeGuide = (manual) => {
@@ -267,7 +292,15 @@ function ManualCreation() {
             notifications: Array.isArray(contentObj?.notifications) ? contentObj.notifications : [],
             eSignatures: Array.isArray(contentObj?.eSignatures) ? contentObj.eSignatures : [],
             readAcks: Array.isArray(contentObj?.readAcks) ? contentObj.readAcks : [],
-            steps: manual?.steps || contentObj?.steps || manual?.content || []
+            steps: ensureUniqueStepIds(manual?.steps || contentObj?.steps || manual?.content || []),
+            // Introduction fields fallback
+            guideType: manual?.guideType || contentObj?.guideType || 'Replacement',
+            category: manual?.category || contentObj?.category || '',
+            introductionText: manual?.introductionText || contentObj?.introductionText || '',
+            flags: manual?.flags || contentObj?.flags || ['In Progress'],
+            accessControl: manual?.accessControl || contentObj?.accessControl || { isPublic: true, teams: [], individuals: [] },
+            editPermissions: manual?.editPermissions || contentObj?.editPermissions || 0,
+            tags: manual?.tags || contentObj?.tags || []
         };
     };
 
@@ -293,6 +326,7 @@ function ManualCreation() {
     const [rawVideoFile, setRawVideoFile] = useState(null);
     const [currentUserName, setCurrentUserName] = useState('User 1');
     const [currentUserRole, setCurrentUserRole] = useState('Author');
+    const [activeTab, setActiveTab] = useState('edit'); // edit, info, management, history
 
     const location = useLocation();
 
@@ -384,7 +418,7 @@ function ManualCreation() {
                     setGuide(prev => ({
                         ...prev,
                         title: project.projectName || tt('manual.workInstructions', 'Work Instructions'),
-                        steps: newSteps
+                        steps: ensureUniqueStepIds(newSteps)
                     }));
                     if (newSteps.length > 0) setActiveStepId(newSteps[0].id);
                 }
@@ -1033,20 +1067,24 @@ function ManualCreation() {
 
     const handleLoadManualsList = async () => {
         try {
-            let cloudManuals = [];
-            try {
-                cloudManuals = await listManuals();
-            } catch {
-                cloudManuals = [];
-            }
-
+            // Load from both Cloud (Turso manuals table) and Local KB (which now also checks Turso KB table)
             const items = await getAllKnowledgeBaseItems();
             const localManuals = items.filter(item => item.type === 'manual');
 
+            let cloudManuals = [];
+            if (isTursoConfigured()) {
+                try {
+                    cloudManuals = await listManuals();
+                } catch (e) {
+                    console.warn('Sync notice: Could not list manuals from Turso:', e);
+                }
+            }
+
             const mergedMap = new Map();
+            // Order matters: later items overwrite earlier ones. Local/KB items are usually richer.
             [...cloudManuals, ...localManuals].forEach((m) => {
                 const key = String(m.cloudId || m.cloud_id || m.id);
-                if (!mergedMap.has(key)) mergedMap.set(key, m);
+                mergedMap.set(key, m);
             });
 
             const manuals = Array.from(mergedMap.values());
@@ -1056,6 +1094,43 @@ function ManualCreation() {
             console.error('Error loading manuals list:', error);
             await showAlert('Error', t('manual.alerts.loadManualsFailed'));
         }
+    };
+
+    // Video Clipping Feature
+    const handleMarkIn = () => {
+        if (!videoRef.current || !activeStepId) return;
+        const time = Math.round(videoRef.current.currentTime * 10) / 10;
+        const currentStep = guide.steps.find(s => s.id === activeStepId);
+        if (!currentStep) return;
+
+        const update = { startTime: time };
+        // Auto-set as video media if not already set or if it's an image
+        if (!currentStep.media || currentStep.media.type !== 'youtube') {
+            update.media = { type: 'video', url: videoSrc };
+        }
+        handleStepChange(activeStepId, update);
+    };
+
+    const handleMarkOut = () => {
+        if (!videoRef.current || !activeStepId) return;
+        const time = Math.round(videoRef.current.currentTime * 10) / 10;
+        const currentStep = guide.steps.find(s => s.id === activeStepId);
+        if (!currentStep) return;
+
+        const startTime = currentStep.startTime || 0;
+        const duration = Math.max(0, time - startTime);
+        const update = { duration: Math.round(duration * 10) / 10 };
+
+        // Auto-set as video media if not already set or if it's an image
+        if (!currentStep.media || currentStep.media.type !== 'youtube') {
+            update.media = { type: 'video', url: videoSrc };
+        }
+        handleStepChange(activeStepId, update);
+    };
+
+    const handleSeekTo = (time) => {
+        if (!videoRef.current || time === undefined) return;
+        videoRef.current.currentTime = time;
     };
 
     const handleOpenManual = (manual) => {
@@ -1083,7 +1158,7 @@ function ManualCreation() {
         };
         setGuide(prev => ({
             ...prev,
-            steps: [...prev.steps, newStep]
+            steps: ensureUniqueStepIds([...prev.steps, newStep])
         }));
         setActiveStepId(newStep.id);
     };
@@ -1097,10 +1172,16 @@ function ManualCreation() {
         if (activeStepId === id) setActiveStepId(null);
     };
 
-    const handleStepChange = (id, updatedStep) => {
+    const handleStepChange = (id, fieldOrUpdate, value) => {
         setGuide(prev => ({
             ...prev,
-            steps: prev.steps.map(s => s.id === id ? updatedStep : s)
+            steps: prev.steps.map(s => {
+                if (s.id !== id) return s;
+                if (typeof fieldOrUpdate === 'string') {
+                    return { ...s, [fieldOrUpdate]: value };
+                }
+                return { ...s, ...fieldOrUpdate };
+            })
         }));
     };
 
@@ -1123,7 +1204,6 @@ function ManualCreation() {
             }
 
             handleStepChange(stepId, {
-                ...guide.steps.find(s => s.id === stepId),
                 instructions: instructions,
                 bullets: [...(guide.steps.find(s => s.id === stepId).bullets || []), ...bullets]
             });
@@ -1178,10 +1258,10 @@ function ManualCreation() {
                 }));
 
                 if (await showConfirm(t('manual.alerts.confirmOverwriteSteps', { count: formattedSteps.length }))) {
-                    setGuide(prev => ({ ...prev, steps: formattedSteps }));
+                    setGuide(prev => ({ ...prev, steps: ensureUniqueStepIds(formattedSteps) }));
                     if (formattedSteps.length > 0) setActiveStepId(formattedSteps[0].id);
                 } else if (await showConfirm(t('manual.alerts.confirmAppendSteps', { count: formattedSteps.length }))) {
-                    setGuide(prev => ({ ...prev, steps: [...prev.steps, ...formattedSteps] }));
+                    setGuide(prev => ({ ...prev, steps: ensureUniqueStepIds([...prev.steps, ...formattedSteps]) }));
                 }
             }
         } catch (error) {
@@ -1211,7 +1291,6 @@ function ManualCreation() {
             const currentStep = guide.steps.find(s => s.id === stepId);
             if (currentStep) {
                 handleStepChange(stepId, {
-                    ...currentStep,
                     media: { type: 'image', url: dataUrl }
                 });
             }
@@ -1243,7 +1322,6 @@ function ManualCreation() {
             const improved = await improveManualContent(inputContent);
 
             handleStepChange(stepId, {
-                ...currentStep,
                 instructions: `<p>${improved.description}</p>`,
                 // We typically don't want to replace bullets entirely, maybe just update text if matched?
                 // For simplicity, let's stick to improving the instructions text for now to avoid messing up structural bullets.
@@ -1270,7 +1348,6 @@ function ManualCreation() {
         const currentStep = guide.steps.find(s => s.id === activeStepId);
         if (currentStep) {
             handleStepChange(activeStepId, {
-                ...currentStep,
                 media: { type: 'image', url: dataUrl }
             });
         }
@@ -1706,7 +1783,7 @@ function ManualCreation() {
             if (await showConfirm(t('manual.alerts.confirmAppendExcelSteps', { count: newSteps.length }))) {
                 setGuide(prev => ({
                     ...prev,
-                    steps: [...prev.steps, ...newSteps]
+                    steps: ensureUniqueStepIds([...prev.steps, ...newSteps])
                 }));
                 if (newSteps.length > 0) setActiveStepId(newSteps[0].id);
             }
@@ -1771,7 +1848,7 @@ function ManualCreation() {
                 if (await showConfirm(t('manual.alerts.confirmAppendWordSteps', { count: newSteps.length }))) {
                     setGuide(prev => ({
                         ...prev,
-                        steps: [...prev.steps, ...newSteps]
+                        steps: ensureUniqueStepIds([...prev.steps, ...newSteps])
                     }));
                     if (newSteps.length > 0) setActiveStepId(newSteps[0].id);
                 }
@@ -1874,119 +1951,112 @@ function ManualCreation() {
                     border-color: rgba(255, 255, 255, 0.2);
                 }
             `}</style>
-            {/* Top Bar */}
+            {/* Top Bar - Compact & Icon Focused */}
             <div style={{
-                height: '64px',
+                height: '56px',
                 borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
                 display: 'flex',
                 alignItems: 'center',
-                padding: '0 24px',
-                backgroundColor: 'rgba(20, 20, 25, 0.8)',
+                padding: '0 16px',
+                backgroundColor: 'rgba(15, 15, 20, 0.95)',
                 backdropFilter: 'blur(10px)',
-                zIndex: 100
+                zIndex: 100,
+                gap: '12px'
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginRight: 'auto' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
-                        width: '36px', height: '36px',
+                        width: '32px', height: '32px',
                         background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                        borderRadius: '10px',
+                        borderRadius: '8px',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         color: 'white',
                         boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
                     }}>
-                        <Book size={20} />
+                        <Book size={18} />
                     </div>
-                    <h2 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0, letterSpacing: '-0.02em', color: '#fff' }}>
-                        {tt('manual.creator', 'Manual Creator')}
-                    </h2>
                 </div>
 
+                <div style={{ height: '24px', width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+
+                <div style={{ display: 'flex', gap: '4px' }}>
+                    <button onClick={handleSaveManual} className="btn-icon-label" title={tt('common.save', 'Save')} style={{ color: '#16a34a' }}>
+                        <Save size={18} />
+                    </button>
+                    <button onClick={handleLoadManualsList} className="btn-icon-label" title={tt('common.open', 'Open')}>
+                        <FolderOpen size={18} />
+                    </button>
+                    <button onClick={() => setIsPreviewMode(!isPreviewMode)} className="btn-icon-label" title={tt('common.preview', 'Preview')} style={{ color: isPreviewMode ? '#3b82f6' : 'inherit' }}>
+                        {isPreviewMode ? <Layout size={18} /> : <Eye size={18} />}
+                    </button>
+                    <button onClick={handleCreateVersion} className="btn-icon-label" title={tt('manual.createVersionSnapshot', 'New Version')} style={{ color: '#93c5fd' }}>
+                        <Layers size={18} />
+                    </button>
+                    <button
+                        onClick={() => setIsOperatorMode(prev => {
+                            const next = !prev;
+                            if (next) setOperatorStepIndex(0);
+                            return next;
+                        })}
+                        className="btn-icon-label"
+                        title={tt('manual.operator', 'Operator Mode')}
+                        style={{ color: isOperatorMode ? '#10b981' : 'inherit', background: isOperatorMode ? 'rgba(16, 185, 129, 0.1)' : '' }}
+                    >
+                        <Play size={18} />
+                    </button>
+                </div>
+
+                <div style={{ height: '24px', width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+
+                {/* Tabs - The Landscape Optimizer */}
+                <div style={{ display: 'flex', gap: '4px', flex: 1, justifyContent: 'center' }}>
+                    {[
+                        { id: 'intro', label: 'Introduction', icon: BookOpen },
+                        { id: 'edit', label: 'Guide Steps', icon: List },
+                        { id: 'info', label: 'Details', icon: Info },
+                        { id: 'management', label: 'Approval Process', icon: Shield },
+                        { id: 'history', label: 'History', icon: Activity }
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '6px 16px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                background: activeTab === tab.id ? 'rgba(37, 99, 235, 0.15)' : 'transparent',
+                                color: activeTab === tab.id ? '#60a5fa' : 'rgba(255,255,255,0.5)',
+                                fontSize: '0.85rem',
+                                fontWeight: activeTab === tab.id ? '700' : '500',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            <tab.icon size={14} />
+                            <span className="hide-on-small">{tab.label}</span>
+                        </button>
+                    ))}
+                </div>
+
+                <div style={{ height: '24px', width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    {/* Toggle Preview */}
-                    <button
-                        onClick={() => setIsPreviewMode(!isPreviewMode)}
-                        className="btn-pro"
-                        style={{
-                            backgroundColor: isPreviewMode ? 'rgba(37, 99, 235, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                            color: isPreviewMode ? '#60a5fa' : 'white',
-                            border: isPreviewMode ? '1px solid rgba(37, 99, 235, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)',
-                            minWidth: '130px',
-                            justifyContent: 'center'
-                        }}
-                    >
-                        {isPreviewMode ? <Layout size={16} /> : <Eye size={16} />}
-                        {isPreviewMode ? tt('common.edit', 'Edit Mode') : tt('common.preview', 'Preview Mode')}
-                    </button>
-
-                    <div style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255, 255, 255, 0.1)', margin: '0 4px' }} />
-
-                    <button
-                        onClick={handleSaveManual}
-                        className="btn-pro"
-                        style={{ backgroundColor: '#16a34a', color: 'white', border: 'none' }}
-                        title={tt('common.save', 'Save')}
-                    >
-                        <Save size={16} />
-                        {tt('common.save', 'Save')}
-                    </button>
-                    <button
-                        onClick={handleLoadManualsList}
-                        className="btn-pro"
-                        style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'white' }}
-                        title={tt('common.open', 'Open')}
-                    >
-                        <FolderOpen size={16} />
-                        {tt('common.open', 'Open')}
-                    </button>
-
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                         <select
                             value={guide.workflow?.status || guide.status || 'Draft'}
                             onChange={(e) => handleWorkflowStatusChange(e.target.value)}
                             className="pro-select"
-                            style={{ paddingRight: '32px', minWidth: '135px' }}
+                            style={{ fontSize: '0.75rem', padding: '4px 28px 4px 10px', minWidth: '100px', height: '32px' }}
                         >
                             {WORKFLOW_STATUSES.map((statusItem) => (
                                 <option key={statusItem} value={statusItem}>{getWorkflowStatusLabel(statusItem)}</option>
                             ))}
                         </select>
-                        <Activity size={14} style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'rgba(255, 255, 255, 0.4)' }} />
+                        <ChevronDown size={12} style={{ position: 'absolute', right: '8px', pointerEvents: 'none', opacity: 0.5 }} />
                     </div>
 
-                    <button
-                        onClick={handleCreateVersion}
-                        className="btn-pro"
-                        style={{ backgroundColor: 'rgba(37, 99, 235, 0.15)', color: '#93c5fd', borderColor: 'rgba(59, 130, 246, 0.35)' }}
-                        title={tt('manual.createVersionSnapshot', 'Create Version Snapshot')}
-                    >
-                        <Layers size={16} />
-                        {tt('manual.newVersion', 'New Ver')}
-                    </button>
-
-                    <button
-                        onClick={() => {
-                            setIsOperatorMode(prev => {
-                                const next = !prev;
-                                if (next) setOperatorStepIndex(0);
-                                return next;
-                            });
-                        }}
-                        className="btn-pro"
-                        style={{
-                            backgroundColor: isOperatorMode ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                            color: isOperatorMode ? '#6ee7b7' : 'white',
-                            borderColor: isOperatorMode ? 'rgba(16, 185, 129, 0.35)' : 'rgba(255, 255, 255, 0.1)'
-                        }}
-                    >
-                        <Play size={16} />
-                        {isOperatorMode ? tt('manual.operatorOn', 'Operator ON') : tt('manual.operator', 'Operator')}
-                    </button>
-
-
-
-                    <div style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255, 255, 255, 0.1)', margin: '0 4px' }} />
-
-                    {/* Export Select */}
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                         <select
                             onChange={(e) => {
@@ -1994,85 +2064,31 @@ function ManualCreation() {
                                 if (format === 'pdf') exportToPDF();
                                 else if (format === 'word') exportToWord();
                                 else if (format === 'pptx') exportToPowerPoint();
-                                e.target.value = ''; // Reset
+                                e.target.value = '';
                             }}
-                            disabled={!selectedProject}
                             className="pro-select"
-                            style={{ paddingRight: '32px', minWidth: '140px' }}
+                            style={{ fontSize: '0.75rem', padding: '4px 28px 4px 10px', minWidth: '100px', height: '32px' }}
                         >
-                            <option value="">{tt('common.exportAs', 'Export As...')}</option>
-                            <option value="pdf">📄 {tt('manual.exportPdfDocument', 'PDF Document')}</option>
-                            <option value="word">📝 {tt('manual.exportWordDocument', 'MS Word (.docx)')}</option>
-                            <option value="pptx">📊 {tt('manual.exportPowerPoint', 'PowerPoint (.pptx)')}</option>
+                            <option value="">Export</option>
+                            <option value="pdf">PDF</option>
+                            <option value="word">Word</option>
+                            <option value="pptx">PPTX</option>
                         </select>
-                        <FileDown size={14} style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'rgba(255, 255, 255, 0.4)' }} />
+                        <FileDown size={12} style={{ position: 'absolute', right: '8px', pointerEvents: 'none', opacity: 0.5 }} />
                     </div>
 
-                    {/* Language Select */}
-                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: '800' }}>
+                            {currentUserName.charAt(0)}
+                        </div>
                         <select
-                            value={generationLanguage}
-                            onChange={(e) => setGenerationLanguage(e.target.value)}
-                            className="pro-select"
-                            style={{ paddingRight: '32px', minWidth: '110px' }}
+                            value={currentUserRole}
+                            onChange={(e) => setCurrentUserRole(e.target.value)}
+                            style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '0.7rem', outline: 'none', cursor: 'pointer' }}
                         >
-                            <option value="English">🇺🇸 EN</option>
-                            <option value="Indonesian">🇮🇩 ID</option>
-                            <option value="Japanese">🇯🇵 JA</option>
-                            <option value="Korean">🇰🇷 KR</option>
-                            <option value="Chinese">🇨🇳 ZH</option>
+                            {USER_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
                         </select>
-                        <Globe size={14} style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'rgba(255, 255, 255, 0.4)' }} />
                     </div>
-
-                    {/* Layout Select */}
-                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                        <select
-                            value={layoutTemplate}
-                            onChange={(e) => setLayoutTemplate(e.target.value)}
-                            className="pro-select"
-                            style={{ paddingRight: '32px', minWidth: '130px' }}
-                        >
-                            <option value="standard">📐 {tt('manual.layoutStandard', 'Standard')}</option>
-                            <option value="compact">📋 {tt('manual.layoutCompact', 'Compact')}</option>
-                            <option value="one-per-page">📄 {tt('manual.layoutSinglePage', 'Single Page')}</option>
-                        </select>
-                        <Layers size={14} style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'rgba(255, 255, 255, 0.4)' }} />
-                    </div>
-
-                    <div style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255, 255, 255, 0.1)', margin: '0 4px' }} />
-
-                    {/* Project Select */}
-                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                        <select
-                            value={selectedProjectId}
-                            onChange={(e) => setSelectedProjectId(e.target.value)}
-                            className="pro-select"
-                            style={{ paddingRight: '32px', minWidth: '160px', backgroundColor: 'rgba(59, 130, 246, 0.05)', borderColor: 'rgba(59, 130, 246, 0.3)' }}
-                        >
-                            <option value="">{tt('common.selectProject', 'Select Project')}</option>
-                            {projects.map(p => (
-                                <option key={p.projectName} value={p.projectName}>{p.projectName}</option>
-                            ))}
-                        </select>
-                        <ChevronDown size={14} style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: '#60a5fa' }} />
-                    </div>
-
-                    <input
-                        className="pro-select"
-                        value={currentUserName}
-                        onChange={(e) => setCurrentUserName(e.target.value)}
-                        placeholder={tt('manual.user', 'User')}
-                        style={{ minWidth: '120px' }}
-                    />
-                    <select
-                        value={currentUserRole}
-                        onChange={(e) => setCurrentUserRole(e.target.value)}
-                        className="pro-select"
-                        style={{ minWidth: '120px' }}
-                    >
-                        {USER_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
-                    </select>
 
                     <HelpButton
                         title={helpContent['manual-creation'].title}
@@ -2138,12 +2154,32 @@ function ManualCreation() {
                                             </button>
                                         </div>
 
-                                        {operatorCurrentStep.media?.url && (
-                                            <img
-                                                src={operatorCurrentStep.media.url}
-                                                alt={operatorCurrentStep.title}
-                                                style={{ width: '100%', maxHeight: '320px', objectFit: 'contain', borderRadius: '12px', marginBottom: '18px', border: '1px solid rgba(255,255,255,0.1)' }}
-                                            />
+                                        {operatorCurrentStep.media && (
+                                            <div style={{ position: 'relative', width: '100%', borderRadius: '12px', overflow: 'hidden', marginBottom: '18px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                {(!operatorCurrentStep.media.type || operatorCurrentStep.media.type === 'image') && operatorCurrentStep.media.url && (
+                                                    <img
+                                                        src={operatorCurrentStep.media.url}
+                                                        alt={operatorCurrentStep.title}
+                                                        style={{ width: '100%', maxHeight: '400px', objectFit: 'contain' }}
+                                                    />
+                                                )}
+                                                {operatorCurrentStep.media.type === 'video' && videoSrc && (
+                                                    <video
+                                                        src={`${videoSrc}#t=${operatorCurrentStep.startTime || 0}${operatorCurrentStep.duration ? ',' + (Math.round(((operatorCurrentStep.startTime || 0) + operatorCurrentStep.duration) * 10) / 10) : ''}`}
+                                                        controls
+                                                        style={{ width: '100%', maxHeight: '400px', display: 'block' }}
+                                                    />
+                                                )}
+                                                {operatorCurrentStep.media.type === 'youtube' && operatorCurrentStep.media.youtubeUrl && (
+                                                    <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                                                        <iframe
+                                                            src={operatorCurrentStep.media.youtubeUrl.replace('watch?v=', 'embed/').split('&')[0]}
+                                                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                                                            allowFullScreen
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
 
                                         {operatorCurrentStep.instructions && (
@@ -2293,28 +2329,43 @@ function ManualCreation() {
                                             </div>
 
                                             <div style={{ display: 'grid', gridTemplateColumns: step.media?.url ? '1fr 1fr' : '1fr', gap: '32px', padding: '32px' }}>
-                                                {step.media && step.media.url && (
-                                                    <div style={{ position: 'relative' }}>
-                                                        <img
-                                                            src={step.media.url}
-                                                            alt={step.title}
-                                                            style={{
-                                                                width: '100%',
-                                                                borderRadius: '16px',
-                                                                boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-                                                                border: '1px solid rgba(255, 255, 255, 0.1)'
-                                                            }}
-                                                        />
-                                                        <div style={{
-                                                            position: 'absolute', top: '16px', right: '16px',
-                                                            width: '32px', height: '32px',
-                                                            borderRadius: '50%', background: 'rgba(0,0,0,0.5)',
-                                                            backdropFilter: 'blur(4px)',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                            color: '#fff'
-                                                        }}>
-                                                            <Eye size={16} />
-                                                        </div>
+                                                {step.media && (
+                                                    <div style={{ position: 'relative', width: '100%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.3)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                                                        {(!step.media.type || step.media.type === 'image') && step.media.url && (
+                                                            <>
+                                                                <img
+                                                                    src={step.media.url}
+                                                                    alt={step.title}
+                                                                    style={{ width: '100%', display: 'block' }}
+                                                                />
+                                                                <div style={{
+                                                                    position: 'absolute', top: '16px', right: '16px',
+                                                                    width: '32px', height: '32px',
+                                                                    borderRadius: '50%', background: 'rgba(0,0,0,0.5)',
+                                                                    backdropFilter: 'blur(4px)',
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                    color: '#fff'
+                                                                }}>
+                                                                    <Eye size={16} />
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                        {step.media.type === 'video' && videoSrc && (
+                                                            <video
+                                                                src={`${videoSrc}#t=${step.startTime || 0}${step.duration ? ',' + (Math.round(((step.startTime || 0) + step.duration) * 10) / 10) : ''}`}
+                                                                controls
+                                                                style={{ width: '100%', display: 'block' }}
+                                                            />
+                                                        )}
+                                                        {step.media.type === 'youtube' && step.media.youtubeUrl && (
+                                                            <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                                                                <iframe
+                                                                    src={step.media.youtubeUrl.replace('watch?v=', 'embed/').split('&')[0]}
+                                                                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                                                                    allowFullScreen
+                                                                />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
 
@@ -2357,483 +2408,148 @@ function ManualCreation() {
                                 </div>
                             </div>
                         ) : (
-                            <div style={{ display: 'flex', flex: 1, overflow: 'hidden', animation: 'slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
-                                <div style={{ width: '280px', borderRight: '1px solid rgba(255, 255, 255, 0.08)', overflowY: 'auto', backgroundColor: 'rgba(255, 255, 255, 0.01)' }}>
-                                    <StepList steps={guide.steps} activeStepId={activeStepId} onSelectStep={handleStepSelect} onAddStep={handleAddStep} onDeleteStep={handleDeleteStep} />
-                                </div>
-                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '24px', backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
-                                    <div className="glass-panel" style={{ padding: '24px' }}>
-                                        <div style={{ opacity: canEditManual ? 1 : 0.65, pointerEvents: canEditManual ? 'auto' : 'none' }}>
-                                            <GuideHeader headerInfo={guide} onChange={(info) => setGuide(prev => ({ ...prev, ...info }))} />
-                                        </div>
-                                        <div style={{ margin: '24px 0', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }} />
-
-                                        <div className="glass-panel" style={{ padding: '12px', marginBottom: '16px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                                                <div>
-                                                    <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>SOP QR Access</div>
-                                                    <div style={{ fontSize: '0.8rem', color: '#93c5fd', marginTop: '4px', wordBreak: 'break-all' }}>{manualPublicLink}</div>
-                                                </div>
-                                                <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: '#fff' }}>
-                                                    {QRCodePreviewComponent ? (
-                                                        <QRCodePreviewComponent value={manualPublicLink} size={88} />
-                                                    ) : qrPreviewDataUrl ? (
-                                                        <img src={qrPreviewDataUrl} alt="SOP QR" style={{ width: '88px', height: '88px', display: 'block' }} />
-                                                    ) : (
-                                                        <div style={{ width: '88px', height: '88px', color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>QR</div>
-                                                    )}
-                                                </div>
+                            <div style={{ display: 'flex', flex: 1, flexDirection: 'column', overflow: 'hidden', animation: 'slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
+                                {activeTab === 'edit' && (
+                                    <>
+                                        <StepList
+                                            steps={guide.steps}
+                                            activeStepId={activeStepId}
+                                            onSelectStep={handleStepSelect}
+                                            onAddStep={handleAddStep}
+                                            onDeleteStep={handleDeleteStep}
+                                            horizontal={true}
+                                        />
+                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '16px', backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
+                                            <div style={{ opacity: canEditManual ? 1 : 0.65, pointerEvents: canEditManual ? 'auto' : 'none' }}>
+                                                <StepEditor
+                                                    step={activeStep}
+                                                    onChange={handleStepChange}
+                                                    onCaptureImage={handleCaptureFrame}
+                                                    onAiImprove={handleAiImprove}
+                                                    onAiGenerate={handleAiGenerate}
+                                                    onAiGenerateFromVideo={handleVideoAiGenerate}
+                                                    isAiLoading={isAiLoading}
+                                                />
                                             </div>
                                         </div>
+                                    </>
+                                )}
+                                {activeTab === 'intro' && (
+                                    <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
+                                        <GuideIntroduction
+                                            guide={guide}
+                                            onChange={(newGuide) => setGuide(newGuide)}
+                                            onDelete={() => {
+                                                showConfirm('Delete Guide?', 'This action is irreversible.', () => {
+                                                    // Handle guide deletion logic here if needed
+                                                    setSelectedProject(null);
+                                                });
+                                            }}
+                                        />
+                                    </div>
+                                )}
 
-                                        {activeStep && (
-                                            <div className="glass-panel" style={{ padding: '12px', marginBottom: '16px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                                {activeTab === 'info' && (
+                                    <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
+                                        <GuideDetails
+                                            guide={guide}
+                                            onChange={(newGuide) => setGuide(newGuide)}
+                                        />
+
+                                        <div style={{ margin: '40px 0 24px 0', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }} />
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
+                                            <div className="glass-panel" style={{ padding: '20px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '800', marginBottom: '16px' }}>SOP Quick Access QR</div>
+                                                <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                                                    <div style={{ padding: '12px', borderRadius: '16px', backgroundColor: '#fff' }}>
+                                                        {QRCodePreviewComponent ? <QRCodePreviewComponent value={manualPublicLink} size={100} /> : qrPreviewDataUrl ? <img src={qrPreviewDataUrl} alt="SOP QR" style={{ width: '100px', height: '100px' }} /> : 'QR'}
+                                                    </div>
                                                     <div>
-                                                        <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>Step/Station QR Deep Link</div>
-                                                        <div style={{ fontSize: '0.85rem', color: '#fff', marginTop: '4px' }}>
-                                                            {guide.steps.findIndex(s => s.id === activeStep.id) + 1}. {activeStep.title || 'Untitled Step'}
+                                                        <div style={{ fontSize: '0.8rem', color: '#93c5fd', marginBottom: '8px', wordBreak: 'break-all', opacity: 0.8 }}>{manualPublicLink}</div>
+                                                        <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>Scan for mobile access</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {activeStep && (
+                                                <div className="glass-panel" style={{ padding: '20px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                                                    <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '800', marginBottom: '16px' }}>Active Step QR</div>
+                                                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                                                        <div style={{ padding: '12px', borderRadius: '16px', backgroundColor: '#fff' }}>
+                                                            {QRCodePreviewComponent ? <QRCodePreviewComponent value={buildStepPublicLink(activeStep, 0)} size={100} /> : qrPreviewDataUrl ? <img src={qrPreviewDataUrl} alt="Step QR" style={{ width: '100px', height: '100px' }} /> : 'QR'}
                                                         </div>
-                                                        <div style={{ fontSize: '0.78rem', color: '#93c5fd', marginTop: '4px', wordBreak: 'break-all' }}>
-                                                            {buildStepPublicLink(activeStep, Math.max(guide.steps.findIndex(s => s.id === activeStep.id), 0))}
+                                                        <div>
+                                                            <div style={{ fontSize: '0.85rem', color: '#fff', marginBottom: '4px', fontWeight: '600' }}>{activeStep.title || 'Untitled Step'}</div>
+                                                            <div style={{ fontSize: '0.7rem', color: '#93c5fd', wordBreak: 'break-all', opacity: 0.8 }}>{buildStepPublicLink(activeStep, 0)}</div>
                                                         </div>
                                                     </div>
-                                                    <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: '#fff' }}>
-                                                        {QRCodePreviewComponent ? (
-                                                            <QRCodePreviewComponent
-                                                                value={buildStepPublicLink(activeStep, Math.max(guide.steps.findIndex(s => s.id === activeStep.id), 0))}
-                                                                size={88}
-                                                            />
-                                                        ) : qrPreviewDataUrl ? (
-                                                            <img src={qrPreviewDataUrl} alt="Step QR" style={{ width: '88px', height: '88px', display: 'block' }} />
-                                                        ) : (
-                                                            <div style={{ width: '88px', height: '88px', color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>QR</div>
-                                                        )}
-                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
-
-                                        {/* Workflow + Version History */}
-                                        <div style={{ marginBottom: '24px', display: 'grid', gap: '12px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div>
-                                                    <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>Workflow</div>
-                                                    <div style={{ marginTop: '4px', fontWeight: '700' }}>{getWorkflowStatusLabel(guide.workflow?.status || guide.status || 'Draft')}</div>
-                                                </div>
-                                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>
-                                                    Updated by {guide.workflow?.updatedBy || 'System'} • {guide.workflow?.updatedAt ? new Date(guide.workflow.updatedAt).toLocaleString() : '-'}
-                                                </div>
-                                            </div>
-
-                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                                    <strong style={{ fontSize: '0.9rem' }}>Version History</strong>
-                                                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>{guide.versionHistory?.length || 0} snapshots</span>
-                                                </div>
-
-                                                {(guide.versionHistory || []).length === 0 ? (
-                                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No snapshots yet. Click "New Ver" to create version snapshot.</div>
-                                                ) : (
-                                                    <div style={{ display: 'grid', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
-                                                        {guide.versionHistory.map((v) => (
-                                                            <div key={v.id} style={{
-                                                                display: 'flex',
-                                                                justifyContent: 'space-between',
-                                                                alignItems: 'center',
-                                                                backgroundColor: 'rgba(255,255,255,0.03)',
-                                                                border: '1px solid rgba(255,255,255,0.08)',
-                                                                borderRadius: '10px',
-                                                                padding: '8px 10px'
-                                                            }}>
-                                                                <div>
-                                                                    <div style={{ fontSize: '0.84rem', fontWeight: '700' }}>v{v.version} — {v.summary || 'Snapshot'}</div>
-                                                                    <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)' }}>{v.updatedBy || 'System'} • {v.updatedAt ? new Date(v.updatedAt).toLocaleString() : '-'}</div>
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => handleRestoreVersion(v)}
-                                                                    className="btn-pro"
-                                                                    style={{
-                                                                        padding: '6px 10px',
-                                                                        fontSize: '0.75rem',
-                                                                        backgroundColor: 'rgba(59,130,246,0.14)',
-                                                                        color: '#93c5fd',
-                                                                        borderColor: 'rgba(59,130,246,0.35)'
-                                                                    }}
-                                                                >
-                                                                    Restore
-                                                                </button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Template Fields (Tools / Parts / PPE) */}
-                                        <div style={{ marginBottom: '24px' }}>
-                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '10px' }}>
-                                                Template Fields
-                                            </div>
-
-                                            <div style={{ display: 'grid', gap: '12px' }}>
-                                                {[
-                                                    { key: 'tools', title: 'Tools' },
-                                                    { key: 'parts', title: 'Parts' },
-                                                    { key: 'ppe', title: 'PPE' }
-                                                ].map(section => (
-                                                    <div key={section.key} className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                                            <strong style={{ fontSize: '0.9rem' }}>{section.title}</strong>
-                                                            <button
-                                                                onClick={() => addTemplateItem(section.key)}
-                                                                className="btn-pro"
-                                                                style={{
-                                                                    padding: '6px 10px',
-                                                                    fontSize: '0.75rem',
-                                                                    backgroundColor: 'rgba(16,185,129,0.15)',
-                                                                    color: '#6ee7b7',
-                                                                    borderColor: 'rgba(16,185,129,0.35)'
-                                                                }}
-                                                            >
-                                                                <Plus size={12} /> Add
-                                                            </button>
-                                                        </div>
-
-                                                        {(guide.templateFields?.[section.key] || []).length === 0 ? (
-                                                            <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No {section.title.toLowerCase()} added.</div>
-                                                        ) : (
-                                                            <div style={{ display: 'grid', gap: '8px' }}>
-                                                                {(guide.templateFields?.[section.key] || []).map((item, idx) => (
-                                                                    <div key={`${section.key}-${idx}`} style={{ display: 'grid', gap: '6px', backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px' }}>
-                                                                        {section.key === 'tools' && (
-                                                                            <>
-                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="Tool name" value={item.name || ''} onChange={(e) => updateTemplateItem('tools', idx, 'name', e.target.value)} />
-                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="Qty" value={item.qty || ''} onChange={(e) => updateTemplateItem('tools', idx, 'qty', e.target.value)} />
-                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="Note" value={item.note || ''} onChange={(e) => updateTemplateItem('tools', idx, 'note', e.target.value)} />
-                                                                            </>
-                                                                        )}
-                                                                        {section.key === 'parts' && (
-                                                                            <>
-                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="Part No" value={item.partNo || ''} onChange={(e) => updateTemplateItem('parts', idx, 'partNo', e.target.value)} />
-                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="Part name" value={item.name || ''} onChange={(e) => updateTemplateItem('parts', idx, 'name', e.target.value)} />
-                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="Qty" value={item.qty || ''} onChange={(e) => updateTemplateItem('parts', idx, 'qty', e.target.value)} />
-                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="Note" value={item.note || ''} onChange={(e) => updateTemplateItem('parts', idx, 'note', e.target.value)} />
-                                                                            </>
-                                                                        )}
-                                                                        {section.key === 'ppe' && (
-                                                                            <>
-                                                                                <input className="pro-select" style={{ width: '100%' }} placeholder="PPE name" value={item.name || ''} onChange={(e) => updateTemplateItem('ppe', idx, 'name', e.target.value)} />
-                                                                                <label style={{ fontSize: '0.8rem', display: 'flex', gap: '8px', alignItems: 'center', color: 'rgba(255,255,255,0.75)' }}>
-                                                                                    <input type="checkbox" checked={Boolean(item.mandatory)} onChange={(e) => updateTemplateItem('ppe', idx, 'mandatory', e.target.checked)} />
-                                                                                    Mandatory
-                                                                                </label>
-                                                                            </>
-                                                                        )}
-
-                                                                        <button
-                                                                            onClick={() => removeTemplateItem(section.key, idx)}
-                                                                            className="btn-pro"
-                                                                            style={{
-                                                                                width: 'fit-content',
-                                                                                padding: '6px 10px',
-                                                                                fontSize: '0.75rem',
-                                                                                backgroundColor: 'rgba(239,68,68,0.15)',
-                                                                                color: '#fca5a5',
-                                                                                borderColor: 'rgba(239,68,68,0.35)'
-                                                                            }}
-                                                                        >
-                                                                            <Trash2 size={12} /> Remove
-                                                                        </button>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* P2: Approval Matrix */}
-                                        <div style={{ marginBottom: '24px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>
-                                                    Approval Matrix
-                                                </div>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button className="btn-pro" onClick={handleAddApprovalLevel} disabled={!canEditManual} title={!canEditManual ? 'Author/Admin only' : ''} style={{ padding: '6px 10px', fontSize: '0.75rem', backgroundColor: 'rgba(16,185,129,0.15)', color: '#6ee7b7', borderColor: 'rgba(16,185,129,0.35)', opacity: canEditManual ? 1 : 0.5 }}>
-                                                        <Plus size={12} /> Add Level
-                                                    </button>
-                                                    <button className="btn-pro" onClick={handleSubmitForApproval} disabled={!canSubmitApproval} title={!canSubmitApproval ? 'Author/Admin only' : ''} style={{ padding: '6px 10px', fontSize: '0.75rem', backgroundColor: 'rgba(59,130,246,0.14)', color: '#93c5fd', borderColor: 'rgba(59,130,246,0.35)', opacity: canSubmitApproval ? 1 : 0.5 }}>
-                                                        Submit Approval
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)', display: 'grid', gap: '8px' }}>
-                                                {(guide.approvalMatrix || []).map(level => (
-                                                    <div key={level.id} style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr 90px auto', gap: '8px', alignItems: 'center' }}>
-                                                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>L{level.level}</div>
-                                                        <input className="pro-select" placeholder="Role" value={level.role || ''} onChange={(e) => handleUpdateApprovalLevel(level.id, 'role', e.target.value)} />
-                                                        <input className="pro-select" placeholder="Approver" value={level.approverName || ''} onChange={(e) => handleUpdateApprovalLevel(level.id, 'approverName', e.target.value)} />
-                                                        <input className="pro-select" placeholder="SLA(h)" value={level.slaHours || ''} onChange={(e) => handleUpdateApprovalLevel(level.id, 'slaHours', e.target.value)} />
-                                                        <button className="btn-pro" onClick={() => handleRemoveApprovalLevel(level.id)} style={{ padding: '6px 8px', fontSize: '0.72rem', backgroundColor: 'rgba(239,68,68,0.15)', color: '#fca5a5', borderColor: 'rgba(239,68,68,0.35)' }}>
-                                                            <Trash2 size={12} />
-                                                        </button>
-                                                    </div>
-                                                ))}
-
-                                                {(guide.approvalRequests || []).length > 0 && (
-                                                    <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'grid', gap: '8px' }}>
-                                                        {(guide.approvalRequests || []).map(req => (
-                                                            <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 10px' }}>
-                                                                <div style={{ fontSize: '0.82rem' }}>L{req.level} • {req.role || '-'} • {req.approverName || 'Unassigned'} • <strong>{req.status}</strong></div>
-                                                                <div style={{ display: 'flex', gap: '6px' }}>
-                                                                    {req.status === 'Pending' && (
-                                                                        <>
-                                                                            <button className="btn-pro" disabled={!canApprove} title={!canApprove ? 'Approver/Admin only' : ''} onClick={() => handleApprovalAction(req.id, 'Approved')} style={{ padding: '5px 8px', fontSize: '0.72rem', backgroundColor: 'rgba(16,185,129,0.15)', color: '#6ee7b7', borderColor: 'rgba(16,185,129,0.35)', opacity: canApprove ? 1 : 0.5 }}>Approve</button>
-                                                                            <button className="btn-pro" disabled={!canApprove} title={!canApprove ? 'Approver/Admin only' : ''} onClick={() => handleApprovalAction(req.id, 'Rejected')} style={{ padding: '5px 8px', fontSize: '0.72rem', backgroundColor: 'rgba(239,68,68,0.15)', color: '#fca5a5', borderColor: 'rgba(239,68,68,0.35)', opacity: canApprove ? 1 : 0.5 }}>Reject</button>
-                                                                        </>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Sprint Next: Inline Comments */}
-                                        <div style={{ marginBottom: '24px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>
-                                                    Inline Comments (per step)
-                                                </div>
-                                                <button
-                                                    className="btn-pro"
-                                                    onClick={() => activeStep && handleAddInlineComment(activeStep.id)}
-                                                    disabled={!activeStep}
-                                                    style={{
-                                                        padding: '6px 10px',
-                                                        fontSize: '0.75rem',
-                                                        opacity: activeStep ? 1 : 0.5,
-                                                        backgroundColor: 'rgba(59,130,246,0.14)',
-                                                        color: '#93c5fd',
-                                                        borderColor: 'rgba(59,130,246,0.35)'
-                                                    }}
-                                                >
-                                                    <Plus size={12} /> Add Comment
-                                                </button>
-                                            </div>
-
-                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                                                {(guide.stepComments || []).filter(c => c.stepId === activeStep?.id).length === 0 ? (
-                                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No comments for current step.</div>
-                                                ) : (
-                                                    <div style={{ display: 'grid', gap: '8px' }}>
-                                                        {(guide.stepComments || []).filter(c => c.stepId === activeStep?.id).map(c => (
-                                                            <div key={c.id} style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 10px' }}>
-                                                                <div style={{ fontSize: '0.82rem', fontWeight: '700' }}>{c.reviewer} • {c.status}</div>
-                                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.72)', marginTop: '4px' }}>{c.comment}</div>
-                                                                {c.status === 'Open' && (
-                                                                    <button className="btn-pro" onClick={() => handleResolveInlineComment(c.id)} style={{ marginTop: '8px', padding: '5px 8px', fontSize: '0.72rem', backgroundColor: 'rgba(16,185,129,0.15)', color: '#6ee7b7', borderColor: 'rgba(16,185,129,0.35)' }}>
-                                                                        Resolve
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Sprint Next: Issue Reporting */}
-                                        <div style={{ marginBottom: '24px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>
-                                                    Issue Reporting
-                                                </div>
-                                                <button className="btn-pro" disabled={!canReportIssue} title={!canReportIssue ? 'Not allowed for this role' : ''} onClick={() => handleReportIssue(activeStep?.id || 'manual')} style={{ padding: '6px 10px', fontSize: '0.75rem', backgroundColor: 'rgba(239,68,68,0.14)', color: '#fca5a5', borderColor: 'rgba(239,68,68,0.35)', opacity: canReportIssue ? 1 : 0.5 }}>
-                                                    <Plus size={12} /> Report Issue
-                                                </button>
-                                            </div>
-
-                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                                                {(guide.issueReports || []).length === 0 ? (
-                                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No issues reported.</div>
-                                                ) : (
-                                                    <div style={{ display: 'grid', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
-                                                        {(guide.issueReports || []).map(issue => (
-                                                            <div key={issue.id} style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 10px' }}>
-                                                                <div style={{ fontSize: '0.82rem', fontWeight: '700' }}>{issue.title} • {issue.category} • {issue.status}</div>
-                                                                <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.62)' }}>{issue.description || '-'}</div>
-                                                                <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)' }}>By {issue.reportedBy} • Step {issue.stepId || '-'} • {new Date(issue.createdAt).toLocaleString()}</div>
-                                                                {issue.rootCause && <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.65)', marginTop: '4px' }}><strong>Root Cause:</strong> {issue.rootCause}</div>}
-                                                                {issue.correctiveAction && <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.65)' }}><strong>Corrective:</strong> {issue.correctiveAction}</div>}
-                                                                {issue.verificationNote && <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.65)' }}><strong>Verification:</strong> {issue.verificationNote}</div>}
-                                                                <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
-                                                                    {(CAPA_TRANSITIONS[issue.status] || []).map(next => (
-                                                                        <button
-                                                                            key={`${issue.id}-${next}`}
-                                                                            className="btn-pro"
-                                                                            disabled={!canManageCAPA}
-                                                                            onClick={() => handleIssueTransition(issue.id, next)}
-                                                                            style={{ padding: '5px 8px', fontSize: '0.7rem', backgroundColor: 'rgba(59,130,246,0.14)', color: '#93c5fd', borderColor: 'rgba(59,130,246,0.35)', opacity: canManageCAPA ? 1 : 0.5 }}
-                                                                        >
-                                                                            {next}
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Sprint Next: Electronic Signature */}
-                                        <div style={{ marginBottom: '24px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>
-                                                    Electronic Signature
-                                                </div>
-                                                <button className="btn-pro" disabled={!canSign} title={!canSign ? 'Approver/Admin only' : ''} onClick={handleSignElectronic} style={{ padding: '6px 10px', fontSize: '0.75rem', backgroundColor: 'rgba(59,130,246,0.14)', color: '#93c5fd', borderColor: 'rgba(59,130,246,0.35)', opacity: canSign ? 1 : 0.5 }}>
-                                                    <CheckCircle size={12} /> Sign
-                                                </button>
-                                            </div>
-
-                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                                                {(guide.eSignatures || []).length === 0 ? (
-                                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No signatures yet.</div>
-                                                ) : (
-                                                    <div style={{ display: 'grid', gap: '8px', maxHeight: '160px', overflowY: 'auto' }}>
-                                                        {(guide.eSignatures || []).map(sig => (
-                                                            <div key={sig.id} style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 10px' }}>
-                                                                <div style={{ fontSize: '0.82rem', fontWeight: '700' }}>{sig.signerName} • {sig.role}</div>
-                                                                <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.62)' }}>{sig.reason || '-'}</div>
-                                                                <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)' }}>PIN: {sig.pinMasked} • v{sig.targetVersion} • {new Date(sig.signedAt).toLocaleString()}</div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* P2: Assignment + Sign-off */}
-                                        <div style={{ marginBottom: '24px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>
-                                                    Assignment & Sign-off
-                                                </div>
-                                                <button className="btn-pro" onClick={handleAddAssignment} style={{ padding: '6px 10px', fontSize: '0.75rem', backgroundColor: 'rgba(16,185,129,0.15)', color: '#6ee7b7', borderColor: 'rgba(16,185,129,0.35)' }}>
-                                                    <Plus size={12} /> Add Assignment
-                                                </button>
-                                            </div>
-
-                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                                                {assignments.length === 0 ? (
-                                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No assignments yet.</div>
-                                                ) : (
-                                                    <div style={{ display: 'grid', gap: '8px' }}>
-                                                        {assignments.map(a => (
-                                                            <div key={a.id} style={{ display: 'grid', gridTemplateColumns: '1fr 130px 140px auto', gap: '8px', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 10px' }}>
-                                                                <div style={{ fontSize: '0.82rem' }}>
-                                                                    <strong>{a.assignee}</strong> • {a.team || '-'} • {a.shift || '-'} • Due: {a.dueAt || '-'}
-                                                                    {a.signedOffBy && <div style={{ fontSize: '0.72rem', color: 'rgba(110,231,183,0.9)' }}>Signed off by {a.signedOffBy}</div>}
-                                                                </div>
-                                                                <select className="pro-select" value={a.status} onChange={(e) => handleAssignmentStatusChange(a.id, e.target.value)}>
-                                                                    <option value="Not Started">Not Started</option>
-                                                                    <option value="In Progress">In Progress</option>
-                                                                    <option value="Done">Done</option>
-                                                                    <option value="Overdue">Overdue</option>
-                                                                </select>
-                                                                <div style={{ fontSize: '0.76rem', color: 'rgba(255,255,255,0.55)' }}>{a.completedAt ? `Completed ${new Date(a.completedAt).toLocaleString()}` : 'Not completed'}</div>
-                                                                <button className="btn-pro" onClick={() => handleSignOffAssignment(a.id)} style={{ padding: '6px 10px', fontSize: '0.72rem', backgroundColor: 'rgba(59,130,246,0.14)', color: '#93c5fd', borderColor: 'rgba(59,130,246,0.35)' }}>
-                                                                    Sign-off
-                                                                </button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* P2: Compliance Dashboard */}
-                                        <div style={{ marginBottom: '24px' }}>
-                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '10px' }}>
-                                                Completion / Compliance Dashboard
-                                            </div>
-                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(120px, 1fr))', gap: '10px', marginBottom: '10px' }}>
-                                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>Completion Rate</div><div style={{ fontWeight: 800, fontSize: '1.15rem' }}>{completionRate}%</div></div>
-                                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>Overdue Rate</div><div style={{ fontWeight: 800, fontSize: '1.15rem' }}>{totalAssignments > 0 ? Math.round((overdueAssignments / totalAssignments) * 100) : 0}%</div></div>
-                                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>First-pass Compliance</div><div style={{ fontWeight: 800, fontSize: '1.15rem' }}>{firstPassCompliance}%</div></div>
-                                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>Avg Completion (h)</div><div style={{ fontWeight: 800, fontSize: '1.15rem' }}>{avgCompletionHours}</div></div>
-                                                </div>
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(120px, 1fr))', gap: '10px', marginBottom: '10px' }}>
-                                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>Read Ack v{currentVersion}</div><div style={{ fontWeight: 800, fontSize: '1.15rem' }}>{readAckRate}%</div></div>
-                                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>Open CAPA</div><div style={{ fontWeight: 800, fontSize: '1.15rem' }}>{openCapaCount}</div></div>
-                                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>Closed CAPA</div><div style={{ fontWeight: 800, fontSize: '1.15rem' }}>{closedCapaCount}</div></div>
-                                                </div>
-                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)' }}>
-                                                    Top non-compliance steps: {guide.steps.filter(s => !operatorChecks[s.id]?.completed).slice(0, 3).map(s => s.title).join(', ') || '-'}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Read & Acknowledge */}
-                                        <div style={{ marginBottom: '24px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>
-                                                    Read & Acknowledge (v{currentVersion})
-                                                </div>
-                                                <button className="btn-pro" disabled={!canAcknowledge} onClick={handleAcknowledgeCurrentVersion} style={{ padding: '6px 10px', fontSize: '0.75rem', backgroundColor: 'rgba(16,185,129,0.15)', color: '#6ee7b7', borderColor: 'rgba(16,185,129,0.35)', opacity: canAcknowledge ? 1 : 0.5 }}>
-                                                    <CheckCircle size={12} /> Acknowledge This Version
-                                                </button>
-                                            </div>
-                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                                                {currentVersionAcks.length === 0 ? (
-                                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No acknowledgements yet for this version.</div>
-                                                ) : (
-                                                    <div style={{ display: 'grid', gap: '8px', maxHeight: '150px', overflowY: 'auto' }}>
-                                                        {currentVersionAcks.map(ack => (
-                                                            <div key={ack.id} style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 10px' }}>
-                                                                <div style={{ fontSize: '0.82rem', fontWeight: '700' }}>{ack.userName} • {ack.role}</div>
-                                                                <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)' }}>{new Date(ack.acknowledgedAt).toLocaleString()}</div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* P2: Audit Trail */}
-                                        <div style={{ marginBottom: '24px' }}>
-                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '10px' }}>
-                                                Audit Trail
-                                            </div>
-                                            <div className="glass-panel" style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)', maxHeight: '180px', overflowY: 'auto' }}>
-                                                {(guide.auditTrail || []).length === 0 ? (
-                                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>No audit records yet.</div>
-                                                ) : (
-                                                    <div style={{ display: 'grid', gap: '8px' }}>
-                                                        {(guide.auditTrail || []).map(log => (
-                                                            <div key={log.id} style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 10px' }}>
-                                                                <div style={{ fontSize: '0.82rem', fontWeight: '700' }}>{log.action}</div>
-                                                                <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.6)' }}>{log.details}</div>
-                                                                <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)' }}>{log.actor} • {log.timestamp ? new Date(log.timestamp).toLocaleString() : '-'}</div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div style={{ opacity: canEditManual ? 1 : 0.65, pointerEvents: canEditManual ? 'auto' : 'none' }}>
-                                            <StepEditor step={activeStep} onChange={handleStepChange} onCaptureImage={handleCaptureFrame} onAiImprove={handleAiImprove} onAiGenerate={handleAiGenerate} onAiGenerateFromVideo={handleVideoAiGenerate} isAiLoading={isAiLoading} />
+                                            )}
                                         </div>
                                     </div>
-                                </div>
+                                )}
+
+                                {activeTab === 'management' && (
+                                    <div style={{ display: 'grid', gap: '16px', animation: 'fadeIn 0.3s' }}>
+                                        <div className="glass-panel" style={{ padding: '16px' }}>
+                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '12px' }}>Approval Matrix</div>
+                                            {/* Summary list instead of full table to save space */}
+                                            <div style={{ display: 'grid', gap: '8px' }}>
+                                                {(guide.approvalMatrix || []).map(level => (
+                                                    <div key={level.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                                        <span>L{level.level} {level.role}</span>
+                                                        <span style={{ opacity: 0.6 }}>{level.approverName}</span>
+                                                    </div>
+                                                ))}
+                                                <button onClick={handleAddApprovalLevel} className="btn-pro" style={{ marginTop: '8px', fontSize: '0.75rem' }}><Plus size={12} /> Add Level</button>
+                                            </div>
+                                        </div>
+
+                                        <div className="glass-panel" style={{ padding: '16px' }}>
+                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '12px' }}>Compliance</div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                                <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                                                    <div style={{ fontSize: '0.7rem', opacity: 0.5 }}>Completion</div>
+                                                    <div style={{ fontSize: '1.1rem', fontWeight: '700' }}>{completionRate}%</div>
+                                                </div>
+                                                <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                                                    <div style={{ fontSize: '0.7rem', opacity: 0.5 }}>Compliance</div>
+                                                    <div style={{ fontSize: '1.1rem', fontWeight: '700' }}>{firstPassCompliance}%</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="glass-panel" style={{ padding: '16px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>Assignments</div>
+                                                <button onClick={handleAddAssignment} className="btn-pro" style={{ fontSize: '0.75rem' }}><Plus size={12} /></button>
+                                            </div>
+                                            <span style={{ fontSize: '0.85rem', opacity: 0.6 }}>{assignments.length} assignments active.</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeTab === 'history' && (
+                                    <div style={{ display: 'grid', gap: '16px', animation: 'fadeIn 0.3s' }}>
+                                        <div className="glass-panel" style={{ padding: '16px' }}>
+                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '12px' }}>Version History</div>
+                                            <div style={{ display: 'grid', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
+                                                {(guide.versionHistory || []).map(v => (
+                                                    <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', fontSize: '0.8rem' }}>
+                                                        <span>v{v.version} - {v.summary}</span>
+                                                        <button onClick={() => handleRestoreVersion(v)} style={{ color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer' }}>Restore</button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="glass-panel" style={{ padding: '16px' }}>
+                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '12px' }}>Audit Trail</div>
+                                            <div style={{ fontSize: '0.85rem', opacity: 0.6 }}>{(guide.auditTrail || []).length} events recorded.</div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -2943,6 +2659,40 @@ function ManualCreation() {
                                             controls
                                             style={{ width: '100%', display: 'block' }}
                                         />
+                                        <div style={{
+                                            padding: '8px',
+                                            display: 'flex',
+                                            gap: '8px',
+                                            background: 'rgba(255,255,255,0.02)',
+                                            borderTop: '1px solid rgba(255,255,255,0.08)'
+                                        }}>
+                                            <button
+                                                onClick={handleMarkIn}
+                                                className="btn-pro"
+                                                style={{ flex: 1, fontSize: '0.7rem', padding: '6px' }}
+                                                title="Mark Clip In Point"
+                                            >
+                                                In: {activeStep?.startTime || 0}s
+                                            </button>
+                                            <button
+                                                onClick={handleMarkOut}
+                                                className="btn-pro"
+                                                style={{ flex: 1, fontSize: '0.7rem', padding: '6px' }}
+                                                title="Mark Clip Out Point"
+                                            >
+                                                Out: {Math.round(((activeStep?.startTime || 0) + (activeStep?.duration || 0)) * 10) / 10}s
+                                            </button>
+                                            {activeStep?.startTime !== undefined && (
+                                                <button
+                                                    onClick={() => handleSeekTo(activeStep.startTime)}
+                                                    className="btn-pro"
+                                                    style={{ width: '32px', padding: '6px', justifyContent: 'center' }}
+                                                    title="Seek to In"
+                                                >
+                                                    <Play size={12} fill="currentColor" />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="glass-panel" style={{
@@ -2998,210 +2748,249 @@ function ManualCreation() {
                     position: 'relative',
                     overflow: 'hidden'
                 }}>
-                    {/* Background Watermark */}
-                    <Book size={400} style={{ position: 'absolute', opacity: 0.02, color: '#fff', transform: 'rotate(-10deg)', zIndex: 0 }} />
-
                     <div className="glass-panel" style={{
-                        padding: '60px 80px',
+                        padding: '40px',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
-                        gap: '24px',
+                        gap: '32px',
                         zIndex: 1,
-                        boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
-                        animation: 'slideUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1)'
+                        maxWidth: '600px',
+                        width: '90%',
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        animation: 'fadeIn 0.6s ease-out'
                     }}>
-                        <div style={{
-                            width: '80px', height: '80px',
-                            borderRadius: '24px',
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: '#60a5fa',
-                            marginBottom: '12px',
-                            border: '1px solid rgba(255, 255, 255, 0.1)'
-                        }}>
-                            <Book size={40} />
-                        </div>
-
                         <div style={{ textAlign: 'center' }}>
-                            <h2 style={{ fontSize: '1.8rem', fontWeight: '800', margin: '0 0 12px 0', letterSpacing: '-0.02em' }}>
+                            <div style={{
+                                width: '64px', height: '64px',
+                                borderRadius: '16px',
+                                background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(37, 99, 235, 0.05))',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: '#3b82f6',
+                                margin: '0 auto 20px',
+                                border: '1px solid rgba(59, 130, 246, 0.2)'
+                            }}>
+                                <Plus size={32} />
+                            </div>
+                            <h2 style={{ fontSize: '2rem', fontWeight: '700', margin: '0 0 8px 0', color: '#fff' }}>
                                 {tt('manual.newManual', 'New Manual')}
                             </h2>
-                            <p style={{ color: 'rgba(255, 255, 255, 0.5)', maxWidth: '400px', lineHeight: '1.6', fontSize: '0.95rem' }}>
+                            <p style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.95rem', margin: 0 }}>
                                 {tt('manual.newManualDescription', 'Create a new manual from project data or start from scratch.')}
                             </p>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
-                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <div style={{
+                            width: '100%',
+                            display: 'grid',
+                            gridTemplateColumns: 'minmax(200px, 1fr) auto',
+                            gap: '12px',
+                            padding: '20px',
+                            background: 'rgba(255, 255, 255, 0.02)',
+                            borderRadius: '16px',
+                            border: '1px solid rgba(255, 255, 255, 0.05)'
+                        }}>
+                            <div style={{ position: 'relative' }}>
                                 <select
                                     value={selectedProjectId}
                                     onChange={(e) => setSelectedProjectId(e.target.value)}
                                     className="pro-select"
-                                    style={{ padding: '12px 40px 12px 16px', borderRadius: '12px', height: 'auto', fontSize: '1rem', minWidth: '200px', appearance: 'none' }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 16px',
+                                        borderRadius: '10px',
+                                        backgroundColor: 'rgba(0,0,0,0.2)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        color: '#fff',
+                                        appearance: 'none',
+                                        fontSize: '0.9rem'
+                                    }}
                                 >
                                     <option value="">{tt('common.selectProject', 'Select Project')}</option>
                                     {projects.map(p => (
                                         <option key={p.projectName} value={p.projectName}>{p.projectName}</option>
                                     ))}
                                 </select>
-                                <ChevronDown size={18} style={{ position: 'absolute', right: '16px', pointerEvents: 'none', color: 'rgba(255, 255, 255, 0.4)' }} />
+                                <ChevronDown size={16} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', opacity: 0.5 }} />
                             </div>
 
                             <button
                                 onClick={() => {
-                                    // Create scratch manual
                                     const localizedNewManual = tt('manual.newManual', 'New Manual');
-                                    setSelectedProject({ projectName: localizedNewManual }); // Dummy project to enable UI
+                                    setSelectedProject({ projectName: localizedNewManual });
                                     setGuide(prev => ({ ...prev, title: localizedNewManual, steps: [] }));
                                 }}
                                 className="btn-pro"
                                 style={{
-                                    padding: '0 24px',
-                                    height: 'auto',
-                                    fontSize: '1rem',
+                                    padding: '0 20px',
+                                    borderRadius: '10px',
                                     backgroundColor: '#2563eb',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '12px'
+                                    color: '#fff',
+                                    fontWeight: '600',
+                                    fontSize: '0.9rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    transition: 'all 0.2s',
+                                    border: 'none'
                                 }}
                             >
-                                <Plus size={20} />
+                                <Plus size={18} />
                                 {tt('manual.newManual', 'New Manual')}
                             </button>
-
-                            <button
-                                onClick={handleLoadManualsList}
-                                className="btn-pro"
-                                style={{
-                                    padding: '0 24px',
-                                    height: 'auto',
-                                    fontSize: '1rem',
-                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                    color: 'white',
-                                    borderRadius: '12px'
-                                }}
-                            >
-                                <FolderOpen size={20} />
-                                {tt('manual.openManual', 'Open Manual')}
-                            </button>
                         </div>
+
+                        <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)' }}></div>
+
+                        <button
+                            onClick={handleLoadManualsList}
+                            style={{
+                                width: '100%',
+                                padding: '14px',
+                                borderRadius: '12px',
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                border: '1px solid rgba(255, 255, 255, 0.08)',
+                                color: 'rgba(255, 255, 255, 0.8)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '10px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                fontSize: '0.95rem'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                            }}
+                        >
+                            <FolderOpen size={20} />
+                            {tt('manual.openManual', 'Open Manual')}
+                        </button>
                     </div>
                 </div>
             )
             }
 
+
             {/* Open Manual Dialog */}
-            {showOpenDialog && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1100,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    backdropFilter: 'blur(8px)',
-                    animation: 'fadeIn 0.3s ease'
-                }}>
-                    <div className="glass-panel" style={{
-                        width: '500px', maxHeight: '80vh',
-                        display: 'flex', flexDirection: 'column',
-                        boxShadow: '0 30px 60px rgba(0,0,0,0.5)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        animation: 'slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)'
+            {
+                showOpenDialog && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1100,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        backdropFilter: 'blur(8px)',
+                        animation: 'fadeIn 0.3s ease'
                     }}>
-                        <div style={{
-                            padding: '20px 24px',
-                            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            backgroundColor: 'rgba(255, 255, 255, 0.02)'
+                        <div className="glass-panel" style={{
+                            width: '500px', maxHeight: '80vh',
+                            display: 'flex', flexDirection: 'column',
+                            boxShadow: '0 30px 60px rgba(0,0,0,0.5)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            animation: 'slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)'
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <FolderOpen size={20} style={{ color: '#0891b2' }} />
-                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', letterSpacing: '-0.01em' }}>
-                                    {tt('manual.openSaved', 'Open Saved Manual')}
-                                </h3>
-                            </div>
-                            <button
-                                onClick={() => setShowOpenDialog(false)}
-                                style={{
-                                    background: 'rgba(255, 255, 255, 0.05)',
-                                    border: 'none',
-                                    color: '#888',
-                                    width: '32px', height: '32px', borderRadius: '50%',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.15)'}
-                                onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
-                            >
-                                <X size={18} />
-                            </button>
-                        </div>
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-                            {savedManuals.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '40px 0', opacity: 0.5 }}>
-                                    <Book size={48} style={{ marginBottom: '16px', color: 'rgba(255, 255, 255, 0.2)' }} />
-                                    <p>{tt('manual.noSavedFound', 'No saved manuals found.')}</p>
+                            <div style={{
+                                padding: '20px 24px',
+                                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                backgroundColor: 'rgba(255, 255, 255, 0.02)'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <FolderOpen size={20} style={{ color: '#0891b2' }} />
+                                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', letterSpacing: '-0.01em' }}>
+                                        {tt('manual.openSaved', 'Open Saved Manual')}
+                                    </h3>
                                 </div>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                    {savedManuals.map(m => (
-                                        <div
-                                            key={m.id}
-                                            onClick={() => handleOpenManual(m)}
-                                            className="glass-panel"
-                                            style={{
-                                                padding: '16px',
-                                                cursor: 'pointer',
-                                                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                                                border: '1px solid rgba(255, 255, 255, 0.05)',
-                                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
-                                                e.currentTarget.style.transform = 'translateX(4px)';
-                                                e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.3)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
-                                                e.currentTarget.style.transform = 'translateX(0)';
-                                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
-                                            }}
-                                        >
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                <div style={{ fontWeight: '700', color: '#fff', fontSize: '1rem' }}>{m.title}</div>
+                                <button
+                                    onClick={() => setShowOpenDialog(false)}
+                                    style={{
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        border: 'none',
+                                        color: '#888',
+                                        width: '32px', height: '32px', borderRadius: '50%',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.15)'}
+                                    onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+                            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+                                {savedManuals.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '40px 0', opacity: 0.5 }}>
+                                        <Book size={48} style={{ marginBottom: '16px', color: 'rgba(255, 255, 255, 0.2)' }} />
+                                        <p>{tt('manual.noSavedFound', 'No saved manuals found.')}</p>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                        {savedManuals.map(m => (
+                                            <div
+                                                key={m.id}
+                                                onClick={() => handleOpenManual(m)}
+                                                className="glass-panel"
+                                                style={{
+                                                    padding: '16px',
+                                                    cursor: 'pointer',
+                                                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                                                    e.currentTarget.style.transform = 'translateX(4px)';
+                                                    e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.3)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
+                                                    e.currentTarget.style.transform = 'translateX(0)';
+                                                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                    <div style={{ fontWeight: '700', color: '#fff', fontSize: '1rem' }}>{m.title}</div>
+                                                    <div style={{
+                                                        fontSize: '0.65rem',
+                                                        fontWeight: '900',
+                                                        padding: '2px 8px',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: 'rgba(37, 99, 235, 0.15)',
+                                                        color: '#60a5fa',
+                                                        textTransform: 'uppercase'
+                                                    }}>
+                                                        v{m.version}
+                                                    </div>
+                                                </div>
                                                 <div style={{
-                                                    fontSize: '0.65rem',
-                                                    fontWeight: '900',
-                                                    padding: '2px 8px',
-                                                    borderRadius: '6px',
-                                                    backgroundColor: 'rgba(37, 99, 235, 0.15)',
-                                                    color: '#60a5fa',
-                                                    textTransform: 'uppercase'
+                                                    fontSize: '0.75rem',
+                                                    color: 'rgba(255, 255, 255, 0.4)',
+                                                    marginTop: '8px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px'
                                                 }}>
-                                                    v{m.version}
+                                                    <Activity size={12} />
+                                                    Updated: {new Date(m.updatedAt || m.createdAt).toLocaleDateString()}
                                                 </div>
                                             </div>
-                                            <div style={{
-                                                fontSize: '0.75rem',
-                                                color: 'rgba(255, 255, 255, 0.4)',
-                                                marginTop: '8px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '6px'
-                                            }}>
-                                                <Activity size={12} />
-                                                Updated: {new Date(m.updatedAt || m.createdAt).toLocaleDateString()}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* AIChatOverlay Integration */}
             <AIChatOverlay

@@ -1,8 +1,5 @@
-// Local database wrapper for Motion Analysis data
-// Uses SQLite via Tauri SQL Plugin for true offline desktop storage
-
 import { getSqliteDb } from './sqlite.js';
-import { getTursoStatus } from './tursoClient.js';
+import { getTursoStatus, getTursoClient, isTursoConfigured } from './tursoClient.js';
 
 // Initialize database singleton
 let dbInstance = null;
@@ -132,8 +129,27 @@ const normalizeProjectRow = (row) => {
 
 // ===== PROJECT MANAGEMENT FUNCTIONS =====
 
-// Save new project
 export const saveProject = async (projectName, videoBlob, videoName, measurements = [], swcsData = null, standardWorkLayoutData = null, folderId = null, facilityLayoutData = null) => {
+    const now = new Date().toISOString();
+    const measurementsJson = JSON.stringify(measurements);
+    const swcsJson = swcsData ? JSON.stringify(swcsData) : null;
+    const layoutJson = standardWorkLayoutData ? JSON.stringify(standardWorkLayoutData) : null;
+    const facilityJson = facilityLayoutData ? JSON.stringify(facilityLayoutData) : null;
+
+    if (isTursoConfigured()) {
+        const client = await getTursoClient();
+        try {
+            await client.execute({
+                sql: `INSERT INTO cloud_projects 
+                (projectName, videoName, measurements, createdAt, lastModified, swcsData, standardWorkLayoutData, folderId, facilityLayoutData) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                args: [projectName, videoName, measurementsJson, now, now, swcsJson, layoutJson, folderId, facilityJson]
+            });
+        } catch (e) {
+            console.error('Failed to save project metadata to Turso:', e);
+        }
+    }
+
     const db = await initDB();
     const videoData = await blobToUint8Array(videoBlob);
 
@@ -142,23 +158,39 @@ export const saveProject = async (projectName, videoBlob, videoName, measurement
         (projectName, videoBlob, videoName, measurements, createdAt, lastModified, swcsData, standardWorkLayoutData, folderId, facilityLayoutData) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-            projectName, videoData, videoName, JSON.stringify(measurements),
-            new Date().toISOString(), new Date().toISOString(),
-            swcsData ? JSON.stringify(swcsData) : null,
-            standardWorkLayoutData ? JSON.stringify(standardWorkLayoutData) : null,
-            folderId,
-            facilityLayoutData ? JSON.stringify(facilityLayoutData) : null
+            projectName, videoData, videoName, measurementsJson,
+            now, now, swcsJson, layoutJson, folderId, facilityJson
         ]
     );
     return result.lastInsertId;
 };
 
 // Get all projects
-// Get all projects
 export const getAllProjects = async () => {
     const db = await initDB();
-    const rows = await db.select('SELECT * FROM projects ORDER BY lastModified DESC');
-    return rows.map(normalizeProjectRow);
+    const localRows = await db.select('SELECT * FROM projects ORDER BY lastModified DESC');
+
+    if (isTursoConfigured()) {
+        const client = await getTursoClient();
+        try {
+            const cloudRes = await client.execute('SELECT * FROM cloud_projects ORDER BY lastModified DESC');
+            const cloudRows = cloudRes.rows || [];
+
+            // If local is missing items found in cloud, we should merge or sync
+            // For now, if local is empty (browser refresh), prioritize cloud metadata
+            if (localRows.length === 0 && cloudRows.length > 0) {
+                return cloudRows.map(row => normalizeProjectRow({
+                    ...row,
+                    id: Number(row.id),
+                    videoBlob: null // Video stays local/transient
+                }));
+            }
+        } catch (e) {
+            console.warn('Failed to sync projects from Turso:', e);
+        }
+    }
+
+    return localRows.map(normalizeProjectRow);
 };
 
 // Get project by name
@@ -169,68 +201,72 @@ export const getProjectByName = async (projectName) => {
     return normalizeProjectRow(rows[0]);
 };
 
-// Update project
 export const updateProject = async (identifier, updates) => {
     const db = await initDB();
-
     let project;
-    if (typeof identifier === 'number') {
-        project = await getProjectById(identifier);
-    } else {
-        project = await getProjectByName(identifier);
-    }
+    if (typeof identifier === 'number') project = await getProjectById(identifier);
+    else project = await getProjectByName(identifier);
 
     if (!project) throw new Error('Project not found');
 
-    const updatedData = {
-        ...project,
-        ...updates,
-        lastModified: new Date().toISOString()
-    };
+    const now = new Date().toISOString();
+    const updatedData = { ...project, ...updates, lastModified: now };
 
-    // Dynamically build update query
     const setClauses = [
-        'projectName = ?',
-        'videoName = ?',
-        'measurements = ?',
-        'lastModified = ?',
-        'folderId = ?',
-        'swcsData = ?',
-        'standardWorkLayoutData = ?',
-        'facilityLayoutData = ?'
+        'projectName = ?', 'videoName = ?', 'measurements = ?', 'lastModified = ?',
+        'folderId = ?', 'swcsData = ?', 'standardWorkLayoutData = ?', 'facilityLayoutData = ?'
     ];
-
     const params = [
-        updatedData.projectName,
-        updatedData.videoName,
-        JSON.stringify(updatedData.measurements || []),
-        updatedData.lastModified,
+        updatedData.projectName, updatedData.videoName,
+        JSON.stringify(updatedData.measurements || []), now,
         updatedData.folderId,
         updatedData.swcsData ? JSON.stringify(updatedData.swcsData) : null,
         updatedData.standardWorkLayoutData ? JSON.stringify(updatedData.standardWorkLayoutData) : null,
         updatedData.facilityLayoutData ? JSON.stringify(updatedData.facilityLayoutData) : null
     ];
 
+    if (isTursoConfigured()) {
+        const client = await getTursoClient();
+        try {
+            await client.execute({
+                sql: `UPDATE cloud_projects SET ${setClauses.join(', ')} WHERE projectName = ?`,
+                args: [...params, project.projectName]
+            });
+        } catch (e) {
+            console.error('Failed to update project metadata in Turso:', e);
+        }
+    }
+
     if (updates.videoBlob) {
         setClauses.push('videoBlob = ?');
         params.push(await blobToUint8Array(updates.videoBlob));
     }
+    params.push(project.id);
 
-    params.push(updatedData.id);
-
-    await db.execute(
-        `UPDATE projects SET ${setClauses.join(', ')} WHERE id = ?`,
-        params
-    );
-    return updatedData.id;
+    await db.execute(`UPDATE projects SET ${setClauses.join(', ')} WHERE id = ?`, params);
+    return project.id;
 };
 
 // Get project by ID
 export const getProjectById = async (id) => {
     const db = await initDB();
     const rows = await db.select('SELECT * FROM projects WHERE id = ?', [id]);
-    if (rows.length === 0) return null;
-    return normalizeProjectRow(rows[0]);
+    if (rows.length > 0) return normalizeProjectRow(rows[0]);
+
+    // If missing locally, check cloud if id might be a cloud primary key
+    if (isTursoConfigured()) {
+        const client = await getTursoClient();
+        try {
+            const res = await client.execute({
+                sql: 'SELECT * FROM cloud_projects WHERE id = ?',
+                args: [id]
+            });
+            if (res.rows?.[0]) return normalizeProjectRow({ ...res.rows[0], id: Number(res.rows[0].id), videoBlob: null });
+        } catch (e) {
+            console.warn('Failed to fetch project by ID from Turso:', e);
+        }
+    }
+    return null;
 };
 
 // Delete project by ID

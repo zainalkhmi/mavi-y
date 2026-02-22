@@ -5,7 +5,7 @@ import RichTextEditor from './RichTextEditor';
 import {
     Sparkles, Eye, Zap, Image, Camera, Upload,
     Edit3, X, CheckCircle, Info, AlertTriangle, AlertCircle,
-    Plus, Type, MessageSquare, Trash2
+    Plus, Type, MessageSquare, Trash2, Video, Youtube
 } from 'lucide-react';
 
 const StepEditor = ({ step, onChange, onCaptureImage, onAiImprove, onAiGenerate, onAiGenerateFromVideo, isAiLoading, videoTime }) => {
@@ -118,70 +118,147 @@ const StepEditor = ({ step, onChange, onCaptureImage, onAiImprove, onAiGenerate,
                 padding: '24px',
                 backgroundColor: 'rgba(255, 255, 255, 0.02)',
                 borderRadius: '16px',
-                border: '2px dashed rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
                 textAlign: 'center',
                 transition: 'all 0.3s ease'
             }}>
-                {step.media && step.media.url ? (
-                    <div style={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
-                        <img src={step.media.url} alt="Step Media" style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }} />
-                        <div style={{ position: 'absolute', bottom: '12px', right: '12px', display: 'flex', gap: '8px' }}>
-                            <button
-                                onClick={() => setShowMarkup(true)}
-                                className="btn-pro"
-                                style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', color: 'white', border: 'none', padding: '6px 12px', fontSize: '0.75rem' }}
-                            >
-                                <Edit3 size={14} /> {t('manual.markup')}
-                            </button>
-                            <button
-                                onClick={() => handleChange('media', null)}
-                                className="btn-pro"
-                                style={{ backgroundColor: 'rgba(239, 68, 68, 0.8)', backdropFilter: 'blur(10px)', color: 'white', border: 'none', padding: '6px 12px' }}
-                            >
-                                <X size={14} />
-                            </button>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '20px' }}>
+                    {[
+                        { id: 'image', label: 'Image', icon: Image },
+                        { id: 'video', label: 'Video Clip', icon: Video },
+                        { id: 'youtube', label: 'YouTube', icon: Youtube }
+                    ].map(type => (
+                        <button
+                            key={type.id}
+                            onClick={() => handleChange('media', { ...step.media, type: type.id })}
+                            className="btn-pro"
+                            style={{
+                                padding: '6px 16px',
+                                fontSize: '0.75rem',
+                                backgroundColor: step.media?.type === type.id || (!step.media?.type && type.id === 'image') ? 'rgba(37, 99, 235, 0.15)' : 'rgba(255,255,255,0.05)',
+                                color: step.media?.type === type.id || (!step.media?.type && type.id === 'image') ? '#60a5fa' : 'rgba(255,255,255,0.6)',
+                                borderColor: step.media?.type === type.id || (!step.media?.type && type.id === 'image') ? 'rgba(37, 99, 235, 0.3)' : 'transparent'
+                            }}
+                        >
+                            <type.icon size={14} />
+                            {type.label}
+                        </button>
+                    ))}
+                </div>
+
+                {(!step.media?.type || step.media.type === 'image') && (
+                    <div style={{ padding: '20px', border: '2px dashed rgba(255, 255, 255, 0.1)', borderRadius: '12px' }}>
+                        {step.media && step.media.url ? (
+                            <div style={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
+                                <img src={step.media.url} alt="Step Media" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }} />
+                                <div style={{ position: 'absolute', bottom: '12px', right: '12px', display: 'flex', gap: '8px' }}>
+                                    <button
+                                        onClick={() => setShowMarkup(true)}
+                                        className="btn-pro"
+                                        style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', color: 'white', border: 'none', padding: '6px 12px', fontSize: '0.75rem' }}
+                                    >
+                                        <Edit3 size={14} /> {t('manual.markup')}
+                                    </button>
+                                    <button
+                                        onClick={() => handleChange('media', null)}
+                                        className="btn-pro"
+                                        style={{ backgroundColor: 'rgba(239, 68, 68, 0.8)', backdropFilter: 'blur(10px)', color: 'white', border: 'none', padding: '6px 12px' }}
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{ padding: '20px 0' }}>
+                                <div style={{
+                                    width: '48px', height: '48px', borderRadius: '16px',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                                    margin: '0 auto 12px auto',
+                                    color: 'rgba(255, 255, 255, 0.2)'
+                                }}>
+                                    <Image size={24} />
+                                </div>
+                                <p style={{ color: 'rgba(255, 255, 255, 0.4)', marginBottom: '16px', fontSize: '0.8rem' }}>{t('manual.dragDropMedia')}</p>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                    <button
+                                        onClick={onCaptureImage}
+                                        className="btn-pro"
+                                        style={{ padding: '8px 16px', backgroundColor: '#2563eb', color: 'white', border: 'none', fontSize: '0.8rem' }}
+                                    >
+                                        <Camera size={16} /> {t('manual.captureFrame')}
+                                    </button>
+                                    <label className="btn-pro" style={{ padding: '8px 16px', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'white', display: 'flex', alignItems: 'center', fontSize: '0.8rem' }}>
+                                        <Upload size={16} /> {t('common.upload') || 'Upload'}
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            style={{ display: 'none' }}
+                                            onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    const reader = new FileReader();
+                                                    reader.onload = (event) => {
+                                                        handleChange('media', { type: 'image', url: event.target.result });
+                                                    };
+                                                    reader.readAsDataURL(file);
+                                                }
+                                            }}
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {step.media?.type === 'video' && (
+                    <div style={{ padding: '20px', border: '2px dashed rgba(59, 130, 246, 0.2)', borderRadius: '12px', background: 'rgba(37, 99, 235, 0.02)' }}>
+                        <div style={{
+                            width: '48px', height: '48px', borderRadius: '16px',
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            margin: '0 auto 12px auto',
+                            color: '#60a5fa'
+                        }}>
+                            <Video size={24} />
+                        </div>
+                        <h4 style={{ margin: '0 0 8px 0', fontSize: '0.9rem' }}>Main Video Segment</h4>
+                        <p style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.8rem', marginBottom: '16px' }}>
+                            Uses the defined In/Out range from the source video player.
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', fontSize: '1rem', fontWeight: '800', color: '#60a5fa' }}>
+                            <div>In: {step.startTime || 0}s</div>
+                            <div>Out: {Math.round(((step.startTime || 0) + (step.duration || 0)) * 10) / 10}s</div>
                         </div>
                     </div>
-                ) : (
-                    <div style={{ padding: '40px 0' }}>
+                )}
+
+                {step.media?.type === 'youtube' && (
+                    <div style={{ padding: '20px', border: '2px dashed rgba(239, 68, 68, 0.2)', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.02)' }}>
                         <div style={{
-                            width: '64px', height: '64px', borderRadius: '20px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                            width: '48px', height: '48px', borderRadius: '16px',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            border: '1px solid rgba(255, 255, 255, 0.05)',
-                            margin: '0 auto 16px auto',
-                            color: 'rgba(255, 255, 255, 0.2)'
+                            margin: '0 auto 12px auto',
+                            color: '#f87171'
                         }}>
-                            <Image size={32} />
+                            <Youtube size={24} />
                         </div>
-                        <p style={{ color: 'rgba(255, 255, 255, 0.4)', marginBottom: '24px', fontSize: '0.9rem' }}>{t('manual.dragDropMedia')}</p>
-                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                            <button
-                                onClick={onCaptureImage}
-                                className="btn-pro"
-                                style={{ padding: '10px 24px', backgroundColor: '#2563eb', color: 'white', border: 'none' }}
-                            >
-                                <Camera size={18} /> {t('manual.captureFrame')}
-                            </button>
-                            <label className="btn-pro" style={{ padding: '10px 24px', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'white', display: 'flex', alignItems: 'center' }}>
-                                <Upload size={18} /> {t('common.upload') || 'Upload'}
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    style={{ display: 'none' }}
-                                    onChange={(e) => {
-                                        const file = e.target.files[0];
-                                        if (file) {
-                                            const reader = new FileReader();
-                                            reader.onload = (event) => {
-                                                handleChange('media', { type: 'image', url: event.target.result });
-                                            };
-                                            reader.readAsDataURL(file);
-                                        }
-                                    }}
-                                />
-                            </label>
-                        </div>
+                        <h4 style={{ margin: '0 0 8px 0', fontSize: '0.9rem' }}>YouTube Video</h4>
+                        <input
+                            value={step.media?.youtubeUrl || ''}
+                            onChange={(e) => handleChange('media', { ...step.media, type: 'youtube', youtubeUrl: e.target.value })}
+                            className="pro-select"
+                            style={{ width: '100%', marginTop: '8px', padding: '10px', fontSize: '0.85rem' }}
+                            placeholder="Enter YouTube URL (e.g., https://youtube.com/watch?v=...)"
+                        />
+                        {step.media?.youtubeUrl && (
+                            <div style={{ marginTop: '16px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>
+                                Video will be embedded in preview mode.
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

@@ -17,6 +17,21 @@ export const LanguageProvider = ({ children }) => {
     const { t } = useTranslation();
     const [currentLanguage, setCurrentLanguageState] = useState(i18n.language || 'en');
 
+    const interpolate = (text, params = {}) =>
+        String(text).replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key) => params?.[key] ?? '');
+
+    const tt = (key, fallbackOrParams, maybeParams) => {
+        const hasFallback = typeof fallbackOrParams === 'string';
+        const fallback = hasFallback ? fallbackOrParams : null;
+        const params = hasFallback ? maybeParams : fallbackOrParams;
+
+        const value = t(key, params);
+
+        if (value && value !== key) return value;
+        if (fallback) return interpolate(fallback, params);
+        return value;
+    };
+
     useEffect(() => {
         const initDynamicTranslations = async () => {
             await loadDynamicTranslations(getDynamicTranslations);
@@ -36,7 +51,8 @@ export const LanguageProvider = ({ children }) => {
     const value = {
         currentLanguage,
         changeLanguage,
-        t // Expose t directly to support method overloading (e.g., returnObjects: true)
+        t, // Expose t directly to support method overloading (e.g., returnObjects: true)
+        tt
     };
 
     return (

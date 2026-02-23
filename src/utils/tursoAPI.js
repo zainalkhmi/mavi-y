@@ -345,6 +345,33 @@ export const appendManualAcknowledgement = async (cloudId, ackPayload) => {
     return nextAcks;
 };
 
+export const appendManualDataCapture = async (cloudId, capturePayload) => {
+    const existing = await getManualByCloudId(cloudId);
+    if (!existing) {
+        throw new Error('Manual not found in cloud');
+    }
+
+    const content = existing.content && typeof existing.content === 'object' ? existing.content : {};
+    const currentCaptures = Array.isArray(content.dataCaptures) ? content.dataCaptures : [];
+    const nextCaptures = [capturePayload, ...currentCaptures];
+
+    await upsertManual({
+        cloudId: existing.cloudId,
+        title: existing.title,
+        description: existing.description,
+        version: existing.version,
+        status: existing.status,
+        author: existing.author,
+        documentNumber: existing.documentNumber,
+        content: {
+            ...content,
+            dataCaptures: nextCaptures
+        }
+    });
+
+    return nextCaptures;
+};
+
 /**
  * Best-effort fetch public IP and country from CORS-friendly endpoints.
  * Uses session cache to avoid repeated requests (helps in React StrictMode/dev).
@@ -1261,6 +1288,7 @@ export default {
     getManualById,
     listManuals,
     appendManualAcknowledgement,
+    appendManualDataCapture,
 
     // License functions
     createLicense,

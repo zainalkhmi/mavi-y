@@ -8,8 +8,10 @@ import { helpContent } from '../utils/helpContent.jsx';
 import GuideHeader from './manual/GuideHeader';
 import GuideIntroduction from './manual/GuideIntroduction';
 import GuideDetails from './manual/GuideDetails';
+import SourceVideo from './manual/SourceVideo';
 import StepList from './manual/StepList';
 import StepEditor from './manual/StepEditor';
+import StepMediaControls from './manual/StepMediaControls';
 import {
     generateManualContent,
     improveManualContent,
@@ -24,7 +26,7 @@ import {
     Cpu, Loader2, BarChart3, Settings, Book, Layout, List,
     Eye, Save, FolderOpen, FileDown, Globe, Layers,
     ChevronDown, Trash2, Plus, Info, Video, CheckCircle,
-    Activity, Shield, Play, VideoOff, X, BookOpen
+    Activity, Shield, Play, VideoOff, X, BookOpen, Sun, Moon, Palette
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
@@ -42,7 +44,14 @@ const ensureUniqueStepIds = (steps = []) => {
             nextId = generateId();
         }
         used.add(nextId);
-        return { ...step, id: nextId };
+
+        // Ensure steps have an images array
+        const images = step.images || [];
+        if (images.length === 0 && step.media?.type === 'image' && step.media?.url) {
+            images.push(step.media.url);
+        }
+
+        return { ...step, id: nextId, images };
     });
 };
 
@@ -237,6 +246,7 @@ function ManualCreation() {
         eSignatures: [],
         readAcks: [],
         steps: [],
+        images: [], // Global images if any, but steps will have their own
         // Dozuki-style Introduction fields
         guideType: 'Replacement',
         category: '',
@@ -307,6 +317,7 @@ function ManualCreation() {
     const [guide, setGuide] = useState(createDefaultGuide());
 
     const [activeStepId, setActiveStepId] = useState(null);
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [savedManuals, setSavedManuals] = useState([]);
     const [showOpenDialog, setShowOpenDialog] = useState(false);
     const [isPreviewMode, setIsPreviewMode] = useState(false);
@@ -317,6 +328,7 @@ function ManualCreation() {
     const [isOperatorMode, setIsOperatorMode] = useState(false);
     const [operatorStepIndex, setOperatorStepIndex] = useState(0);
     const [operatorChecks, setOperatorChecks] = useState({});
+    const [operatorDataCaptureAnswers, setOperatorDataCaptureAnswers] = useState({});
 
     // Advanced AI State
     const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
@@ -327,6 +339,7 @@ function ManualCreation() {
     const [currentUserName, setCurrentUserName] = useState('User 1');
     const [currentUserRole, setCurrentUserRole] = useState('Author');
     const [activeTab, setActiveTab] = useState('edit'); // edit, info, management, history
+    const [uiTheme, setUiTheme] = useState('dark'); // dark | light | colorful
 
     const location = useLocation();
 
@@ -1172,6 +1185,16 @@ function ManualCreation() {
         if (activeStepId === id) setActiveStepId(null);
     };
 
+    const handleEditStep = (id) => {
+        const step = guide.steps.find((s) => s.id === id);
+        if (!step) return;
+
+        const nextTitle = window.prompt('Edit step title:', step.title || '');
+        if (nextTitle === null) return;
+
+        handleStepChange(id, { title: nextTitle.trim() || tt('manual.untitledStep', 'Untitled Step') });
+    };
+
     const handleStepChange = (id, fieldOrUpdate, value) => {
         setGuide(prev => ({
             ...prev,
@@ -1347,7 +1370,10 @@ function ManualCreation() {
 
         const currentStep = guide.steps.find(s => s.id === activeStepId);
         if (currentStep) {
+            const existingImages = Array.isArray(currentStep.images) ? currentStep.images : [];
+            const nextImages = [...existingImages, dataUrl];
             handleStepChange(activeStepId, {
+                images: nextImages,
                 media: { type: 'image', url: dataUrl }
             });
         }
@@ -1862,8 +1888,17 @@ function ManualCreation() {
         }
     };
 
+    const getStepDataCaptureFields = (step) => {
+        if (Array.isArray(step?.questions) && step.questions.length > 0) return step.questions;
+        return [];
+    };
+
     const activeStep = guide.steps.find(s => s.id === activeStepId);
     const operatorCurrentStep = guide.steps[operatorStepIndex] || null;
+    const operatorStepDataFields = getStepDataCaptureFields(operatorCurrentStep);
+    const operatorStepAnswerMap = operatorCurrentStep
+        ? (operatorDataCaptureAnswers?.[operatorCurrentStep.id] || {})
+        : {};
     const operatorCompletedCount = guide.steps.reduce((acc, step) => acc + (operatorChecks[step.id]?.completed ? 1 : 0), 0);
     const operatorTotalSteps = guide.steps.length;
     const operatorProgress = operatorTotalSteps > 0 ? Math.round((operatorCompletedCount / operatorTotalSteps) * 100) : 0;
@@ -1883,15 +1918,99 @@ function ManualCreation() {
     const openCapaCount = (guide.issueReports || []).filter(i => i.status !== 'Closed').length;
     const closedCapaCount = (guide.issueReports || []).filter(i => i.status === 'Closed').length;
 
+    const setOperatorDataCaptureValue = (stepId, questionId, value) => {
+        setOperatorDataCaptureAnswers(prev => ({
+            ...prev,
+            [stepId]: {
+                ...(prev[stepId] || {}),
+                [questionId]: value
+            }
+        }));
+    };
+
+    const toggleOperatorCheckboxValue = (stepId, questionId, optionValue) => {
+        const stepAnswer = operatorDataCaptureAnswers[stepId] || {};
+        const existing = Array.isArray(stepAnswer[questionId]) ? stepAnswer[questionId] : [];
+        const next = existing.includes(optionValue)
+            ? existing.filter(v => v !== optionValue)
+            : [...existing, optionValue];
+        setOperatorDataCaptureValue(stepId, questionId, next);
+    };
+
+    const manualThemes = {
+        dark: {
+            appBg: '#0a0a0c',
+            text: '#f8fafc',
+            mutedText: 'rgba(255,255,255,0.6)',
+            panelBg: 'rgba(255, 255, 255, 0.03)',
+            panelBorder: 'rgba(255, 255, 255, 0.08)',
+            topBarBg: 'rgba(15, 15, 20, 0.95)',
+            divider: 'rgba(255,255,255,0.1)',
+            inputBg: 'rgba(255, 255, 255, 0.05)',
+            inputText: '#ffffff',
+            accent: '#3b82f6',
+            accentGradient: 'linear-gradient(135deg, #2563eb, #3b82f6)'
+        },
+        light: {
+            appBg: '#eef3fb',
+            text: '#0f172a',
+            mutedText: '#334155',
+            panelBg: '#ffffff',
+            panelBorder: 'rgba(15, 23, 42, 0.2)',
+            topBarBg: 'rgba(248, 251, 255, 0.96)',
+            divider: 'rgba(15, 23, 42, 0.24)',
+            inputBg: '#ffffff',
+            inputText: '#0f172a',
+            accent: '#2563eb',
+            accentGradient: 'linear-gradient(135deg, #60a5fa, #2563eb)'
+        },
+        colorful: {
+            appBg: 'radial-gradient(circle at 15% 15%, #1d4ed8 0%, #0f172a 35%, #1e1b4b 100%)',
+            text: '#f8fafc',
+            mutedText: 'rgba(226,232,240,0.78)',
+            panelBg: 'linear-gradient(145deg, rgba(30,41,59,0.75), rgba(76,29,149,0.55))',
+            panelBorder: 'rgba(96, 165, 250, 0.35)',
+            topBarBg: 'linear-gradient(90deg, rgba(15,23,42,0.96), rgba(30,58,138,0.92), rgba(76,29,149,0.9))',
+            divider: 'rgba(147,197,253,0.35)',
+            inputBg: 'rgba(15,23,42,0.55)',
+            inputText: '#e2e8f0',
+            accent: '#22d3ee',
+            accentGradient: 'linear-gradient(135deg, #06b6d4, #8b5cf6)'
+        }
+    };
+
+    const theme = manualThemes[uiTheme] || manualThemes.dark;
+
     return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#0a0a0c', color: '#fff', fontFamily: 'Inter, system-ui, sans-serif' }}>
+        <div
+            className={`manual-creation-root manual-theme-${uiTheme}`}
+            style={{
+                '--mc-bg': theme.appBg,
+                '--mc-text': theme.text,
+                '--mc-muted-text': theme.mutedText,
+                '--mc-panel-bg': theme.panelBg,
+                '--mc-panel-border': theme.panelBorder,
+                '--mc-topbar-bg': theme.topBarBg,
+                '--mc-divider': theme.divider,
+                '--mc-input-bg': theme.inputBg,
+                '--mc-input-text': theme.inputText,
+                '--mc-accent': theme.accent,
+                '--mc-accent-gradient': theme.accentGradient,
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                background: 'var(--mc-bg)',
+                color: 'var(--mc-text)',
+                fontFamily: 'Inter, system-ui, sans-serif'
+            }}
+        >
             <style>{`
                 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
                 @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
                 .glass-panel {
-                    background: rgba(255, 255, 255, 0.03);
+                    background: var(--mc-panel-bg);
                     backdrop-filter: blur(12px);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border: 1px solid var(--mc-panel-border);
                     border-radius: 12px;
                 }
                 .btn-pro {
@@ -1904,18 +2023,19 @@ function ManualCreation() {
                     font-size: 0.85rem;
                     cursor: pointer;
                     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border: 1px solid var(--mc-panel-border);
+                    color: var(--mc-text);
                 }
                 .btn-pro:hover {
                     transform: translateY(-1px);
                     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                    border-color: rgba(255, 255, 255, 0.2);
+                    border-color: var(--mc-accent);
                 }
                 .btn-pro:active { transform: translateY(0); }
                 .pro-select {
-                    background: rgba(255, 255, 255, 0.04);
-                    color: #fff;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    background: var(--mc-input-bg);
+                    color: var(--mc-input-text);
+                    border: 1px solid var(--mc-panel-border);
                     border-radius: 12px;
                     padding: 8px 14px;
                     font-size: 0.85rem;
@@ -1924,11 +2044,11 @@ function ManualCreation() {
                     cursor: pointer;
                 }
                 .pro-select:hover {
-                    background: rgba(255, 255, 255, 0.08);
-                    border-color: rgba(255, 255, 255, 0.2);
+                    filter: brightness(1.05);
+                    border-color: var(--mc-accent);
                 }
                 .pro-select:focus {
-                    border-color: #3b82f6;
+                    border-color: var(--mc-accent);
                     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
                 }
                 .btn-icon-label {
@@ -1939,26 +2059,54 @@ function ManualCreation() {
                     height: 38px;
                     padding: 0;
                     border-radius: 10px;
-                    background: rgba(255, 255, 255, 0.05);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    color: rgba(255, 255, 255, 0.7);
+                    background: var(--mc-input-bg);
+                    border: 1px solid var(--mc-panel-border);
+                    color: var(--mc-muted-text);
                     cursor: pointer;
                     transition: all 0.2s;
                 }
                 .btn-icon-label:hover {
-                    background: rgba(255, 255, 255, 0.1);
-                    color: #fff;
-                    border-color: rgba(255, 255, 255, 0.2);
+                    filter: brightness(1.08);
+                    color: var(--mc-text);
+                    border-color: var(--mc-accent);
+                }
+
+                .manual-theme-light {
+                    color: #0f172a;
+                }
+                .manual-theme-light .glass-panel {
+                    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+                }
+                .manual-theme-light .btn-icon-label,
+                .manual-theme-light .btn-pro,
+                .manual-theme-light .pro-select {
+                    color: #0f172a;
+                }
+                .manual-theme-light .pro-select option {
+                    color: #0f172a;
+                    background: #ffffff;
+                }
+                .manual-theme-light [style*="color: #fff"] {
+                    color: #0f172a !important;
+                }
+                .manual-theme-light [style*="color: rgba(255,255,255"] {
+                    color: rgba(15, 23, 42, 0.72) !important;
+                }
+                .manual-theme-light [style*="border: 1px solid rgba(255, 255, 255"] {
+                    border-color: rgba(15, 23, 42, 0.2) !important;
+                }
+                .manual-theme-light [style*="border-bottom: 1px solid rgba(255, 255, 255"] {
+                    border-bottom-color: rgba(15, 23, 42, 0.2) !important;
                 }
             `}</style>
             {/* Top Bar - Compact & Icon Focused */}
             <div style={{
                 height: '56px',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                borderBottom: '1px solid var(--mc-panel-border)',
                 display: 'flex',
                 alignItems: 'center',
                 padding: '0 16px',
-                backgroundColor: 'rgba(15, 15, 20, 0.95)',
+                background: 'var(--mc-topbar-bg)',
                 backdropFilter: 'blur(10px)',
                 zIndex: 100,
                 gap: '12px'
@@ -1966,7 +2114,7 @@ function ManualCreation() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
                         width: '32px', height: '32px',
-                        background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                        background: 'var(--mc-accent-gradient)',
                         borderRadius: '8px',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         color: 'white',
@@ -1976,7 +2124,7 @@ function ManualCreation() {
                     </div>
                 </div>
 
-                <div style={{ height: '24px', width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                <div style={{ height: '24px', width: '1px', background: 'var(--mc-divider)' }} />
 
                 <div style={{ display: 'flex', gap: '4px' }}>
                     <button onClick={handleSaveManual} className="btn-icon-label" title={tt('common.save', 'Save')} style={{ color: '#16a34a' }}>
@@ -2005,14 +2153,14 @@ function ManualCreation() {
                     </button>
                 </div>
 
-                <div style={{ height: '24px', width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                <div style={{ height: '24px', width: '1px', background: 'var(--mc-divider)' }} />
 
                 {/* Tabs - The Landscape Optimizer */}
                 <div style={{ display: 'flex', gap: '4px', flex: 1, justifyContent: 'center' }}>
                     {[
                         { id: 'intro', label: 'Introduction', icon: BookOpen },
-                        { id: 'edit', label: 'Guide Steps', icon: List },
                         { id: 'info', label: 'Details', icon: Info },
+                        { id: 'edit', label: 'Guide Steps', icon: List },
                         { id: 'management', label: 'Approval Process', icon: Shield },
                         { id: 'history', label: 'History', icon: Activity }
                     ].map(tab => (
@@ -2026,8 +2174,12 @@ function ManualCreation() {
                                 padding: '6px 16px',
                                 borderRadius: '8px',
                                 border: 'none',
-                                background: activeTab === tab.id ? 'rgba(37, 99, 235, 0.15)' : 'transparent',
-                                color: activeTab === tab.id ? '#60a5fa' : 'rgba(255,255,255,0.5)',
+                                background: activeTab === tab.id
+                                    ? (uiTheme === 'light' ? 'rgba(37, 99, 235, 0.14)' : 'rgba(37, 99, 235, 0.15)')
+                                    : 'transparent',
+                                color: activeTab === tab.id
+                                    ? (uiTheme === 'light' ? '#1d4ed8' : '#60a5fa')
+                                    : (uiTheme === 'light' ? '#475569' : 'rgba(255,255,255,0.5)'),
                                 fontSize: '0.85rem',
                                 fontWeight: activeTab === tab.id ? '700' : '500',
                                 cursor: 'pointer',
@@ -2040,9 +2192,30 @@ function ManualCreation() {
                     ))}
                 </div>
 
-                <div style={{ height: '24px', width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                <div style={{ height: '24px', width: '1px', background: 'var(--mc-divider)' }} />
 
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <select
+                            value={uiTheme}
+                            onChange={(e) => setUiTheme(e.target.value)}
+                            className="pro-select"
+                            style={{ fontSize: '0.75rem', padding: '4px 28px 4px 10px', minWidth: '115px', height: '32px' }}
+                            title="Manual Creation Theme"
+                        >
+                            <option value="dark">Dark Mode</option>
+                            <option value="light">Light Mode</option>
+                            <option value="colorful">Colorful</option>
+                        </select>
+                        {uiTheme === 'light' ? (
+                            <Sun size={12} style={{ position: 'absolute', right: '8px', pointerEvents: 'none', opacity: 0.7 }} />
+                        ) : uiTheme === 'colorful' ? (
+                            <Palette size={12} style={{ position: 'absolute', right: '8px', pointerEvents: 'none', opacity: 0.7 }} />
+                        ) : (
+                            <Moon size={12} style={{ position: 'absolute', right: '8px', pointerEvents: 'none', opacity: 0.7 }} />
+                        )}
+                    </div>
+
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                         <select
                             value={guide.workflow?.status || guide.status || 'Draft'}
@@ -2084,7 +2257,7 @@ function ManualCreation() {
                         <select
                             value={currentUserRole}
                             onChange={(e) => setCurrentUserRole(e.target.value)}
-                            style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '0.7rem', outline: 'none', cursor: 'pointer' }}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--mc-text)', fontSize: '0.7rem', outline: 'none', cursor: 'pointer' }}
                         >
                             {USER_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
                         </select>
@@ -2154,56 +2327,178 @@ function ManualCreation() {
                                             </button>
                                         </div>
 
-                                        {operatorCurrentStep.media && (
-                                            <div style={{ position: 'relative', width: '100%', borderRadius: '12px', overflow: 'hidden', marginBottom: '18px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                {(!operatorCurrentStep.media.type || operatorCurrentStep.media.type === 'image') && operatorCurrentStep.media.url && (
-                                                    <img
-                                                        src={operatorCurrentStep.media.url}
-                                                        alt={operatorCurrentStep.title}
-                                                        style={{ width: '100%', maxHeight: '400px', objectFit: 'contain' }}
+                                        <div style={{ display: 'grid', gridTemplateColumns: (operatorCurrentStep.images?.length > 0 || operatorCurrentStep.media?.url) ? '1.2fr 1fr' : '1fr', gap: '32px', marginBottom: '24px' }}>
+                                            {/* Left: Images */}
+                                            {(operatorCurrentStep.images?.length > 0 || operatorCurrentStep.media?.url) && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                                    <div style={{ position: 'relative', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', background: '#000', aspectRatio: '4/3' }}>
+                                                        {(!operatorCurrentStep.media?.type || operatorCurrentStep.media?.type === 'image') && (
+                                                            <img
+                                                                src={operatorCurrentStep.images?.[operatorChecks[operatorCurrentStep.id]?.activeImageIndex || 0] || operatorCurrentStep.media?.url}
+                                                                alt={operatorCurrentStep.title}
+                                                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                                            />
+                                                        )}
+                                                        {operatorCurrentStep.media?.type === 'video' && videoSrc && (
+                                                            <video
+                                                                src={`${videoSrc}#t=${operatorCurrentStep.startTime || 0}${operatorCurrentStep.duration ? ',' + (Math.round(((operatorCurrentStep.startTime || 0) + operatorCurrentStep.duration) * 10) / 10) : ''}`}
+                                                                controls
+                                                                style={{ width: '100%', height: '100%', display: 'block' }}
+                                                            />
+                                                        )}
+                                                        {operatorCurrentStep.media?.type === 'youtube' && operatorCurrentStep.media.youtubeUrl && (
+                                                            <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000', height: '100%' }}>
+                                                                <iframe
+                                                                    src={operatorCurrentStep.media.youtubeUrl.replace('watch?v=', 'embed/').split('&')[0]}
+                                                                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                                                                    allowFullScreen
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Thumbnails */}
+                                                    {operatorCurrentStep.images?.length > 1 && (
+                                                        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
+                                                            {operatorCurrentStep.images.map((img, idx) => (
+                                                                <img
+                                                                    key={idx}
+                                                                    src={img}
+                                                                    onClick={() => setOperatorChecks(prev => ({
+                                                                        ...prev,
+                                                                        [operatorCurrentStep.id]: {
+                                                                            ...(prev[operatorCurrentStep.id] || {}),
+                                                                            activeImageIndex: idx
+                                                                        }
+                                                                    }))}
+                                                                    style={{
+                                                                        width: '80px',
+                                                                        height: '60px',
+                                                                        objectFit: 'cover',
+                                                                        borderRadius: '4px',
+                                                                        border: (operatorChecks[operatorCurrentStep.id]?.activeImageIndex || 0) === idx ? '2px solid #3b82f6' : '1px solid rgba(255,255,255,0.1)',
+                                                                        cursor: 'pointer'
+                                                                    }}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Right: Text Content */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                                {operatorCurrentStep.instructions && (
+                                                    <div
+                                                        style={{ lineHeight: '1.6', color: 'rgba(255,255,255,0.9)', fontSize: '1.1rem' }}
+                                                        dangerouslySetInnerHTML={{ __html: operatorCurrentStep.instructions }}
                                                     />
                                                 )}
-                                                {operatorCurrentStep.media.type === 'video' && videoSrc && (
-                                                    <video
-                                                        src={`${videoSrc}#t=${operatorCurrentStep.startTime || 0}${operatorCurrentStep.duration ? ',' + (Math.round(((operatorCurrentStep.startTime || 0) + operatorCurrentStep.duration) * 10) / 10) : ''}`}
-                                                        controls
-                                                        style={{ width: '100%', maxHeight: '400px', display: 'block' }}
-                                                    />
+
+                                                {operatorCurrentStep.bullets?.length > 0 && (
+                                                    <div style={{ display: 'grid', gap: '10px' }}>
+                                                        {operatorCurrentStep.bullets.map((b, idx) => (
+                                                            <div key={`${operatorCurrentStep.id}-bullet-${idx}`} style={{
+                                                                display: 'flex',
+                                                                gap: '12px',
+                                                                padding: '12px',
+                                                                borderRadius: '10px',
+                                                                backgroundColor: 'rgba(255,255,255,0.03)',
+                                                                borderLeft: `4px solid ${b.type === 'warning' ? '#f59e0b' : b.type === 'caution' ? '#ef4444' : '#3b82f6'}`
+                                                            }}>
+                                                                <div style={{ color: b.type === 'warning' ? '#f59e0b' : b.type === 'caution' ? '#ef4444' : '#3b82f6', marginTop: '2px' }}>
+                                                                    {b.type === 'caution' || b.type === 'warning' ? <Shield size={16} /> : <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#fff', marginTop: '4px' }} />}
+                                                                </div>
+                                                                <div style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.85)' }}>{b.text}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 )}
-                                                {operatorCurrentStep.media.type === 'youtube' && operatorCurrentStep.media.youtubeUrl && (
-                                                    <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
-                                                        <iframe
-                                                            src={operatorCurrentStep.media.youtubeUrl.replace('watch?v=', 'embed/').split('&')[0]}
-                                                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-                                                            allowFullScreen
-                                                        />
+
+                                                {getStepDataCaptureFields(operatorCurrentStep).length > 0 && (
+                                                    <div style={{ marginTop: '8px', padding: '14px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                                        <div style={{ fontSize: '0.82rem', fontWeight: 700, marginBottom: 10, color: '#93c5fd' }}>
+                                                            Data Capture
+                                                        </div>
+                                                        <div style={{ display: 'grid', gap: '10px' }}>
+                                                            {getStepDataCaptureFields(operatorCurrentStep).map((q) => {
+                                                                const answer = operatorDataCaptureAnswers?.[operatorCurrentStep.id]?.[q.id];
+                                                                return (
+                                                                    <div key={q.id}>
+                                                                        <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.78)', marginBottom: 5 }}>
+                                                                            {q.label} {q.required ? <span style={{ color: '#fca5a5' }}>*</span> : null}
+                                                                        </div>
+
+                                                                        {(q.type === 'text' || q.type === 'number') && (
+                                                                            <input
+                                                                                type={q.type === 'number' ? 'number' : 'text'}
+                                                                                value={answer || ''}
+                                                                                onChange={(e) => setOperatorDataCaptureValue(operatorCurrentStep.id, q.id, e.target.value)}
+                                                                                style={{ width: '100%', borderRadius: 6, border: '1px solid rgba(255,255,255,0.18)', background: 'rgba(15,23,42,0.45)', color: '#fff', padding: '8px' }}
+                                                                            />
+                                                                        )}
+
+                                                                        {q.type === 'textarea' && (
+                                                                            <textarea
+                                                                                rows={3}
+                                                                                value={answer || ''}
+                                                                                onChange={(e) => setOperatorDataCaptureValue(operatorCurrentStep.id, q.id, e.target.value)}
+                                                                                style={{ width: '100%', borderRadius: 6, border: '1px solid rgba(255,255,255,0.18)', background: 'rgba(15,23,42,0.45)', color: '#fff', padding: '8px' }}
+                                                                            />
+                                                                        )}
+
+                                                                        {q.type === 'select' && (
+                                                                            <select
+                                                                                value={answer || ''}
+                                                                                onChange={(e) => setOperatorDataCaptureValue(operatorCurrentStep.id, q.id, e.target.value)}
+                                                                                style={{ width: '100%', borderRadius: 6, border: '1px solid rgba(255,255,255,0.18)', background: 'rgba(15,23,42,0.45)', color: '#fff', padding: '8px' }}
+                                                                            >
+                                                                                <option value="">Select option...</option>
+                                                                                {(q.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                                                            </select>
+                                                                        )}
+
+                                                                        {q.type === 'radio' && (
+                                                                            <div style={{ display: 'grid', gap: 4 }}>
+                                                                                {(q.options || []).map(opt => (
+                                                                                    <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: 'rgba(255,255,255,0.85)' }}>
+                                                                                        <input
+                                                                                            type="radio"
+                                                                                            name={`${operatorCurrentStep.id}-${q.id}`}
+                                                                                            checked={answer === opt}
+                                                                                            onChange={() => setOperatorDataCaptureValue(operatorCurrentStep.id, q.id, opt)}
+                                                                                        />
+                                                                                        {opt}
+                                                                                    </label>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+
+                                                                        {q.type === 'checkbox' && (
+                                                                            <div style={{ display: 'grid', gap: 4 }}>
+                                                                                {(q.options || []).map(opt => {
+                                                                                    const selected = Array.isArray(answer) && answer.includes(opt);
+                                                                                    return (
+                                                                                        <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: 'rgba(255,255,255,0.85)' }}>
+                                                                                            <input
+                                                                                                type="checkbox"
+                                                                                                checked={selected}
+                                                                                                onChange={() => toggleOperatorCheckboxValue(operatorCurrentStep.id, q.id, opt)}
+                                                                                            />
+                                                                                            {opt}
+                                                                                        </label>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
-                                        )}
-
-                                        {operatorCurrentStep.instructions && (
-                                            <div
-                                                style={{ lineHeight: '1.8', color: 'rgba(255,255,255,0.9)', marginBottom: '16px' }}
-                                                dangerouslySetInnerHTML={{ __html: operatorCurrentStep.instructions }}
-                                            />
-                                        )}
-
-                                        {operatorCurrentStep.bullets?.length > 0 && (
-                                            <div style={{ display: 'grid', gap: '8px', marginBottom: '20px' }}>
-                                                {operatorCurrentStep.bullets.map((b, idx) => (
-                                                    <div key={`${operatorCurrentStep.id}-bullet-${idx}`} style={{
-                                                        padding: '10px 12px',
-                                                        borderRadius: '10px',
-                                                        backgroundColor: 'rgba(255,255,255,0.03)',
-                                                        borderLeft: `4px solid ${b.type === 'warning' ? '#f59e0b' : b.type === 'caution' ? '#ef4444' : '#3b82f6'}`
-                                                    }}>
-                                                        <strong style={{ textTransform: 'uppercase', fontSize: '0.72rem', opacity: 0.9 }}>{b.type}</strong>
-                                                        <div style={{ marginTop: '4px', fontSize: '0.9rem', color: 'rgba(255,255,255,0.85)' }}>{b.text}</div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
+                                        </div>
 
                                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
                                             <button
@@ -2328,42 +2623,39 @@ function ManualCreation() {
                                                 )}
                                             </div>
 
-                                            <div style={{ display: 'grid', gridTemplateColumns: step.media?.url ? '1fr 1fr' : '1fr', gap: '32px', padding: '32px' }}>
-                                                {step.media && (
-                                                    <div style={{ position: 'relative', width: '100%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.3)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                                                        {(!step.media.type || step.media.type === 'image') && step.media.url && (
-                                                            <>
+                                            <div style={{ display: 'grid', gridTemplateColumns: (step.images?.length > 0 || step.media?.url) ? '1fr 1fr' : '1fr', gap: '32px', padding: '32px' }}>
+                                                {(step.images?.length > 0 || step.media?.url) && (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                                        <div style={{ position: 'relative', width: '100%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.3)', border: '1px solid rgba(255, 255, 255, 0.1)', background: '#000', aspectRatio: '4/3' }}>
+                                                            {(!step.media?.type || step.media?.type === 'image') && (
                                                                 <img
-                                                                    src={step.media.url}
+                                                                    src={step.images?.[0] || step.media?.url}
                                                                     alt={step.title}
-                                                                    style={{ width: '100%', display: 'block' }}
+                                                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                                                                 />
-                                                                <div style={{
-                                                                    position: 'absolute', top: '16px', right: '16px',
-                                                                    width: '32px', height: '32px',
-                                                                    borderRadius: '50%', background: 'rgba(0,0,0,0.5)',
-                                                                    backdropFilter: 'blur(4px)',
-                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                    color: '#fff'
-                                                                }}>
-                                                                    <Eye size={16} />
+                                                            )}
+                                                            {step.media?.type === 'video' && videoSrc && (
+                                                                <video
+                                                                    src={`${videoSrc}#t=${step.startTime || 0}${step.duration ? ',' + (Math.round(((step.startTime || 0) + step.duration) * 10) / 10) : ''}`}
+                                                                    controls
+                                                                    style={{ width: '100%', height: '100%', display: 'block' }}
+                                                                />
+                                                            )}
+                                                            {step.media?.type === 'youtube' && step.media.youtubeUrl && (
+                                                                <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000', height: '100%' }}>
+                                                                    <iframe
+                                                                        src={step.media.youtubeUrl.replace('watch?v=', 'embed/').split('&')[0]}
+                                                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                                                                        allowFullScreen
+                                                                    />
                                                                 </div>
-                                                            </>
-                                                        )}
-                                                        {step.media.type === 'video' && videoSrc && (
-                                                            <video
-                                                                src={`${videoSrc}#t=${step.startTime || 0}${step.duration ? ',' + (Math.round(((step.startTime || 0) + step.duration) * 10) / 10) : ''}`}
-                                                                controls
-                                                                style={{ width: '100%', display: 'block' }}
-                                                            />
-                                                        )}
-                                                        {step.media.type === 'youtube' && step.media.youtubeUrl && (
-                                                            <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
-                                                                <iframe
-                                                                    src={step.media.youtubeUrl.replace('watch?v=', 'embed/').split('&')[0]}
-                                                                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-                                                                    allowFullScreen
-                                                                />
+                                                            )}
+                                                        </div>
+                                                        {step.images?.length > 1 && (
+                                                            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
+                                                                {step.images.map((img, i) => (
+                                                                    <img key={i} src={img} style={{ width: '60px', height: '45px', objectFit: 'cover', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }} />
+                                                                ))}
                                                             </div>
                                                         )}
                                                     </div>
@@ -2401,6 +2693,21 @@ function ManualCreation() {
                                                             ))}
                                                         </div>
                                                     )}
+
+                                                    {getStepDataCaptureFields(step).length > 0 && (
+                                                        <div style={{ marginTop: '8px', borderRadius: '12px', padding: '14px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
+                                                            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#93c5fd', marginBottom: '10px', textTransform: 'uppercase' }}>
+                                                                Data Capture Fields
+                                                            </div>
+                                                            <div style={{ display: 'grid', gap: '8px' }}>
+                                                                {getStepDataCaptureFields(step).map((q) => (
+                                                                    <div key={q.id} style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.78)' }}>
+                                                                        • {q.label} <span style={{ color: 'rgba(255,255,255,0.45)' }}>({q.type}{q.required ? ', required' : ''})</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -2410,29 +2717,69 @@ function ManualCreation() {
                         ) : (
                             <div style={{ display: 'flex', flex: 1, flexDirection: 'column', overflow: 'hidden', animation: 'slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
                                 {activeTab === 'edit' && (
-                                    <>
-                                        <StepList
-                                            steps={guide.steps}
-                                            activeStepId={activeStepId}
-                                            onSelectStep={handleStepSelect}
-                                            onAddStep={handleAddStep}
-                                            onDeleteStep={handleDeleteStep}
-                                            horizontal={true}
-                                        />
-                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '16px', backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
-                                            <div style={{ opacity: canEditManual ? 1 : 0.65, pointerEvents: canEditManual ? 'auto' : 'none' }}>
-                                                <StepEditor
-                                                    step={activeStep}
-                                                    onChange={handleStepChange}
-                                                    onCaptureImage={handleCaptureFrame}
-                                                    onAiImprove={handleAiImprove}
-                                                    onAiGenerate={handleAiGenerate}
-                                                    onAiGenerateFromVideo={handleVideoAiGenerate}
-                                                    isAiLoading={isAiLoading}
-                                                />
+                                    <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                            <StepList
+                                                steps={guide.steps}
+                                                activeStepId={activeStepId}
+                                                onSelectStep={handleStepSelect}
+                                                onAddStep={handleAddStep}
+                                                onEditStep={handleEditStep}
+                                                onDeleteStep={handleDeleteStep}
+                                                horizontal={true}
+                                            />
+                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '12px', backgroundColor: 'rgba(0, 0, 0, 0.15)' }}>
+                                                <div style={{ opacity: canEditManual ? 1 : 0.65, pointerEvents: canEditManual ? 'auto' : 'none' }}>
+                                                    <StepEditor
+                                                        step={activeStep}
+                                                        onChange={handleStepChange}
+                                                        onCaptureImage={handleCaptureFrame}
+                                                        onAiImprove={handleAiImprove}
+                                                        onAiGenerate={handleAiGenerate}
+                                                        onAiGenerateFromVideo={handleVideoAiGenerate}
+                                                        isAiLoading={isAiLoading}
+                                                        activeImageIndex={activeImageIndex}
+                                                        setActiveImageIndex={setActiveImageIndex}
+                                                        onSave={handleSaveManual}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
-                                    </>
+                                        <div style={{ display: 'flex', flexDirection: 'column', width: '280px', gap: '12px', overflowY: 'auto', paddingBottom: '16px', borderLeft: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <SourceVideo
+                                                videoSrc={videoSrc}
+                                                videoRef={videoRef}
+                                                onUpload={(e) => {
+                                                    const file = e.target.files[0];
+                                                    if (file) {
+                                                        const url = URL.createObjectURL(file);
+                                                        setVideoSrc(url);
+                                                        setRawVideoFile(file);
+                                                        setGeminiVideoUri(null);
+                                                    }
+                                                }}
+                                                onFullAI={handleFullVideoAI}
+                                                isFullAIAnalyzing={isFullAIAnalyzing}
+                                                isUploadingVideo={isUploadingVideo}
+                                                isAIPanelOpen={isAIPanelOpen}
+                                                onToggleAIPanel={() => setIsAIPanelOpen(!isAIPanelOpen)}
+                                                activeStep={activeStep}
+                                                onMarkIn={handleMarkIn}
+                                                onMarkOut={handleMarkOut}
+                                                onSeekTo={handleSeekTo}
+                                                tt={tt}
+                                                t={t}
+                                            />
+                                            <StepMediaControls
+                                                step={activeStep}
+                                                onCaptureImage={handleCaptureFrame}
+                                                handleStepUpdate={handleStepChange}
+                                                activeImageIndex={activeImageIndex}
+                                                setActiveImageIndex={setActiveImageIndex}
+                                                tt={tt}
+                                            />
+                                        </div>
+                                    </div>
                                 )}
                                 {activeTab === 'intro' && (
                                     <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
@@ -2554,187 +2901,25 @@ function ManualCreation() {
                         )}
                     </div>
 
-                    {/* Right: Video Source */}
-                    {!isPreviewMode && !isOperatorMode && (
+                    {/* Right: AI Chat Overlay Integration */}
+                    {isAIPanelOpen && !isPreviewMode && !isOperatorMode && (
                         <div style={{
-                            width: '320px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.01)',
-                            display: 'flex',
-                            flexDirection: 'column',
+                            width: '350px',
                             borderLeft: '1px solid rgba(255, 255, 255, 0.08)',
-                            backdropFilter: 'blur(12px)'
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            display: 'flex',
+                            flexDirection: 'column'
                         }}>
-                            <div style={{
-                                padding: '16px 20px',
-                                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                                fontWeight: '800',
-                                color: '#fff',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                                fontSize: '0.85rem',
-                                letterSpacing: '0.02em',
-                                textTransform: 'uppercase'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Video size={16} style={{ color: '#60a5fa' }} />
-                                    {tt('manual.sourceVideo', 'Source Video')}
-                                </div>
-                                <label style={{
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    fontSize: '0.75rem',
-                                    color: '#60a5fa',
-                                    padding: '4px 8px',
-                                    borderRadius: '6px',
-                                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                                    transition: 'all 0.2s'
+                            <AIChatOverlay
+                                isOpen={isAIPanelOpen}
+                                onClose={() => setIsAIPanelOpen(false)}
+                                context={{
+                                    type: 'manual_creation',
+                                    manualTitle: guide.title,
+                                    currentStep: activeStep,
+                                    allSteps: guide.steps
                                 }}
-                                    onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(37, 99, 235, 0.2)'}
-                                    onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(37, 99, 235, 0.1)'}
-                                >
-                                    <Upload size={14} />
-                                    {tt('common.upload', 'Upload')}
-                                    <input
-                                        type="file"
-                                        accept="video/*"
-                                        style={{ display: 'none' }}
-                                        onChange={(e) => {
-                                            const file = e.target.files[0];
-                                            if (file) {
-                                                const url = URL.createObjectURL(file);
-                                                setVideoSrc(url);
-                                                setRawVideoFile(file);
-                                                setGeminiVideoUri(null); // Reset URI for new file
-                                            }
-                                        }}
-                                    />
-                                </label>
-                            </div>
-                            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                <button
-                                    onClick={handleFullVideoAI}
-                                    disabled={isFullAIAnalyzing || isUploadingVideo}
-                                    className="btn-pro"
-                                    style={{
-                                        width: '100%',
-                                        backgroundColor: '#2563eb',
-                                        color: 'white',
-                                        padding: '12px',
-                                        fontSize: '0.9rem',
-                                        fontWeight: '700',
-                                        opacity: (isFullAIAnalyzing || isUploadingVideo) ? 0.7 : 1,
-                                        boxShadow: '0 10px 20px rgba(37, 99, 235, 0.2)'
-                                    }}
-                                >
-                                    {isFullAIAnalyzing ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
-                                    {isFullAIAnalyzing ? t('manual.analyzingVideo') : isUploadingVideo ? t('manual.uploadingToAI') : t('manual.analyzeFullVideo')}
-                                </button>
-
-                                <button
-                                    onClick={() => setIsAIPanelOpen(!isAIPanelOpen)}
-                                    className="btn-pro"
-                                    style={{
-                                        width: '100%',
-                                        backgroundColor: isAIPanelOpen ? 'rgba(37, 99, 235, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                                        color: isAIPanelOpen ? '#60a5fa' : 'white',
-                                        borderColor: isAIPanelOpen ? 'rgba(37, 99, 235, 0.3)' : 'rgba(255, 255, 255, 0.1)',
-                                        padding: '10px'
-                                    }}
-                                >
-                                    <MessageSquare size={16} />
-                                    {isAIPanelOpen ? t('manual.hideMaviChat') : t('manual.openMaviChat')}
-                                </button>
-                            </div>
-
-                            <div style={{ padding: '0 20px 20px 20px' }}>
-                                {videoSrc ? (
-                                    <div className="glass-panel" style={{ overflow: 'hidden', backgroundColor: '#000', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                                        <video
-                                            ref={videoRef}
-                                            src={videoSrc}
-                                            controls
-                                            style={{ width: '100%', display: 'block' }}
-                                        />
-                                        <div style={{
-                                            padding: '8px',
-                                            display: 'flex',
-                                            gap: '8px',
-                                            background: 'rgba(255,255,255,0.02)',
-                                            borderTop: '1px solid rgba(255,255,255,0.08)'
-                                        }}>
-                                            <button
-                                                onClick={handleMarkIn}
-                                                className="btn-pro"
-                                                style={{ flex: 1, fontSize: '0.7rem', padding: '6px' }}
-                                                title="Mark Clip In Point"
-                                            >
-                                                In: {activeStep?.startTime || 0}s
-                                            </button>
-                                            <button
-                                                onClick={handleMarkOut}
-                                                className="btn-pro"
-                                                style={{ flex: 1, fontSize: '0.7rem', padding: '6px' }}
-                                                title="Mark Clip Out Point"
-                                            >
-                                                Out: {Math.round(((activeStep?.startTime || 0) + (activeStep?.duration || 0)) * 10) / 10}s
-                                            </button>
-                                            {activeStep?.startTime !== undefined && (
-                                                <button
-                                                    onClick={() => handleSeekTo(activeStep.startTime)}
-                                                    className="btn-pro"
-                                                    style={{ width: '32px', padding: '6px', justifyContent: 'center' }}
-                                                    title="Seek to In"
-                                                >
-                                                    <Play size={12} fill="currentColor" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="glass-panel" style={{
-                                        padding: '40px 20px',
-                                        textAlign: 'center',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        gap: '16px',
-                                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                        borderStyle: 'dashed'
-                                    }}>
-                                        <div style={{
-                                            width: '48px', height: '48px',
-                                            borderRadius: '50%',
-                                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            color: 'rgba(255, 255, 255, 0.2)'
-                                        }}>
-                                            <VideoOff size={24} />
-                                        </div>
-                                        <div style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.85rem' }}>{tt('manual.noVideoLoaded', 'No video loaded')}</div>
-                                        <label className="btn-pro" style={{ padding: '8px 16px', backgroundColor: 'rgba(255, 255, 255, 0.05)', cursor: 'pointer', fontSize: '0.8rem' }}>
-                                            <Upload size={14} />
-                                            {tt('manual.uploadVideo', 'Upload Video')}
-                                            <input
-                                                type="file"
-                                                accept="video/*"
-                                                style={{ display: 'none' }}
-                                                onChange={(e) => {
-                                                    const file = e.target.files[0];
-                                                    if (file) {
-                                                        const url = URL.createObjectURL(file);
-                                                        setVideoSrc(url);
-                                                        setRawVideoFile(file);
-                                                    }
-                                                }}
-                                            />
-                                        </label>
-                                    </div>
-                                )}
-                            </div>
+                            />
                         </div>
                     )}
                 </div>

@@ -1,8 +1,8 @@
 import React from 'react';
-import { Plus, Trash2, List } from 'lucide-react';
+import { Plus, Trash2, List, Pencil } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-const StepList = ({ steps, activeStepId, onSelectStep, onAddStep, onDeleteStep, onReorderStep, horizontal = false }) => {
+const StepList = ({ steps, activeStepId, onSelectStep, onAddStep, onDeleteStep, onEditStep, onReorderStep, horizontal = false }) => {
     const { t } = useLanguage();
     const idCounts = React.useMemo(() => {
         const counts = new Map();
@@ -77,6 +77,44 @@ const StepList = ({ steps, activeStepId, onSelectStep, onAddStep, onDeleteStep, 
                             }}>
                                 {step.title ? (step.title.length > 15 ? step.title.substring(0, 12) + '...' : step.title) : `Step ${index + 1}`}
                             </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onEditStep?.(step.id);
+                                    }}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'rgba(255, 255, 255, 0.45)',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        padding: '2px'
+                                    }}
+                                    title={t('common.edit') || 'Edit Step'}
+                                >
+                                    <Pencil size={12} />
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDeleteStep?.(step.id);
+                                    }}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'rgba(255, 255, 255, 0.45)',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        padding: '2px'
+                                    }}
+                                    title={t('common.delete') || 'Delete Step'}
+                                >
+                                    <Trash2 size={12} />
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -184,6 +222,22 @@ const StepList = ({ steps, activeStepId, onSelectStep, onAddStep, onDeleteStep, 
                                 {step.title || t('manual.untitledStep') || 'Untitled Step'}
                             </div>
                         </div>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onEditStep?.(step.id); }}
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'rgba(255, 255, 255, 0.3)',
+                                cursor: 'pointer',
+                                transition: 'color 0.2s',
+                                padding: '4px'
+                            }}
+                            onMouseEnter={(e) => e.target.style.color = '#60a5fa'}
+                            onMouseLeave={(e) => e.target.style.color = 'rgba(255, 255, 255, 0.3)'}
+                            title={t('common.edit') || 'Edit Step'}
+                        >
+                            <Pencil size={14} />
+                        </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); onDeleteStep(step.id); }}
                             style={{

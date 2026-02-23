@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getKnowledgeBaseItem, getItemByCloudId, updateKnowledgeBaseItem } from '../utils/knowledgeBaseDB';
-import { getManualByCloudId, appendManualAcknowledgement } from '../utils/tursoAPI';
+import { getManualByCloudId, appendManualAcknowledgement, appendManualDataCapture } from '../utils/tursoAPI';
 
 const PublicManualViewer = ({ manualId, onClose }) => {
     const [manual, setManual] = useState(null);
@@ -12,6 +12,7 @@ const PublicManualViewer = ({ manualId, onClose }) => {
     const [ackName, setAckName] = useState('');
     const [ackRole, setAckRole] = useState('Operator');
     const [isSubmittingAck, setIsSubmittingAck] = useState(false);
+    const [isSubmittingCapture, setIsSubmittingCapture] = useState(false);
 
     const query = new URLSearchParams(window.location.hash.split('?')[1] || window.location.search.substring(1));
     const requestedVersion = query.get('v');
@@ -59,6 +60,7 @@ const PublicManualViewer = ({ manualId, onClose }) => {
     const manualStatus = manual?.status || contentObj?.status || contentObj?.workflow?.status || 'Draft';
     const manualVersion = manual?.version || contentObj?.version || '1.0';
     const readAcks = Array.isArray(contentObj?.readAcks) ? contentObj.readAcks : [];
+    const dataCaptures = Array.isArray(contentObj?.dataCaptures) ? contentObj.dataCaptures : [];
 
     const deepLinkedStepIndex = useMemo(() => {
         if (!steps.length) return -1;
@@ -103,12 +105,14 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                 id: 'inspection_result',
                 type: 'select',
                 label: 'What is the inspection result?',
+                required: true,
                 options: ['OK', 'Rework', 'Need Review']
             },
             {
                 id: 'standard_check',
                 type: 'radio',
                 label: 'Is this step compliant with standard?',
+                required: true,
                 options: ['Yes', 'No']
             },
             {
@@ -121,6 +125,19 @@ const PublicManualViewer = ({ manualId, onClose }) => {
 
     const currentQuestions = currentStep ? getStepQuestions(currentStep) : [];
     const currentAnswer = stepAnswers[currentStep?.id || currentStepIndex] || {};
+    const currentStepCaptureCount = dataCaptures.filter(
+        (capture) => String(capture?.stepId || '') === String(currentStep?.id || '')
+    ).length;
+
+    const isQuestionAnswered = (question) => {
+        const value = currentAnswer[question.id];
+        if (question.type === 'checkbox') {
+            return Array.isArray(value) ? value.length > 0 : !!value;
+        }
+        return String(value ?? '').trim().length > 0;
+    };
+
+    const allRequiredAnswered = currentQuestions.every((q) => !q.required || isQuestionAnswered(q));
 
     const setAnswer = (questionId, value) => {
         const key = currentStep?.id || currentStepIndex;
@@ -131,6 +148,14 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                 [questionId]: value
             }
         }));
+    };
+
+    const toggleCheckboxAnswer = (questionId, optionValue) => {
+        const existing = Array.isArray(currentAnswer[questionId]) ? currentAnswer[questionId] : [];
+        const next = existing.includes(optionValue)
+            ? existing.filter((val) => val !== optionValue)
+            : [...existing, optionValue];
+        setAnswer(questionId, next);
     };
 
     const alreadyAcknowledged = readAcks.some(
@@ -205,6 +230,69 @@ const PublicManualViewer = ({ manualId, onClose }) => {
             alert('Failed to save acknowledgement. Please try again.');
         } finally {
             setIsSubmittingAck(false);
+        }
+    };
+
+    const handleSubmitDataCapture = async () => {
+        if (!manual || !currentStep) return;
+        if (!allRequiredAnswered) {
+            alert('Please fill all required data capture fields before submitting.');
+            return;
+        }
+
+        const payload = {
+            id: Math.random().toString(36).slice(2, 10),
+            manualVersion,
+            stepId: currentStep.id || null,
+            stepIndex: currentStepIndex,
+            stepTitle: currentStep.title || `Step ${currentStepIndex + 1}`,
+            operatorName: ackName.trim() || 'Anonymous',
+            role: ackRole,
+            answers: currentAnswer,
+            capturedAt: new Date().toISOString(),
+            source: 'qrcode-public-viewer'
+        };
+
+        setIsSubmittingCapture(true);
+        try {
+            const currentContent = contentObj || {};
+            const currentCaptures = Array.isArray(currentContent.dataCaptures) ? currentContent.dataCaptures : [];
+            const nextCaptures = [payload, ...currentCaptures];
+
+            const cloudId = manual?.cloudId || manualId;
+            let savedToCloud = false;
+            if (cloudId) {
+                try {
+                    await appendManualDataCapture(cloudId, payload);
+                    savedToCloud = true;
+                } catch (cloudError) {
+                    console.warn('Cloud data capture save failed, fallback to local:', cloudError);
+                }
+            }
+
+            if (!savedToCloud && manual?.id) {
+                await updateKnowledgeBaseItem(manual.id, {
+                    content: {
+                        ...currentContent,
+                        dataCaptures: nextCaptures
+                    }
+                });
+            }
+
+            setManual((prev) => ({
+                ...prev,
+                content: {
+                    ...(currentContent || {}),
+                    dataCaptures: nextCaptures
+                }
+            }));
+
+            alert('Data capture submitted successfully.');
+        } catch (captureError) {
+            console.error('Failed to submit data capture:', captureError);
+            alert('Failed to submit data capture. Please try again.');
+        } finally {
+            setIsSubmittingCapture(false);
         }
     };
 
@@ -512,6 +600,34 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                                     {q.type === 'textarea' && (
                                         <textarea className="dozuki-textarea" rows={4} value={currentAnswer[q.id] || ''} onChange={(e) => setAnswer(q.id, e.target.value)} />
                                     )}
+                                    {(q.type === 'text' || q.type === 'number') && (
+                                        <input
+                                            className="dozuki-input"
+                                            type={q.type === 'number' ? 'number' : 'text'}
+                                            value={currentAnswer[q.id] || ''}
+                                            onChange={(e) => setAnswer(q.id, e.target.value)}
+                                        />
+                                    )}
+                                    {q.type === 'checkbox' && (
+                                        <div className="dozuki-radio-row">
+                                            {(q.options || []).map(opt => {
+                                                const selected = Array.isArray(currentAnswer[q.id]) && currentAnswer[q.id].includes(opt);
+                                                return (
+                                                    <label key={opt} style={{ fontSize: 12, color: '#334155', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selected}
+                                                            onChange={() => toggleCheckboxAnswer(q.id, opt)}
+                                                        />
+                                                        {opt}
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    {q.required && (
+                                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>* Required</div>
+                                    )}
                                 </div>
                             ))}
 
@@ -525,6 +641,17 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                                     Anda scan versi <strong>{requestedVersion}</strong>, versi terbaru <strong>{manualVersion}</strong>.
                                 </div>
                             )}
+                            <div style={{ marginTop: 8, fontSize: 12, color: '#475569' }}>
+                                Captured records for this step: <strong>{currentStepCaptureCount}</strong>
+                            </div>
+                            <button
+                                className="dozuki-btn primary"
+                                style={{ marginTop: 10, width: '100%' }}
+                                disabled={isSubmittingCapture || !allRequiredAnswered}
+                                onClick={handleSubmitDataCapture}
+                            >
+                                {isSubmittingCapture ? 'Submitting data...' : 'Submit Data Capture'}
+                            </button>
                         </div>
 
                         <div>

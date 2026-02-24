@@ -1,11 +1,12 @@
 import React from 'react';
 import {
     BookOpen, Tag, Flag, Shield, Lock, Trash2,
-    ChevronDown, Info, AlertTriangle, Users, Eye, EyeOff
+    ChevronDown, Info, AlertTriangle, Users, Eye, EyeOff, X,
+    Code, Copy, ExternalLink, Printer
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-const GuideIntroduction = ({ guide, onChange, onDelete }) => {
+const GuideIntroduction = ({ guide, onChange, onDelete, onShowEmbed }) => {
     const { t } = useLanguage();
 
     const handleChange = (field, value) => {
@@ -20,10 +21,10 @@ const GuideIntroduction = ({ guide, onChange, onDelete }) => {
     const sectionStyle = {
         marginBottom: '24px',
         padding: '24px',
-        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+        backgroundColor: 'var(--mc-section-bg, rgba(255, 255, 255, 0.02))',
         borderRadius: '16px',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+        border: '1px solid var(--mc-section-border, rgba(255, 255, 255, 0.08))',
+        boxShadow: '0 4px 20px var(--mc-shadow-color, rgba(0,0,0,0.2))'
     };
 
     const labelStyle = {
@@ -40,15 +41,15 @@ const GuideIntroduction = ({ guide, onChange, onDelete }) => {
 
     const inputStyle = {
         width: '100%',
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-        color: '#fff',
-        border: '1px solid rgba(255, 255, 255, 0.12)',
+        backgroundColor: 'var(--mc-input-dark-bg, rgba(0, 0, 0, 0.3))',
+        color: 'var(--mc-input-text, #fff)',
+        border: '1px solid var(--mc-input-border, rgba(255, 255, 255, 0.12))',
         borderRadius: '10px',
         padding: '12px 16px',
         fontSize: '0.95rem',
         outline: 'none',
         transition: 'all 0.2s',
-        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
+        boxShadow: 'inset 0 2px 4px var(--mc-shadow-color, rgba(0,0,0,0.2))'
     };
 
     const GUIDE_TYPES = ['Replacement', 'Disassembly', 'Teardown', 'Technique'];
@@ -57,8 +58,8 @@ const GuideIntroduction = ({ guide, onChange, onDelete }) => {
     return (
         <div style={{ padding: '0 0 40px 0', width: '100%', animation: 'fadeIn 0.4s ease' }}>
             <div style={{ marginBottom: '32px', textAlign: 'left', borderLeft: '4px solid #3b82f6', paddingLeft: '20px' }}>
-                <h1 style={{ fontSize: '2.25rem', fontWeight: '900', marginBottom: '8px', color: '#fff', letterSpacing: '-0.02em' }}>Guide Introduction</h1>
-                <p style={{ color: 'rgba(255, 255, 255, 0.5)', margin: 0, fontSize: '1rem', lineHeight: '1.5' }}>
+                <h1 style={{ fontSize: '2.25rem', fontWeight: '900', marginBottom: '8px', color: 'var(--mc-text, #fff)', letterSpacing: '-0.02em' }}>Guide Introduction</h1>
+                <p style={{ color: 'var(--mc-muted-text, rgba(255, 255, 255, 0.5))', margin: 0, fontSize: '1rem', lineHeight: '1.5' }}>
                     Configure the foundational details of your guide, including its type, visibility, and organizational tags.
                 </p>
             </div>
@@ -101,7 +102,7 @@ const GuideIntroduction = ({ guide, onChange, onDelete }) => {
                             placeholder="Briefly describe your guide for search results."
                             style={{ ...inputStyle, minHeight: '100px', resize: 'vertical', lineHeight: '1.6' }}
                         />
-                        <div style={{ marginTop: '12px', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.35)', fontStyle: 'italic', display: 'flex', gap: '6px' }}>
+                        <div style={{ marginTop: '12px', fontSize: '0.8rem', color: 'var(--mc-very-muted-text, rgba(255, 255, 255, 0.35))', fontStyle: 'italic', display: 'flex', gap: '6px' }}>
                             <AlertTriangle size={14} style={{ flexShrink: 0 }} />
                             <span>Keep it succinct! This text appears as a quick blurb in search previews.</span>
                         </div>
@@ -140,9 +141,9 @@ const GuideIntroduction = ({ guide, onChange, onDelete }) => {
                                             borderRadius: '12px',
                                             fontSize: '0.85rem',
                                             fontWeight: '700',
-                                            backgroundColor: isActive ? 'rgba(96, 165, 250, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                                            color: isActive ? '#60a5fa' : 'rgba(255, 255, 255, 0.4)',
-                                            border: `1px solid ${isActive ? 'rgba(96, 165, 250, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`,
+                                            backgroundColor: isActive ? 'rgba(96, 165, 250, 0.15)' : 'var(--mc-faint-bg, rgba(255, 255, 255, 0.03))',
+                                            color: isActive ? '#60a5fa' : 'var(--mc-inactive-text, rgba(255, 255, 255, 0.4))',
+                                            border: `1px solid ${isActive ? 'rgba(96, 165, 250, 0.3)' : 'var(--mc-faint-border, rgba(255, 255, 255, 0.08))'}`,
                                             cursor: 'pointer',
                                             transition: 'all 0.2s ease',
                                             display: 'flex',
@@ -170,9 +171,9 @@ const GuideIntroduction = ({ guide, onChange, onDelete }) => {
                                     flexDirection: 'column',
                                     alignItems: 'center',
                                     gap: '8px',
-                                    backgroundColor: (guide.accessControl?.isPublic !== false) ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                                    color: (guide.accessControl?.isPublic !== false) ? '#10b981' : 'rgba(255, 255, 255, 0.4)',
-                                    border: `1px solid ${(guide.accessControl?.isPublic !== false) ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`,
+                                    backgroundColor: (guide.accessControl?.isPublic !== false) ? 'rgba(16, 185, 129, 0.15)' : 'var(--mc-faint-bg, rgba(255, 255, 255, 0.03))',
+                                    color: (guide.accessControl?.isPublic !== false) ? '#10b981' : 'var(--mc-inactive-text, rgba(255, 255, 255, 0.4))',
+                                    border: `1px solid ${(guide.accessControl?.isPublic !== false) ? 'rgba(16, 185, 129, 0.3)' : 'var(--mc-faint-border, rgba(255, 255, 255, 0.08))'}`,
                                     cursor: 'pointer',
                                     transition: 'all 0.2s'
                                 }}
@@ -191,9 +192,9 @@ const GuideIntroduction = ({ guide, onChange, onDelete }) => {
                                     flexDirection: 'column',
                                     alignItems: 'center',
                                     gap: '8px',
-                                    backgroundColor: guide.accessControl?.isPublic === false ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                                    color: guide.accessControl?.isPublic === false ? '#ef4444' : 'rgba(255, 255, 255, 0.4)',
-                                    border: `1px solid ${guide.accessControl?.isPublic === false ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`,
+                                    backgroundColor: guide.accessControl?.isPublic === false ? 'rgba(239, 68, 68, 0.15)' : 'var(--mc-faint-bg, rgba(255, 255, 255, 0.03))',
+                                    color: guide.accessControl?.isPublic === false ? '#ef4444' : 'var(--mc-inactive-text, rgba(255, 255, 255, 0.4))',
+                                    border: `1px solid ${guide.accessControl?.isPublic === false ? 'rgba(239, 68, 68, 0.3)' : 'var(--mc-faint-border, rgba(255, 255, 255, 0.08))'}`,
                                     cursor: 'pointer',
                                     transition: 'all 0.2s'
                                 }}
@@ -228,10 +229,10 @@ const GuideIntroduction = ({ guide, onChange, onDelete }) => {
                             {(guide.tags || []).map(tag => (
                                 <div key={tag} style={{
                                     padding: '6px 12px',
-                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    backgroundColor: 'var(--mc-faint-bg, rgba(255, 255, 255, 0.05))',
+                                    border: '1px solid var(--mc-faint-border, rgba(255, 255, 255, 0.1))',
                                     borderRadius: '8px',
-                                    color: 'rgba(255, 255, 255, 0.8)',
+                                    color: 'var(--mc-text, rgba(255, 255, 255, 0.8))',
                                     fontSize: '0.8rem',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -243,6 +244,41 @@ const GuideIntroduction = ({ guide, onChange, onDelete }) => {
                                 </div>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Embedding Card */}
+                    <div style={{
+                        ...sectionStyle,
+                        border: '1px solid rgba(167, 139, 250, 0.3)',
+                        backgroundColor: 'rgba(167, 139, 250, 0.05)',
+                        marginTop: '12px'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'rgba(167, 139, 250, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa' }}>
+                                <Code size={24} />
+                            </div>
+                            <div>
+                                <h4 style={{ color: '#a78bfa', margin: '0 0 2px 0', fontSize: '1.1rem', fontWeight: '900' }}>Embed This Guide</h4>
+                                <p style={{ color: 'var(--mc-inactive-text, rgba(255, 255, 255, 0.4))', fontSize: '0.75rem', margin: 0 }}>Generate iFrame code to embed this guide in other websites.</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={onShowEmbed}
+                            className="btn-pro"
+                            style={{
+                                width: '100%',
+                                backgroundColor: 'rgba(167, 139, 250, 0.1)',
+                                color: '#d8b4fe',
+                                borderColor: 'rgba(167, 139, 250, 0.3)',
+                                padding: '14px',
+                                borderRadius: '12px',
+                                fontWeight: '900',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em'
+                            }}
+                        >
+                            Configure Embed
+                        </button>
                     </div>
 
                     {/* Danger Zone */}
@@ -258,7 +294,7 @@ const GuideIntroduction = ({ guide, onChange, onDelete }) => {
                             </div>
                             <div>
                                 <h4 style={{ color: '#ef4444', margin: '0 0 2px 0', fontSize: '1.1rem', fontWeight: '900' }}>Delete Guide</h4>
-                                <p style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.75rem', margin: 0 }}>This action is permanent and cannot be undone.</p>
+                                <p style={{ color: 'var(--mc-inactive-text, rgba(255, 255, 255, 0.4))', fontSize: '0.75rem', margin: 0 }}>This action is permanent and cannot be undone.</p>
                             </div>
                         </div>
                         <button

@@ -39,8 +39,8 @@ const GuideDetails = ({ guide, onChange }) => {
     };
 
     const sectionStyle = {
-        background: 'rgba(255, 255, 255, 0.02)',
-        border: '1px solid rgba(255, 255, 255, 0.06)',
+        background: 'var(--mc-section-bg, rgba(255, 255, 255, 0.02))',
+        border: '1px solid var(--mc-section-border, rgba(255, 255, 255, 0.06))',
         borderRadius: '16px',
         padding: '28px',
         marginBottom: '24px'
@@ -52,18 +52,18 @@ const GuideDetails = ({ guide, onChange }) => {
         gap: '8px',
         fontSize: '0.72rem',
         fontWeight: '900',
-        color: 'rgba(255, 255, 255, 0.4)',
+        color: 'var(--mc-inactive-text, rgba(255, 255, 255, 0.4))',
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
         marginBottom: '16px'
     };
 
     const inputStyle = {
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
+        backgroundColor: 'var(--mc-input-bg, rgba(255, 255, 255, 0.05))',
+        border: '1px solid var(--mc-input-border, rgba(255, 255, 255, 0.1))',
         borderRadius: '12px',
         padding: '12px 16px',
-        color: '#fff',
+        color: 'var(--mc-input-text, #fff)',
         fontSize: '0.9rem',
         outline: 'none',
         width: '100%',
@@ -74,10 +74,10 @@ const GuideDetails = ({ guide, onChange }) => {
         display: 'flex',
         gap: '12px',
         alignItems: 'center',
-        background: 'rgba(255, 255, 255, 0.02)',
+        background: 'var(--mc-faint-bg, rgba(255, 255, 255, 0.02))',
         padding: '12px',
         borderRadius: '16px',
-        border: '1px solid rgba(255, 255, 255, 0.05)'
+        border: '1px solid var(--mc-faint-border, rgba(255, 255, 255, 0.05))'
     };
 
     const PPE_OPTIONS = [
@@ -156,7 +156,7 @@ const GuideDetails = ({ guide, onChange }) => {
                                 </div>
                             ))}
                             {(guide.templateFields?.tools || []).length === 0 && (
-                                <div style={{ textAlign: 'center', padding: '32px', color: 'rgba(255,255,255,0.2)', fontSize: '0.85rem', border: '2px dashed rgba(255,255,255,0.05)', borderRadius: '16px' }}>
+                                <div style={{ textAlign: 'center', padding: '32px', color: 'var(--mc-very-muted-text, rgba(255,255,255,0.2))', fontSize: '0.85rem', border: '2px dashed var(--mc-faint-border, rgba(255,255,255,0.05))', borderRadius: '16px' }}>
                                     No tools listed. Click "Add Tool" to begin.
                                 </div>
                             )}
@@ -191,9 +191,9 @@ const GuideDetails = ({ guide, onChange }) => {
                                     flexDirection: 'column',
                                     gap: '12px',
                                     padding: '16px',
-                                    background: 'rgba(255,255,255,0.02)',
+                                    background: 'var(--mc-faint-bg, rgba(255,255,255,0.02))',
                                     borderRadius: '16px',
-                                    border: '1px solid rgba(255,255,255,0.05)'
+                                    border: '1px solid var(--mc-faint-border, rgba(255,255,255,0.05))'
                                 }}>
                                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                                         <div style={{ flex: 3 }}>
@@ -241,7 +241,7 @@ const GuideDetails = ({ guide, onChange }) => {
                                 </div>
                             ))}
                             {(guide.templateFields?.parts || []).length === 0 && (
-                                <div style={{ textAlign: 'center', padding: '32px', color: 'rgba(255,255,255,0.2)', fontSize: '0.85rem', border: '2px dashed rgba(255,255,255,0.05)', borderRadius: '16px' }}>
+                                <div style={{ textAlign: 'center', padding: '32px', color: 'var(--mc-very-muted-text, rgba(255,255,255,0.2))', fontSize: '0.85rem', border: '2px dashed var(--mc-faint-border, rgba(255,255,255,0.05))', borderRadius: '16px' }}>
                                     No parts listed. Click "Add Part" to begin.
                                 </div>
                             )}
@@ -267,9 +267,9 @@ const GuideDetails = ({ guide, onChange }) => {
                                         padding: '12px 20px',
                                         borderRadius: '14px',
                                         border: '1px solid',
-                                        borderColor: (guide.templateFields?.ppe || []).includes(opt.id) ? 'rgba(245, 158, 11, 0.4)' : 'rgba(255,255,255,0.08)',
-                                        background: (guide.templateFields?.ppe || []).includes(opt.id) ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.02)',
-                                        color: (guide.templateFields?.ppe || []).includes(opt.id) ? '#fbbf24' : 'rgba(255,255,255,0.5)',
+                                        borderColor: (guide.templateFields?.ppe || []).includes(opt.id) ? 'rgba(245, 158, 11, 0.4)' : 'var(--mc-faint-border, rgba(255,255,255,0.08))',
+                                        background: (guide.templateFields?.ppe || []).includes(opt.id) ? 'rgba(245, 158, 11, 0.08)' : 'var(--mc-faint-bg, rgba(255,255,255,0.02))',
+                                        color: (guide.templateFields?.ppe || []).includes(opt.id) ? '#fbbf24' : 'var(--mc-inactive-text, rgba(255,255,255,0.5))',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                         fontSize: '0.85rem',

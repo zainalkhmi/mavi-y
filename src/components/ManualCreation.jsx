@@ -26,7 +26,9 @@ import {
     Cpu, Loader2, BarChart3, Settings, Book, Layout, List,
     Eye, Save, FolderOpen, FileDown, Globe, Layers,
     ChevronDown, Trash2, Plus, Info, Video, CheckCircle,
-    Activity, Shield, Play, VideoOff, X, BookOpen, Sun, Moon, Palette
+    Activity, Shield, Play, VideoOff, X, BookOpen, Sun, Moon, Palette,
+    Code, Copy, ExternalLink, Printer, Box, AlertTriangle, AlertOctagon,
+    Clock
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
@@ -117,7 +119,17 @@ function ManualCreation() {
             'manual.alerts.excelImportFailed': 'Excel import failed: {{message}}',
             'manual.alerts.confirmAppendWordSteps': 'Append {{count}} steps from Word?',
             'manual.alerts.noStepsInWord': 'No step headings found in Word document.',
-            'manual.alerts.wordImportFailed': 'Word import failed: {{message}}'
+            'manual.alerts.wordImportFailed': 'Word import failed: {{message}}',
+            'manual.embedGuide': 'Embed Guide',
+            'manual.embedCode': 'Embed Code',
+            'manual.copyCode': 'Copy Code',
+            'manual.codeCopied': 'Code Copied!',
+            'manual.embedSize.small': 'Small',
+            'manual.embedSize.medium': 'Medium',
+            'manual.embedSize.large': 'Large',
+            'manual.embedSize.full': 'Full Width',
+            'manual.embedPreview': 'Embed Preview',
+            'manual.pdfExportSuccess': 'PDF generated successfully.'
         },
         id: {
             'manual.createVersionSnapshot': 'Buat Snapshot Versi',
@@ -142,7 +154,16 @@ function ManualCreation() {
             'manual.statuses.proposed': 'Usulan',
             'manual.statuses.review': 'Dalam Review',
             'manual.statuses.approved': 'Disetujui',
-            'manual.statuses.released': 'Dirilis'
+            'manual.statuses.released': 'Dirilis',
+            'manual.embedGuide': 'Sematkan Panduan',
+            'manual.embedCode': 'Kode Semat',
+            'manual.copyCode': 'Salin Kode',
+            'manual.codeCopied': 'Kode Disalin!',
+            'manual.embedSize.small': 'Kecil',
+            'manual.embedSize.medium': 'Sedang',
+            'manual.embedSize.large': 'Besar',
+            'manual.embedSize.full': 'Lebar Penuh',
+            'manual.embedPreview': 'Pratinjau Sematan'
         },
         ja: {
             'manual.createVersionSnapshot': 'バージョンスナップショット作成',
@@ -167,7 +188,16 @@ function ManualCreation() {
             'manual.statuses.proposed': '提案済み',
             'manual.statuses.review': 'レビュー中',
             'manual.statuses.approved': '承認済み',
-            'manual.statuses.released': '公開済み'
+            'manual.statuses.released': '公開済み',
+            'manual.embedGuide': 'ガイドを埋め込む',
+            'manual.embedCode': '埋め込みコード',
+            'manual.copyCode': 'コードをコピー',
+            'manual.codeCopied': 'コピー完了！',
+            'manual.embedSize.small': '小',
+            'manual.embedSize.medium': '中',
+            'manual.embedSize.large': '大',
+            'manual.embedSize.full': '全幅',
+            'manual.embedPreview': '埋め込みプレビュー'
         }
     };
 
@@ -340,6 +370,9 @@ function ManualCreation() {
     const [currentUserRole, setCurrentUserRole] = useState('Author');
     const [activeTab, setActiveTab] = useState('edit'); // edit, info, management, history
     const [uiTheme, setUiTheme] = useState('dark'); // dark | light | colorful
+    const [showEmbedModal, setShowEmbedModal] = useState(false);
+    const [embedSize, setEmbedSize] = useState('medium'); // small, medium, large, full
+
 
     const location = useLocation();
 
@@ -1006,7 +1039,8 @@ function ManualCreation() {
     };
 
     const handleOperatorBack = () => {
-        setOperatorStepIndex(prev => Math.max(prev - 1, 0));
+        const minIndex = (guide.summary || (guide.templateFields?.tools || []).length > 0 || (guide.templateFields?.parts || []).length > 0) ? -1 : 0;
+        setOperatorStepIndex(prev => Math.max(prev - 1, minIndex));
     };
 
     const handleSaveManual = async () => {
@@ -1029,7 +1063,9 @@ function ManualCreation() {
                     ...buildGuideSnapshot(guide),
                     status: guide.workflow?.status || guide.status || 'Draft'
                 },
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                industry: guide.category || '',
+                createdAt: guide.createdAt || new Date().toISOString()
             };
 
             // 1) Save to Turso cloud first for QR cross-device access
@@ -1949,20 +1985,44 @@ function ManualCreation() {
             inputBg: 'rgba(255, 255, 255, 0.05)',
             inputText: '#ffffff',
             accent: '#3b82f6',
-            accentGradient: 'linear-gradient(135deg, #2563eb, #3b82f6)'
+            accentGradient: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+            sectionBg: 'rgba(255, 255, 255, 0.02)',
+            sectionBorder: 'rgba(255, 255, 255, 0.08)',
+            faintBg: 'rgba(255, 255, 255, 0.03)',
+            faintBorder: 'rgba(255, 255, 255, 0.05)',
+            hoverBg: 'rgba(255, 255, 255, 0.06)',
+            progressTrack: 'rgba(255,255,255,0.08)',
+            shadowColor: 'rgba(0, 0, 0, 0.37)',
+            inactiveText: 'rgba(255,255,255,0.4)',
+            subtleText: 'rgba(255,255,255,0.55)',
+            veryMutedText: 'rgba(255,255,255,0.3)',
+            inputBorder: 'rgba(255,255,255,0.12)',
+            inputDarkBg: 'rgba(0, 0, 0, 0.3)'
         },
         light: {
             appBg: '#eef3fb',
             text: '#0f172a',
-            mutedText: '#334155',
+            mutedText: '#475569',
             panelBg: '#ffffff',
-            panelBorder: 'rgba(15, 23, 42, 0.2)',
+            panelBorder: 'rgba(15, 23, 42, 0.12)',
             topBarBg: 'rgba(248, 251, 255, 0.96)',
-            divider: 'rgba(15, 23, 42, 0.24)',
+            divider: 'rgba(15, 23, 42, 0.12)',
             inputBg: '#ffffff',
             inputText: '#0f172a',
             accent: '#2563eb',
-            accentGradient: 'linear-gradient(135deg, #60a5fa, #2563eb)'
+            accentGradient: 'linear-gradient(135deg, #60a5fa, #2563eb)',
+            sectionBg: '#ffffff',
+            sectionBorder: 'rgba(15, 23, 42, 0.1)',
+            faintBg: 'rgba(15, 23, 42, 0.03)',
+            faintBorder: 'rgba(15, 23, 42, 0.08)',
+            hoverBg: 'rgba(15, 23, 42, 0.06)',
+            progressTrack: 'rgba(15, 23, 42, 0.08)',
+            shadowColor: 'rgba(15, 23, 42, 0.08)',
+            inactiveText: '#64748b',
+            subtleText: '#64748b',
+            veryMutedText: '#94a3b8',
+            inputBorder: 'rgba(15, 23, 42, 0.15)',
+            inputDarkBg: '#f1f5f9'
         },
         colorful: {
             appBg: 'radial-gradient(circle at 15% 15%, #1d4ed8 0%, #0f172a 35%, #1e1b4b 100%)',
@@ -1975,7 +2035,19 @@ function ManualCreation() {
             inputBg: 'rgba(15,23,42,0.55)',
             inputText: '#e2e8f0',
             accent: '#22d3ee',
-            accentGradient: 'linear-gradient(135deg, #06b6d4, #8b5cf6)'
+            accentGradient: 'linear-gradient(135deg, #06b6d4, #8b5cf6)',
+            sectionBg: 'rgba(255, 255, 255, 0.02)',
+            sectionBorder: 'rgba(255, 255, 255, 0.08)',
+            faintBg: 'rgba(255, 255, 255, 0.03)',
+            faintBorder: 'rgba(255, 255, 255, 0.05)',
+            hoverBg: 'rgba(255, 255, 255, 0.06)',
+            progressTrack: 'rgba(255,255,255,0.08)',
+            shadowColor: 'rgba(0, 0, 0, 0.37)',
+            inactiveText: 'rgba(255,255,255,0.4)',
+            subtleText: 'rgba(255,255,255,0.55)',
+            veryMutedText: 'rgba(255,255,255,0.3)',
+            inputBorder: 'rgba(255,255,255,0.12)',
+            inputDarkBg: 'rgba(0, 0, 0, 0.3)'
         }
     };
 
@@ -1996,6 +2068,18 @@ function ManualCreation() {
                 '--mc-input-text': theme.inputText,
                 '--mc-accent': theme.accent,
                 '--mc-accent-gradient': theme.accentGradient,
+                '--mc-section-bg': theme.sectionBg,
+                '--mc-section-border': theme.sectionBorder,
+                '--mc-faint-bg': theme.faintBg,
+                '--mc-faint-border': theme.faintBorder,
+                '--mc-hover-bg': theme.hoverBg,
+                '--mc-progress-track': theme.progressTrack,
+                '--mc-shadow-color': theme.shadowColor,
+                '--mc-inactive-text': theme.inactiveText,
+                '--mc-subtle-text': theme.subtleText,
+                '--mc-very-muted-text': theme.veryMutedText,
+                '--mc-input-border': theme.inputBorder,
+                '--mc-input-dark-bg': theme.inputDarkBg,
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
@@ -2071,32 +2155,280 @@ function ManualCreation() {
                     border-color: var(--mc-accent);
                 }
 
+                /* ===== LIGHT MODE COMPREHENSIVE OVERRIDES ===== */
                 .manual-theme-light {
                     color: #0f172a;
                 }
                 .manual-theme-light .glass-panel {
-                    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+                    background: #ffffff !important;
+                    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 6px 20px rgba(15, 23, 42, 0.06) !important;
+                    border-color: rgba(15, 23, 42, 0.1) !important;
                 }
                 .manual-theme-light .btn-icon-label,
                 .manual-theme-light .btn-pro,
                 .manual-theme-light .pro-select {
-                    color: #0f172a;
+                    color: #1e293b !important;
                 }
                 .manual-theme-light .pro-select option {
                     color: #0f172a;
                     background: #ffffff;
                 }
-                .manual-theme-light [style*="color: #fff"] {
+
+                /* --- Text color overrides for inline styles --- */
+                .manual-theme-light [style*="color: #fff"],
+                .manual-theme-light [style*="color:#fff"],
+                .manual-theme-light [style*="color: white"] {
                     color: #0f172a !important;
                 }
-                .manual-theme-light [style*="color: rgba(255,255,255"] {
-                    color: rgba(15, 23, 42, 0.72) !important;
+                .manual-theme-light [style*="color: rgba(255,255,255"],
+                .manual-theme-light [style*="color: rgba(255, 255, 255"] {
+                    color: #475569 !important;
                 }
-                .manual-theme-light [style*="border: 1px solid rgba(255, 255, 255"] {
-                    border-color: rgba(15, 23, 42, 0.2) !important;
+
+                /* --- Border overrides for inline styles --- */
+                .manual-theme-light [style*="border: 1px solid rgba(255, 255, 255"],
+                .manual-theme-light [style*="border: 1px solid rgba(255,255,255"] {
+                    border-color: rgba(15, 23, 42, 0.12) !important;
                 }
-                .manual-theme-light [style*="border-bottom: 1px solid rgba(255, 255, 255"] {
-                    border-bottom-color: rgba(15, 23, 42, 0.2) !important;
+                .manual-theme-light [style*="border-bottom: 1px solid rgba(255, 255, 255"],
+                .manual-theme-light [style*="border-bottom: 1px solid rgba(255,255,255"] {
+                    border-bottom-color: rgba(15, 23, 42, 0.12) !important;
+                }
+                .manual-theme-light [style*="borderBottom: 1px solid rgba(255,255,255"],
+                .manual-theme-light [style*="borderBottom: 1px solid rgba(255, 255, 255"] {
+                    border-bottom-color: rgba(15, 23, 42, 0.12) !important;
+                }
+                .manual-theme-light [style*="border-left: 1px solid rgba(255,255,255"],
+                .manual-theme-light [style*="borderLeft: 1px solid rgba(255,255,255"] {
+                    border-left-color: rgba(15, 23, 42, 0.12) !important;
+                }
+                .manual-theme-light [style*="border: 2px dashed rgba(255,255,255"] {
+                    border-color: rgba(15, 23, 42, 0.12) !important;
+                }
+
+                /* --- Background overrides for inline styles --- */
+                .manual-theme-light [style*="background: rgba(255,255,255,0.0"],
+                .manual-theme-light [style*="background: rgba(255, 255, 255, 0.0"],
+                .manual-theme-light [style*="backgroundColor: rgba(255,255,255,0.0"],
+                .manual-theme-light [style*="backgroundColor: rgba(255, 255, 255, 0.0"] {
+                    background: rgba(15, 23, 42, 0.03) !important;
+                }
+                .manual-theme-light [style*="background-color: rgba(255,255,255,0.0"],
+                .manual-theme-light [style*="background-color: rgba(255, 255, 255, 0.0"] {
+                    background-color: rgba(15, 23, 42, 0.03) !important;
+                }
+                .manual-theme-light [style*="background: rgba(255, 255, 255, 0.05)"],
+                .manual-theme-light [style*="background: rgba(255,255,255,0.05)"],
+                .manual-theme-light [style*="backgroundColor: rgba(255,255,255,0.05)"],
+                .manual-theme-light [style*="backgroundColor: rgba(255, 255, 255, 0.05)"],
+                .manual-theme-light [style*="background-color: rgba(255,255,255,0.05)"],
+                .manual-theme-light [style*="background-color: rgba(255, 255, 255, 0.05)"] {
+                    background: #f8fafc !important;
+                    background-color: #f8fafc !important;
+                }
+                .manual-theme-light [style*="background: rgba(255, 255, 255, 0.06)"],
+                .manual-theme-light [style*="background: rgba(255,255,255,0.06)"],
+                .manual-theme-light [style*="background: rgba(255, 255, 255, 0.08)"],
+                .manual-theme-light [style*="background: rgba(255,255,255,0.08)"],
+                .manual-theme-light [style*="backgroundColor: rgba(255,255,255,0.06)"],
+                .manual-theme-light [style*="backgroundColor: rgba(255, 255, 255, 0.06)"],
+                .manual-theme-light [style*="backgroundColor: rgba(255,255,255,0.08)"],
+                .manual-theme-light [style*="backgroundColor: rgba(255, 255, 255, 0.08)"] {
+                    background: rgba(15, 23, 42, 0.04) !important;
+                    background-color: rgba(15, 23, 42, 0.04) !important;
+                }
+                .manual-theme-light [style*="background: rgba(0,0,0,0.2)"],
+                .manual-theme-light [style*="background: rgba(0, 0, 0, 0.2)"],
+                .manual-theme-light [style*="backgroundColor: rgba(0,0,0,0.2)"],
+                .manual-theme-light [style*="backgroundColor: rgba(0, 0, 0, 0.2)"],
+                .manual-theme-light [style*="background-color: rgba(0,0,0,0.2)"],
+                .manual-theme-light [style*="background-color: rgba(0, 0, 0, 0.2)"] {
+                    background: #f1f5f9 !important;
+                    background-color: #f1f5f9 !important;
+                }
+                .manual-theme-light [style*="background: rgba(0, 0, 0, 0.15)"],
+                .manual-theme-light [style*="background: rgba(0,0,0,0.15)"],
+                .manual-theme-light [style*="backgroundColor: rgba(0,0,0,0.15)"],
+                .manual-theme-light [style*="backgroundColor: rgba(0, 0, 0, 0.15)"] {
+                    background: #f8fafc !important;
+                    background-color: #f8fafc !important;
+                }
+                .manual-theme-light [style*="background: rgba(15,23,42,0.45)"],
+                .manual-theme-light [style*="background: rgba(15, 23, 42, 0.45)"],
+                .manual-theme-light [style*="backgroundColor: rgba(15,23,42,0.45)"],
+                .manual-theme-light [style*="backgroundColor: rgba(15, 23, 42, 0.45)"] {
+                    background: #ffffff !important;
+                    background-color: #ffffff !important;
+                }
+                .manual-theme-light [style*="background: #000"],
+                .manual-theme-light [style*="backgroundColor: #000"] {
+                    background: #f1f5f9 !important;
+                    background-color: #f1f5f9 !important;
+                }
+
+                /* --- Input fields in light mode --- */
+                .manual-theme-light input,
+                .manual-theme-light textarea,
+                .manual-theme-light select {
+                    background-color: #ffffff !important;
+                    color: #0f172a !important;
+                    border-color: rgba(15, 23, 42, 0.15) !important;
+                }
+                .manual-theme-light input::placeholder,
+                .manual-theme-light textarea::placeholder {
+                    color: #94a3b8 !important;
+                }
+                .manual-theme-light input:focus,
+                .manual-theme-light textarea:focus,
+                .manual-theme-light select:focus {
+                    border-color: #2563eb !important;
+                    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+                }
+
+                /* --- Shadow overrides --- */
+                .manual-theme-light [style*="box-shadow: 0 8px 32px"],
+                .manual-theme-light [style*="boxShadow: 0 8px 32px"],
+                .manual-theme-light [style*="box-shadow: 0 25px 50px"],
+                .manual-theme-light [style*="boxShadow: 0 25px 50px"],
+                .manual-theme-light [style*="box-shadow: 0 30px 60px"],
+                .manual-theme-light [style*="boxShadow: 0 30px 60px"],
+                .manual-theme-light [style*="box-shadow: 0 20px 40px"],
+                .manual-theme-light [style*="boxShadow: 0 20px 40px"],
+                .manual-theme-light [style*="box-shadow: 0 10px 30px"],
+                .manual-theme-light [style*="boxShadow: 0 10px 30px"] {
+                    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08) !important;
+                }
+                .manual-theme-light [style*="box-shadow: inset"],
+                .manual-theme-light [style*="boxShadow: inset"] {
+                    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+                }
+
+                /* --- Gradient divider lines --- */
+                .manual-theme-light [style*="background: linear-gradient(90deg, transparent, rgba(255,255,255"],
+                .manual-theme-light [style*="background: linear-gradient(90deg, transparent, rgba(255, 255, 255"] {
+                    background: linear-gradient(90deg, transparent, rgba(15, 23, 42, 0.1), transparent) !important;
+                }
+
+                /* --- Progress bar track --- */
+                .manual-theme-light [style*="backgroundColor: rgba(255,255,255,0.08)"][style*="border-radius: 999px"],
+                .manual-theme-light [style*="backgroundColor: rgba(255, 255, 255, 0.08)"][style*="border-radius: 999px"] {
+                    background-color: rgba(15, 23, 42, 0.08) !important;
+                }
+
+                /* --- Backdrop / dialog overlay fix --- */
+                .manual-theme-light [style*="backgroundColor: rgba(0,0,0,0.6)"],
+                .manual-theme-light [style*="backgroundColor: rgba(0, 0, 0, 0.6)"] {
+                    background-color: rgba(15, 23, 42, 0.4) !important;
+                }
+
+                /* --- Labels and section headers --- */
+                .manual-theme-light h1, .manual-theme-light h2,
+                .manual-theme-light h3, .manual-theme-light h4 {
+                    color: #0f172a !important;
+                }
+
+                /* --- Role selector in top bar --- */
+                .manual-theme-light [style*="background: rgba(255,255,255,0.05)"][style*="border-radius: 8px"],
+                .manual-theme-light [style*="background: rgba(255, 255, 255, 0.05)"][style*="border-radius: 8px"] {
+                    background: rgba(15, 23, 42, 0.05) !important;
+                    border-color: rgba(15, 23, 42, 0.12) !important;
+                }
+
+                /* --- Operator mode buttons --- */
+                .manual-theme-light .btn-pro[style*="color: #fff"] {
+                    color: #1e293b !important;
+                }
+                .manual-theme-light .btn-pro[style*="backgroundColor: rgba(255,255,255,0.06)"],
+                .manual-theme-light .btn-pro[style*="backgroundColor: rgba(255, 255, 255, 0.06)"] {
+                    background-color: rgba(15, 23, 42, 0.06) !important;
+                    color: #1e293b !important;
+                }
+
+                /* --- Scrollbar for light mode --- */
+                .manual-theme-light ::-webkit-scrollbar-thumb {
+                    background: rgba(15, 23, 42, 0.15);
+                }
+                .manual-theme-light ::-webkit-scrollbar-thumb:hover {
+                    background: #2563eb;
+                }
+
+                /* --- AI panel sidebar --- */
+                .manual-theme-light [style*="backgroundColor: rgba(15, 23, 42, 0.95)"],
+                .manual-theme-light [style*="backgroundColor: rgba(15,23,42,0.95)"] {
+                    background-color: #ffffff !important;
+                    border-left-color: rgba(15, 23, 42, 0.1) !important;
+                }
+
+                /* --- Bullet dots in light mode --- */
+                .manual-theme-light [style*="backgroundColor: #fff"][style*="border-radius: 50%"][style*="width: 8px"] {
+                    background-color: #334155 !important;
+                }
+
+                /* --- Step number in preview --- */
+                .manual-theme-light span[style*="color: rgba(255, 255, 255, 0.2)"],
+                .manual-theme-light span[style*="color: rgba(255,255,255,0.2)"] {
+                    color: rgba(15, 23, 42, 0.2) !important;
+                }
+
+                /* Dozuki Specific Styles */
+                .dozuki-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 4px 12px;
+                    background: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 99px;
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    color: #475569;
+                }
+                .manual-theme-light .dozuki-step-card {
+                    display: grid;
+                    grid-template-columns: minmax(300px, 1fr) 400px;
+                    gap: 40px;
+                    padding: 40px 0;
+                    border-bottom: 1px solid #f1f5f9;
+                }
+                @media (max-width: 900px) {
+                    .manual-theme-light .dozuki-step-card {
+                        grid-template-columns: 1fr;
+                        gap: 20px;
+                    }
+                }
+                .dozuki-flag {
+                    display: flex;
+                    gap: 16px;
+                    padding: 16px 20px;
+                    border-left: 5px solid;
+                    margin: 16px 0;
+                    font-size: 0.9rem;
+                    border-radius: 4px 12px 12px 4px;
+                    align-items: flex-start;
+                }
+                .flag-note { background: #f0f7ff; border-left-color: #007bff; color: #004085; }
+                .flag-caution { background: #fffcf0; border-left-color: #ffc107; color: #856404; }
+                .flag-warning { background: #fff5f5; border-left-color: #dc3545; color: #721c24; }
+                
+                .dozuki-icon-container {
+                    flex-shrink: 0;
+                    width: 20px;
+                    height: 20px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .dozuki-prerequisites-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 24px;
+                }
+                .manual-theme-light .dozuki-prerequisites-card {
+                    background: #fff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 12px;
+                    padding: 24px;
                 }
             `}</style>
             {/* Top Bar - Compact & Icon Focused */}
@@ -2139,10 +2471,16 @@ function ManualCreation() {
                     <button onClick={handleCreateVersion} className="btn-icon-label" title={tt('manual.createVersionSnapshot', 'New Version')} style={{ color: '#93c5fd' }}>
                         <Layers size={18} />
                     </button>
+                    <button onClick={() => setShowEmbedModal(true)} className="btn-icon-label" title={t('manual.embedGuide')} style={{ color: '#a78bfa' }}>
+                        <Code size={18} />
+                    </button>
                     <button
                         onClick={() => setIsOperatorMode(prev => {
                             const next = !prev;
-                            if (next) setOperatorStepIndex(0);
+                            if (next) {
+                                const hasPrep = (guide.summary || (guide.templateFields?.tools || []).length > 0 || (guide.templateFields?.parts || []).length > 0);
+                                setOperatorStepIndex(hasPrep ? -1 : 0);
+                            }
                             return next;
                         })}
                         className="btn-icon-label"
@@ -2516,11 +2854,8 @@ function ManualCreation() {
                                             </button>
                                             <button
                                                 onClick={handleOperatorNext}
-                                                disabled={operatorStepIndex >= operatorTotalSteps - 1}
                                                 className="btn-pro"
                                                 style={{
-                                                    opacity: operatorStepIndex >= operatorTotalSteps - 1 ? 0.4 : 1,
-                                                    cursor: operatorStepIndex >= operatorTotalSteps - 1 ? 'not-allowed' : 'pointer',
                                                     backgroundColor: 'rgba(37,99,235,0.18)',
                                                     color: '#93c5fd',
                                                     borderColor: 'rgba(59,130,246,0.35)'
@@ -2530,188 +2865,267 @@ function ManualCreation() {
                                             </button>
                                         </div>
                                     </div>
+                                ) : operatorStepIndex === -1 ? (
+                                    <div className="glass-panel" style={{ padding: '32px' }}>
+                                        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                                            <div style={{
+                                                width: '56px', height: '56px', borderRadius: '14px',
+                                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                color: '#3b82f6', margin: '0 auto 16px'
+                                            }}>
+                                                <Info size={28} />
+                                            </div>
+                                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: '0 0 8px 0' }}>Preparation Phase</h2>
+                                            <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0 }}>Review required tools and parts before starting the procedure.</p>
+                                        </div>
+
+                                        {guide.summary && (
+                                            <div style={{ marginBottom: '24px', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                                <div style={{ fontSize: '0.75rem', color: '#60a5fa', fontWeight: 800, textTransform: 'uppercase', marginBottom: '8px' }}>Summary</div>
+                                                <div style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>{guide.summary}</div>
+                                            </div>
+                                        )}
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+                                            {(guide.templateFields?.tools || []).length > 0 && (
+                                                <div style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#93c5fd', fontWeight: 700, marginBottom: '12px' }}>
+                                                        <Box size={14} /> REQUIRED TOOLS
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                        {guide.templateFields.tools.map((t, idx) => (
+                                                            <div key={idx} style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span>{t.name}</span>
+                                                                <span style={{ opacity: 0.5 }}>x{t.qty || 1}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {(guide.templateFields?.parts || []).length > 0 && (
+                                                <div style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#93c5fd', fontWeight: 700, marginBottom: '12px' }}>
+                                                        <Activity size={14} /> REQUIRED PARTS
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                        {guide.templateFields.parts.map((p, idx) => (
+                                                            <div key={idx} style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span>{p.name} #{p.partNo}</span>
+                                                                <span style={{ opacity: 0.5 }}>x{p.qty || 1}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                            <button
+                                                onClick={handleOperatorNext}
+                                                className="btn-pro"
+                                                style={{ padding: '12px 32px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '1rem' }}
+                                            >
+                                                Start Procedure
+                                            </button>
+                                        </div>
+                                    </div>
                                 ) : (
                                     <div className="glass-panel" style={{ padding: '28px', textAlign: 'center', color: 'rgba(255,255,255,0.55)' }}>
                                         {tt('manual.noOperatorSteps', 'No steps available for operator mode.')}
                                     </div>
                                 )}
                             </div>
-                        ) : isPreviewMode ? (
-                            <div style={{ padding: '0 40px 80px 40px', maxWidth: '1000px', margin: '0 auto', animation: 'fadeIn 0.6s ease' }}>
-                                {/* Modern Digital Header */}
-                                <div className="glass-panel" style={{ padding: '48px', marginBottom: '32px', textAlign: 'center', backgroundColor: 'rgba(255, 255, 255, 0.02)' }}>
-                                    <div style={{
-                                        width: '64px', height: '64px',
-                                        borderRadius: '16px',
-                                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: '#60a5fa',
-                                        margin: '0 auto 24px auto'
-                                    }}>
-                                        <Book size={32} />
-                                    </div>
-                                    <h1 style={{ fontSize: '3rem', fontWeight: '900', color: '#fff', margin: '0 0 16px 0', letterSpacing: '-0.04em' }}>
-                                        {guide.title || tt('manual.workInstructions', 'Work Instructions')}
-                                    </h1>
-                                    <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', flexWrap: 'wrap' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.85rem' }}>
-                                            <Shield size={14} style={{ color: '#60a5fa' }} />
-                                            {guide.documentNumber || 'NO-DOC'}
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.85rem' }}>
-                                            <Activity size={14} style={{ color: '#10b981' }} />
-                                            {getWorkflowStatusLabel(guide.status || 'Draft')}
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.85rem' }}>
-                                            <FileText size={14} style={{ color: '#f59e0b' }} />
-                                            v{guide.version || '1.0'}
-                                        </div>
-                                    </div>
+                        ) : (isOperatorMode || isPreviewMode) ? (
+                            <div className={uiTheme === 'light' ? 'manual-theme-light' : ''} style={{
+                                flex: 1,
+                                overflowY: 'auto',
+                                backgroundColor: uiTheme === 'light' ? '#fff' : 'transparent'
+                            }}>
+                                <div style={{
+                                    padding: '60px 40px',
+                                    maxWidth: '1200px',
+                                    margin: '0 auto',
+                                    color: uiTheme === 'light' ? '#334155' : '#fff'
+                                }}>
+                                    {/* Header Section */}
+                                    <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+                                        <h1 style={{
+                                            fontSize: '3rem',
+                                            fontWeight: 900,
+                                            marginBottom: '24px',
+                                            letterSpacing: '-0.04em',
+                                            lineHeight: 1.1
+                                        }}>
+                                            {guide.title || 'Untitled Manual'}
+                                        </h1>
 
-                                    {guide.id && (
-                                        <div style={{ marginTop: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                                            <div style={{
-                                                padding: '12px',
-                                                backgroundColor: '#fff',
-                                                borderRadius: '16px',
-                                                boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
-                                            }}>
-                                                {QRCodePreviewComponent ? (
-                                                    <QRCodePreviewComponent value={manualPublicLink} size={100} />
-                                                ) : qrPreviewDataUrl ? (
-                                                    <img src={qrPreviewDataUrl} alt="Manual QR" style={{ width: '100px', height: '100px', display: 'block' }} />
-                                                ) : (
-                                                    <div style={{ width: '100px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: '0.75rem' }}>
-                                                        QR
-                                                    </div>
-                                                )}
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '12px', marginBottom: '40px' }}>
+                                            <div className="dozuki-badge">
+                                                <Sparkles size={14} /> {guide.difficulty || 'Moderate'}
                                             </div>
-                                            <span style={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '700' }}>
-                                                {tt('manual.scanForMobile', 'Scan for Digital Access')}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Digital Step Cards */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                                    {guide.steps.map((step, idx) => (
-                                        <div key={step.id} className="glass-panel" style={{ overflow: 'hidden', padding: 0 }}>
-                                            <div style={{
-                                                padding: '24px 32px',
-                                                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                background: 'rgba(255, 255, 255, 0.02)'
-                                            }}>
-                                                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', color: '#fff' }}>
-                                                    <span style={{ color: 'rgba(255, 255, 255, 0.2)', marginRight: '12px' }}>{String(idx + 1).padStart(2, '0')}</span>
-                                                    {step.title}
-                                                </h3>
-                                                {step.duration && (
-                                                    <div style={{
-                                                        fontSize: '0.75rem',
-                                                        color: '#60a5fa',
-                                                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                                                        padding: '4px 12px',
-                                                        borderRadius: '20px',
-                                                        fontWeight: '700'
-                                                    }}>
-                                                        {step.duration}s
-                                                    </div>
-                                                )}
+                                            <div className="dozuki-badge">
+                                                <Clock size={14} /> {guide.timeRequired || '15 mins'}
                                             </div>
+                                            <div className="dozuki-badge">
+                                                <List size={14} /> {guide.steps.length} Steps
+                                            </div>
+                                            <div className="dozuki-badge" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6' }}>
+                                                {guide.version || '1.0'}
+                                            </div>
+                                        </div>
 
-                                            <div style={{ display: 'grid', gridTemplateColumns: (step.images?.length > 0 || step.media?.url) ? '1fr 1fr' : '1fr', gap: '32px', padding: '32px' }}>
-                                                {(step.images?.length > 0 || step.media?.url) && (
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                                        <div style={{ position: 'relative', width: '100%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.3)', border: '1px solid rgba(255, 255, 255, 0.1)', background: '#000', aspectRatio: '4/3' }}>
-                                                            {(!step.media?.type || step.media?.type === 'image') && (
-                                                                <img
-                                                                    src={step.images?.[0] || step.media?.url}
-                                                                    alt={step.title}
-                                                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                                                />
-                                                            )}
-                                                            {step.media?.type === 'video' && videoSrc && (
-                                                                <video
-                                                                    src={`${videoSrc}#t=${step.startTime || 0}${step.duration ? ',' + (Math.round(((step.startTime || 0) + step.duration) * 10) / 10) : ''}`}
-                                                                    controls
-                                                                    style={{ width: '100%', height: '100%', display: 'block' }}
-                                                                />
-                                                            )}
-                                                            {step.media?.type === 'youtube' && step.media.youtubeUrl && (
-                                                                <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000', height: '100%' }}>
-                                                                    <iframe
-                                                                        src={step.media.youtubeUrl.replace('watch?v=', 'embed/').split('&')[0]}
-                                                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-                                                                        allowFullScreen
-                                                                    />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        {step.images?.length > 1 && (
-                                                            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
-                                                                {step.images.map((img, i) => (
-                                                                    <img key={i} src={img} style={{ width: '60px', height: '45px', objectFit: 'cover', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }} />
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
+                                        {guide.summary && (
+                                            <div style={{ maxWidth: '800px', margin: '0 auto 40px', textAlign: 'center' }}>
+                                                <p style={{ fontSize: '1.25rem', lineHeight: '1.6', opacity: 0.8, color: uiTheme === 'light' ? '#64748b' : 'rgba(255,255,255,0.7)' }}>
+                                                    {guide.summary}
+                                                </p>
+                                            </div>
+                                        )}
 
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                                    {step.instructions && (
-                                                        <div
-                                                            style={{
-                                                                lineHeight: '1.8',
-                                                                color: 'rgba(255, 255, 255, 0.8)',
-                                                                fontSize: '1.05rem'
-                                                            }}
-                                                            dangerouslySetInnerHTML={{ __html: step.instructions }}
-                                                        />
-                                                    )}
-
-                                                    {step.bullets && step.bullets.length > 0 && (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                                            {step.bullets.map((b, i) => (
-                                                                <div key={i} style={{
-                                                                    padding: '16px',
-                                                                    borderRadius: '12px',
-                                                                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                                                                    borderLeft: `4px solid ${b.type === 'note' ? '#3b82f6' : b.type === 'warning' ? '#f59e0b' : b.type === 'caution' ? '#ef4444' : '#6b7280'}`,
-                                                                    display: 'flex',
-                                                                    gap: '12px',
-                                                                    alignItems: 'flex-start'
-                                                                }}>
-                                                                    <div style={{ color: b.type === 'note' ? '#3b82f6' : b.type === 'warning' ? '#f59e0b' : b.type === 'caution' ? '#ef4444' : '#6b7280' }}>
-                                                                        {b.type === 'note' ? <Info size={16} /> : b.type === 'warning' ? <Shield size={16} /> : b.type === 'caution' ? <Shield size={16} /> : <FileText size={16} />}
-                                                                    </div>
-                                                                    <span style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.7)' }}>{b.text}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-
-                                                    {getStepDataCaptureFields(step).length > 0 && (
-                                                        <div style={{ marginTop: '8px', borderRadius: '12px', padding: '14px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
-                                                            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#93c5fd', marginBottom: '10px', textTransform: 'uppercase' }}>
-                                                                Data Capture Fields
-                                                            </div>
-                                                            <div style={{ display: 'grid', gap: '8px' }}>
-                                                                {getStepDataCaptureFields(step).map((q) => (
-                                                                    <div key={q.id} style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.78)' }}>
-                                                                        • {q.label} <span style={{ color: 'rgba(255,255,255,0.45)' }}>({q.type}{q.required ? ', required' : ''})</span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
+                                        {guide.id && (
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                                                <div style={{
+                                                    padding: '16px',
+                                                    backgroundColor: '#fff',
+                                                    borderRadius: '20px',
+                                                    boxShadow: '0 20px 50px rgba(0,0,0,0.1)'
+                                                }}>
+                                                    {QRCodePreviewComponent ? (
+                                                        <QRCodePreviewComponent value={manualPublicLink} size={120} />
+                                                    ) : (
+                                                        <div style={{ width: '120px', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', border: '1px solid #eee', borderRadius: '12px' }}>
+                                                            QR Code
                                                         </div>
                                                     )}
                                                 </div>
+                                                <span style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.2rem', fontWeight: 800 }}>
+                                                    Scan for Digital View
+                                                </span>
                                             </div>
+                                        )}
+                                    </div>
+
+                                    {/* Prerequisites Grid */}
+                                    <div className="dozuki-prerequisites-grid" style={{ marginBottom: '60px' }}>
+                                        {((guide.templateFields?.tools || []).length > 0) && (
+                                            <div className="dozuki-prerequisites-card">
+                                                <h3 style={{ fontSize: '0.85rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#3b82f6', marginBottom: '20px' }}>
+                                                    Required Tools
+                                                </h3>
+                                                <div style={{ display: 'grid', gap: '10px' }}>
+                                                    {guide.templateFields.tools.map((t, idx) => (
+                                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: uiTheme === 'light' ? '#f8fafc' : 'rgba(255,255,255,0.03)', borderRadius: '10px' }}>
+                                                            <span style={{ fontWeight: 600 }}>{t.name}</span>
+                                                            <span style={{ opacity: 0.5 }}>x{t.qty || 1}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {((guide.templateFields?.parts || []).length > 0) && (
+                                            <div className="dozuki-prerequisites-card">
+                                                <h3 style={{ fontSize: '0.85rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#10b981', marginBottom: '20px' }}>
+                                                    Required Parts
+                                                </h3>
+                                                <div style={{ display: 'grid', gap: '10px' }}>
+                                                    {guide.templateFields.parts.map((p, idx) => (
+                                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: uiTheme === 'light' ? '#f8fafc' : 'rgba(255,255,255,0.03)', borderRadius: '10px' }}>
+                                                            <span><span style={{ fontWeight: 600 }}>{p.name}</span> <span style={{ opacity: 0.5 }}>#{p.partNo}</span></span>
+                                                            <span style={{ opacity: 0.5 }}>x{p.qty || 1}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Steps Loop */}
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        {(isOperatorMode ? guide.steps.slice(operatorStepIndex, operatorStepIndex + 1) : guide.steps).map((step, idx) => {
+                                            const displayIdx = isOperatorMode ? operatorStepIndex : idx;
+                                            return (
+                                                <div key={step.id || idx} className="dozuki-step-card">
+                                                    {/* Media Side */}
+                                                    <div style={{ position: 'relative' }}>
+                                                        {step.media && step.media.url ? (
+                                                            <div style={{ width: '100%', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.1)', background: '#000' }}>
+                                                                {step.media.type === 'video' ? (
+                                                                    <video src={step.media.url} style={{ width: '100%', display: 'block' }} controls />
+                                                                ) : (
+                                                                    <img src={step.media.url} alt={step.title} style={{ width: '100%', display: 'block' }} />
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <div style={{ width: '100%', aspectRatio: '4/3', borderRadius: '20px', border: '2px dashed #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1' }}>
+                                                                <VideoOff size={32} />
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Instruction Side */}
+                                                    <div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px' }}>
+                                                            <div style={{ fontSize: '3.5rem', fontWeight: 900, color: '#3b82f6', opacity: 0.2, lineHeight: 1 }}>
+                                                                {displayIdx + 1}
+                                                            </div>
+                                                            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
+                                                                {step.title}
+                                                            </h2>
+                                                        </div>
+
+                                                        <div
+                                                            style={{ fontSize: '1.1rem', lineHeight: '1.8', marginBottom: '24px', color: uiTheme === 'light' ? '#475569' : 'rgba(255,255,255,0.8)' }}
+                                                            dangerouslySetInnerHTML={{ __html: step.instructions }}
+                                                        />
+
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                            {(step.bullets || []).map((b, bIdx) => {
+                                                                if (['note', 'warning', 'caution'].includes(b.type)) {
+                                                                    const Icon = b.type === 'note' ? Info : b.type === 'caution' ? AlertTriangle : AlertOctagon;
+                                                                    return (
+                                                                        <div key={bIdx} className={`dozuki-flag flag-${b.type}`}>
+                                                                            <div className="dozuki-icon-container">
+                                                                                <Icon size={18} />
+                                                                            </div>
+                                                                            <div>
+                                                                                <div style={{ fontWeight: 900, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>
+                                                                                    {b.type}
+                                                                                </div>
+                                                                                <div style={{ lineHeight: '1.5' }}>{b.text}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                return (
+                                                                    <div key={bIdx} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', paddingLeft: '4px' }}>
+                                                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#475569', marginTop: '10px', flexShrink: 0 }} />
+                                                                        <span style={{ fontSize: '1rem', lineHeight: '1.6' }}>{b.text}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Operator Mode Navigation */}
+                                    {isOperatorMode && (
+                                        <div style={{ marginTop: '60px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '32px', background: uiTheme === 'light' ? '#f8fafc' : 'rgba(255,255,255,0.03)', borderRadius: '24px' }}>
+                                            <button onClick={handleOperatorBack} className="btn-pro" style={{ padding: '12px 32px' }}>
+                                                Previous
+                                            </button>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#94a3b8' }}>
+                                                STEP {operatorStepIndex + 1} OF {guide.steps.length}
+                                            </div>
+                                            <button onClick={handleOperatorNext} className="btn-pro" style={{ padding: '12px 32px', backgroundColor: '#3b82f6', color: '#fff', border: 'none' }}>
+                                                {operatorStepIndex === guide.steps.length - 1 ? 'Finish' : 'Next Step'}
+                                            </button>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
                             </div>
                         ) : (
@@ -2786,6 +3200,7 @@ function ManualCreation() {
                                         <GuideIntroduction
                                             guide={guide}
                                             onChange={(newGuide) => setGuide(newGuide)}
+                                            onShowEmbed={() => setShowEmbedModal(true)}
                                             onDelete={() => {
                                                 showConfirm('Delete Guide?', 'This action is irreversible.', () => {
                                                     // Handle guide deletion logic here if needed
@@ -3189,6 +3604,178 @@ function ManualCreation() {
                     activeStepId: activeStepId
                 }}
             />
+            {/* Embed Guide Modal */}
+            {
+                showEmbedModal && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        backdropFilter: 'blur(8px)',
+                        zIndex: 2000,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: '20px'
+                    }}>
+                        <div className="glass-panel" style={{
+                            maxWidth: '800px', width: '100%',
+                            maxHeight: '90vh', overflowY: 'auto',
+                            padding: '32px',
+                            animation: 'slideUp 0.3s ease-out'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(167, 139, 250, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa' }}>
+                                        <Code size={22} />
+                                    </div>
+                                    <h2 style={{ margin: 0, fontSize: '1.4rem' }}>{t('manual.embedGuide')}</h2>
+                                </div>
+                                <button onClick={() => setShowEmbedModal(false)} className="btn-icon-label" style={{ borderRadius: '50%' }}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div style={{ gridTemplateColumns: '1fr 1fr', display: 'grid', gap: '24px', marginBottom: '24px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    <div style={{ fontSize: '0.9rem', color: 'var(--mc-muted-text)', marginBottom: '8px' }}>
+                                        {t('manual.embedCodeInstructions', 'Copy this code into your website to display this guide as a widget.')}
+                                    </div>
+
+                                    <div style={{ position: 'relative' }}>
+                                        <textarea
+                                            readOnly
+                                            value={`<iframe src="${manualPublicLink}" width="${embedSize === 'full' ? '100%' : (embedSize === 'small' ? '320' : embedSize === 'medium' ? '640' : '800')}" height="${embedSize === 'small' ? '480' : '600'}" frameborder="0" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.1);"></iframe>`}
+                                            style={{
+                                                width: '100%', height: '140px',
+                                                background: 'var(--mc-input-dark-bg)',
+                                                color: 'var(--mc-accent)',
+                                                border: '1px solid var(--mc-panel-border)',
+                                                borderRadius: '12px',
+                                                padding: '16px',
+                                                fontSize: '0.8rem',
+                                                fontFamily: 'monospace',
+                                                resize: 'none'
+                                            }}
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                const code = `<iframe src="${manualPublicLink}" width="${embedSize === 'full' ? '100%' : (embedSize === 'small' ? '320' : embedSize === 'medium' ? '640' : '800')}" height="${embedSize === 'small' ? '480' : '600'}" frameborder="0" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.1);"></iframe>`;
+                                                navigator.clipboard.writeText(code);
+                                                showAlert('Copied', t('manual.codeCopied'));
+                                            }}
+                                            className="btn-pro"
+                                            style={{ position: 'absolute', right: '12px', bottom: '12px', padding: '6px 12px', fontSize: '0.75rem', background: 'var(--mc-accent)', color: 'white', border: 'none' }}
+                                        >
+                                            <Copy size={14} /> {t('manual.copyCode')}
+                                        </button>
+                                    </div>
+
+                                    <div>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--mc-inactive-text)', marginBottom: '10px', letterSpacing: '0.05em' }}>
+                                            {t('manual.selectSize', 'Select Size')}
+                                        </div>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                            {[
+                                                { id: 'small', label: t('manual.embedSize.small'), desc: '320×480' },
+                                                { id: 'medium', label: t('manual.embedSize.medium'), desc: '640×600' },
+                                                { id: 'large', label: t('manual.embedSize.large'), desc: '800×600' },
+                                                { id: 'full', label: t('manual.embedSize.full'), desc: '100% Width' }
+                                            ].map(size => (
+                                                <button
+                                                    key={size.id}
+                                                    onClick={() => setEmbedSize(size.id)}
+                                                    style={{
+                                                        padding: '8px 14px',
+                                                        borderRadius: '8px',
+                                                        border: '1px solid',
+                                                        borderColor: embedSize === size.id ? 'var(--mc-accent)' : 'var(--mc-panel-border)',
+                                                        background: embedSize === size.id ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                                                        color: embedSize === size.id ? 'var(--mc-accent)' : 'var(--mc-muted-text)',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.8rem',
+                                                        flex: 1,
+                                                        textAlign: 'center'
+                                                    }}
+                                                >
+                                                    <div style={{ fontWeight: 700 }}>{size.label}</div>
+                                                    <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>{size.desc}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--mc-inactive-text)', marginBottom: '14px', letterSpacing: '0.05em' }}>
+                                        {t('manual.embedPreview')}
+                                    </div>
+                                    <div style={{
+                                        width: '100%', height: '320px',
+                                        borderRadius: '12px',
+                                        background: 'var(--mc-input-dark-bg)',
+                                        border: '1px solid var(--mc-panel-border)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        overflow: 'hidden',
+                                        position: 'relative'
+                                    }}>
+                                        <div style={{
+                                            width: embedSize === 'small' ? '120px' : (embedSize === 'medium' ? '200px' : '260px'),
+                                            height: embedSize === 'small' ? '180px' : '200px',
+                                            background: 'white',
+                                            borderRadius: '8px',
+                                            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                                            padding: '12px',
+                                            color: '#334155'
+                                        }}>
+                                            <div style={{ width: '40%', height: '8px', background: '#3b82f6', borderRadius: '4px', marginBottom: '8px' }} />
+                                            <div style={{ width: '100%', height: '60px', background: '#f1f5f9', borderRadius: '4px', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <BookOpen size={24} color="#3b82f6" opacity={0.3} />
+                                            </div>
+                                            <div style={{ width: '80%', height: '6px', background: '#e2e8f0', borderRadius: '3px', marginBottom: '6px' }} />
+                                            <div style={{ width: '60%', height: '6px', background: '#e2e8f0', borderRadius: '3px', marginBottom: '12px' }} />
+                                            <div style={{ width: '100%', height: '24px', background: '#3b82f6', borderRadius: '6px' }} />
+                                        </div>
+                                        <div style={{ position: 'absolute', bottom: '12px', fontSize: '0.7rem', color: 'var(--mc-very-muted-text)' }}>
+                                            Previewing as {embedSize} widget
+                                        </div>
+                                    </div>
+                                    <div style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
+                                        <button
+                                            onClick={() => window.open(manualPublicLink, '_blank')}
+                                            className="btn-pro"
+                                            style={{ flex: 1, justifyContent: 'center' }}
+                                        >
+                                            <ExternalLink size={14} /> Open Live
+                                        </button>
+                                        <button
+                                            onClick={exportToPDF}
+                                            className="btn-pro"
+                                            style={{ flex: 1, justifyContent: 'center' }}
+                                        >
+                                            <Printer size={14} /> Print Snapshot
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ borderTop: '1px solid var(--mc-divider)', paddingTop: '24px', textAlign: 'right' }}>
+                                <button
+                                    onClick={() => setShowEmbedModal(false)}
+                                    style={{
+                                        padding: '10px 24px',
+                                        borderRadius: '10px',
+                                        background: 'var(--mc-accent-gradient)',
+                                        color: 'white',
+                                        border: 'none',
+                                        fontWeight: 700,
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Done
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
         </div >
     );
 }

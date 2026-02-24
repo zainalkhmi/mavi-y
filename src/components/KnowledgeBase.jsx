@@ -207,6 +207,7 @@ function KnowledgeBase({ onLoadVideo }) {
             case 'template': return '📋';
             case 'video': return '🎥';
             case 'document': return '📄';
+            case 'manual': return '📖';
             case 'best_practice': return '⭐';
             default: return '📚';
         }
@@ -483,6 +484,7 @@ function KnowledgeBase({ onLoadVideo }) {
                                     { val: '', txt: 'All Types' },
                                     { val: 'template', txt: 'Templates' },
                                     { val: 'video', txt: 'Videos' },
+                                    { val: 'manual', txt: 'Manuals' },
                                     { val: 'document', txt: 'Documents' },
                                     { val: 'best_practice', txt: 'Best Practices' }
                                 ]
@@ -490,6 +492,7 @@ function KnowledgeBase({ onLoadVideo }) {
                             {
                                 label: 'Category', value: selectedCategory, setter: setSelectedCategory, options: [
                                     { val: '', txt: 'All Categories' },
+                                    { val: 'Work Instruction', txt: 'Work Instructions' },
                                     { val: 'Manufacturing', txt: 'Manufacturing' },
                                     { val: 'Assembly', txt: 'Assembly' },
                                     { val: 'Logistics', txt: 'Logistics' },

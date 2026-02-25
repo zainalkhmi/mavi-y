@@ -3274,7 +3274,7 @@ function ManualCreation() {
                                                         </div>
 
                                                         {/* Interactive Data Capture Fields */}
-                                                        {((step.questions || []).length > 0) && (
+                                                        {((step.questions || []).length > 0) && !step.hideDataCapture && (
                                                             <div style={{ marginTop: '32px', padding: '24px', background: uiTheme === 'light' ? '#f1f5f9' : 'rgba(255,255,255,0.05)', borderRadius: '16px', border: '1px solid var(--mc-panel-border)' }}>
                                                                 <h3 style={{ fontSize: '0.85rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#ec4899', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                     <Activity size={16} /> DATA COLLECTION
@@ -3390,7 +3390,7 @@ function ManualCreation() {
                                             <button
                                                 onClick={() => {
                                                     const currentStep = guide.steps[operatorStepIndex];
-                                                    const missingRequired = (currentStep.questions || []).find(q =>
+                                                    const missingRequired = !currentStep.hideDataCapture && (currentStep.questions || []).find(q =>
                                                         q.required && (operatorAnswers[q.id] === undefined || operatorAnswers[q.id] === '')
                                                     );
 
@@ -3441,6 +3441,7 @@ function ManualCreation() {
                                                         activeImageIndex={activeImageIndex}
                                                         setActiveImageIndex={setActiveImageIndex}
                                                         onSave={handleSaveManual}
+                                                        globalVideoSrc={videoSrc}
                                                     />
                                                 </div>
                                             </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera, Upload, X, Image } from 'lucide-react';
+import { Camera, Upload, X, Image, Video } from 'lucide-react';
 
 const StepMediaControls = ({
     step,
@@ -43,12 +43,12 @@ const StepMediaControls = ({
                 Step Media
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
                 <button
                     onClick={onCaptureImage}
                     className="btn-pro"
                     style={{
-                        flex: 1,
+                        flex: '1 1 45%',
                         padding: '8px',
                         display: 'flex',
                         alignItems: 'center',
@@ -66,7 +66,7 @@ const StepMediaControls = ({
                 </button>
 
                 <label className="btn-pro" style={{
-                    flex: 1,
+                    flex: '1 1 45%',
                     padding: '8px',
                     display: 'flex',
                     alignItems: 'center',
@@ -79,8 +79,8 @@ const StepMediaControls = ({
                     cursor: 'pointer',
                     backgroundColor: 'rgba(255,255,255,0.05)'
                 }}>
-                    <Upload size={14} />
-                    <span>Upload</span>
+                    <Image size={14} />
+                    <span>Image</span>
                     <input type="file" hidden accept="image/*" onChange={(e) => {
                         const file = e.target.files[0];
                         if (file) {
@@ -90,6 +90,35 @@ const StepMediaControls = ({
                                 handleStepUpdate(step.id, { ...step, images: newImages });
                             };
                             reader.readAsDataURL(file);
+                        }
+                    }} />
+                </label>
+
+                <label className="btn-pro" style={{
+                    flex: '1 1 100%',
+                    padding: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    fontSize: '0.75rem',
+                    color: '#60a5fa',
+                    border: '1px solid rgba(37, 99, 235, 0.25)',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    backgroundColor: 'rgba(37, 99, 235, 0.05)',
+                    marginTop: '4px'
+                }}>
+                    <Video size={14} />
+                    <span>Upload Video Clip</span>
+                    <input type="file" hidden accept="video/*" onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                            const url = URL.createObjectURL(file);
+                            handleStepUpdate(step.id, {
+                                ...step,
+                                media: { type: 'video', url }
+                            });
                         }
                     }} />
                 </label>

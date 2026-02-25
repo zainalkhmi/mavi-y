@@ -92,36 +92,40 @@ const SourceVideo = ({
                             <button
                                 onClick={onMarkIn}
                                 className="btn-pro"
+                                disabled={!activeStep}
                                 style={{
                                     flex: 1,
                                     fontSize: '0.7rem',
                                     padding: '6px',
-                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                    color: 'white',
+                                    backgroundColor: activeStep ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+                                    color: activeStep ? 'white' : 'rgba(255, 255, 255, 0.2)',
                                     border: '1px solid rgba(255, 255, 255, 0.1)',
                                     borderRadius: '4px',
-                                    cursor: 'pointer'
+                                    cursor: activeStep ? 'pointer' : 'not-allowed',
+                                    opacity: activeStep ? 1 : 0.6
                                 }}
                                 title="Mark Clip In Point"
                             >
-                                Mulai: {activeStep?.startTime || 0}s
+                                Mulai: {activeStep?.startTime !== undefined ? activeStep.startTime : 0}s
                             </button>
                             <button
                                 onClick={onMarkOut}
                                 className="btn-pro"
+                                disabled={!activeStep}
                                 style={{
                                     flex: 1,
                                     fontSize: '0.7rem',
                                     padding: '6px',
-                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                    color: 'white',
+                                    backgroundColor: activeStep ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+                                    color: activeStep ? 'white' : 'rgba(255, 255, 255, 0.2)',
                                     border: '1px solid rgba(255, 255, 255, 0.1)',
                                     borderRadius: '4px',
-                                    cursor: 'pointer'
+                                    cursor: activeStep ? 'pointer' : 'not-allowed',
+                                    opacity: activeStep ? 1 : 0.6
                                 }}
                                 title="Mark Clip Out Point"
                             >
-                                Selesai: {Math.round(((activeStep?.startTime || 0) + (activeStep?.duration || 0)) * 10) / 10}s
+                                Selesai: {activeStep ? Math.round(((activeStep.startTime || 0) + (activeStep.duration || 0)) * 10) / 10 : 0}s
                             </button>
                             {activeStep?.startTime !== undefined && (
                                 <button

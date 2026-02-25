@@ -99,6 +99,7 @@ const PublicManualViewer = ({ manualId, onClose }) => {
     const currentStep = steps[currentStepIndex] || null;
 
     const getStepQuestions = (step) => {
+        if (step?.hideDataCapture) return [];
         if (Array.isArray(step?.questions) && step.questions.length > 0) return step.questions;
         return [
             {
@@ -572,87 +573,89 @@ const PublicManualViewer = ({ manualId, onClose }) => {
 
                         <div className="dozuki-instructions" dangerouslySetInnerHTML={{ __html: currentStep?.instructions || '<p>No instruction available.</p>' }} />
 
-                        <div className="dozuki-q-panel">
-                            {currentQuestions.map((q) => (
-                                <div key={q.id} style={{ marginBottom: 12 }}>
-                                    <label className="dozuki-q-label">{q.label}</label>
-                                    {q.type === 'select' && (
-                                        <select className="dozuki-select" value={currentAnswer[q.id] || ''} onChange={(e) => setAnswer(q.id, e.target.value)}>
-                                            <option value="">Select option...</option>
-                                            {(q.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                        </select>
-                                    )}
-                                    {q.type === 'radio' && (
-                                        <div className="dozuki-radio-row">
-                                            {(q.options || []).map(opt => (
-                                                <label key={opt} style={{ fontSize: 12, color: '#334155', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                    <input
-                                                        type="radio"
-                                                        name={`${currentStepIndex}-${q.id}`}
-                                                        checked={currentAnswer[q.id] === opt}
-                                                        onChange={() => setAnswer(q.id, opt)}
-                                                    />
-                                                    {opt}
-                                                </label>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {q.type === 'textarea' && (
-                                        <textarea className="dozuki-textarea" rows={4} value={currentAnswer[q.id] || ''} onChange={(e) => setAnswer(q.id, e.target.value)} />
-                                    )}
-                                    {(q.type === 'text' || q.type === 'number') && (
-                                        <input
-                                            className="dozuki-input"
-                                            type={q.type === 'number' ? 'number' : 'text'}
-                                            value={currentAnswer[q.id] || ''}
-                                            onChange={(e) => setAnswer(q.id, e.target.value)}
-                                        />
-                                    )}
-                                    {q.type === 'checkbox' && (
-                                        <div className="dozuki-radio-row">
-                                            {(q.options || []).map(opt => {
-                                                const selected = Array.isArray(currentAnswer[q.id]) && currentAnswer[q.id].includes(opt);
-                                                return (
+                        {currentQuestions.length > 0 && (
+                            <div className="dozuki-q-panel">
+                                {currentQuestions.map((q) => (
+                                    <div key={q.id} style={{ marginBottom: 12 }}>
+                                        <label className="dozuki-q-label">{q.label}</label>
+                                        {q.type === 'select' && (
+                                            <select className="dozuki-select" value={currentAnswer[q.id] || ''} onChange={(e) => setAnswer(q.id, e.target.value)}>
+                                                <option value="">Select option...</option>
+                                                {(q.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                            </select>
+                                        )}
+                                        {q.type === 'radio' && (
+                                            <div className="dozuki-radio-row">
+                                                {(q.options || []).map(opt => (
                                                     <label key={opt} style={{ fontSize: 12, color: '#334155', display: 'flex', alignItems: 'center', gap: 6 }}>
                                                         <input
-                                                            type="checkbox"
-                                                            checked={selected}
-                                                            onChange={() => toggleCheckboxAnswer(q.id, opt)}
+                                                            type="radio"
+                                                            name={`${currentStepIndex}-${q.id}`}
+                                                            checked={currentAnswer[q.id] === opt}
+                                                            onChange={() => setAnswer(q.id, opt)}
                                                         />
                                                         {opt}
                                                     </label>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                    {q.required && (
-                                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>* Required</div>
-                                    )}
-                                </div>
-                            ))}
+                                                ))}
+                                            </div>
+                                        )}
+                                        {q.type === 'textarea' && (
+                                            <textarea className="dozuki-textarea" rows={4} value={currentAnswer[q.id] || ''} onChange={(e) => setAnswer(q.id, e.target.value)} />
+                                        )}
+                                        {(q.type === 'text' || q.type === 'number') && (
+                                            <input
+                                                className="dozuki-input"
+                                                type={q.type === 'number' ? 'number' : 'text'}
+                                                value={currentAnswer[q.id] || ''}
+                                                onChange={(e) => setAnswer(q.id, e.target.value)}
+                                            />
+                                        )}
+                                        {q.type === 'checkbox' && (
+                                            <div className="dozuki-radio-row">
+                                                {(q.options || []).map(opt => {
+                                                    const selected = Array.isArray(currentAnswer[q.id]) && currentAnswer[q.id].includes(opt);
+                                                    return (
+                                                        <label key={opt} style={{ fontSize: 12, color: '#334155', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selected}
+                                                                onChange={() => toggleCheckboxAnswer(q.id, opt)}
+                                                            />
+                                                            {opt}
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                        {q.required && (
+                                            <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>* Required</div>
+                                        )}
+                                    </div>
+                                ))}
 
-                            {manualStatus !== 'Released' && (
-                                <div style={{ fontSize: 12, color: '#92400e', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6, padding: 8 }}>
-                                    SOP status saat ini <strong>{manualStatus}</strong>. Acknowledge aktif saat status Released.
+                                {manualStatus !== 'Released' && (
+                                    <div style={{ fontSize: 12, color: '#92400e', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6, padding: 8 }}>
+                                        SOP status saat ini <strong>{manualStatus}</strong>. Acknowledge aktif saat status Released.
+                                    </div>
+                                )}
+                                {requestedVersion && requestedVersion !== manualVersion && (
+                                    <div style={{ marginTop: 8, fontSize: 12, color: '#1d4ed8', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, padding: 8 }}>
+                                        Anda scan versi <strong>{requestedVersion}</strong>, versi terbaru <strong>{manualVersion}</strong>.
+                                    </div>
+                                )}
+                                <div style={{ marginTop: 8, fontSize: 12, color: '#475569' }}>
+                                    Captured records for this step: <strong>{currentStepCaptureCount}</strong>
                                 </div>
-                            )}
-                            {requestedVersion && requestedVersion !== manualVersion && (
-                                <div style={{ marginTop: 8, fontSize: 12, color: '#1d4ed8', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, padding: 8 }}>
-                                    Anda scan versi <strong>{requestedVersion}</strong>, versi terbaru <strong>{manualVersion}</strong>.
-                                </div>
-                            )}
-                            <div style={{ marginTop: 8, fontSize: 12, color: '#475569' }}>
-                                Captured records for this step: <strong>{currentStepCaptureCount}</strong>
+                                <button
+                                    className="dozuki-btn primary"
+                                    style={{ marginTop: 10, width: '100%' }}
+                                    disabled={isSubmittingCapture || !allRequiredAnswered}
+                                    onClick={handleSubmitDataCapture}
+                                >
+                                    {isSubmittingCapture ? 'Submitting data...' : 'Submit Data Capture'}
+                                </button>
                             </div>
-                            <button
-                                className="dozuki-btn primary"
-                                style={{ marginTop: 10, width: '100%' }}
-                                disabled={isSubmittingCapture || !allRequiredAnswered}
-                                onClick={handleSubmitDataCapture}
-                            >
-                                {isSubmittingCapture ? 'Submitting data...' : 'Submit Data Capture'}
-                            </button>
-                        </div>
+                        )}
 
                         <div>
                             <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>

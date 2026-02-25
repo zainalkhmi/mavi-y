@@ -6,10 +6,23 @@ import {
     Sparkles, Eye, Zap, Image, Camera, Upload,
     Edit3, X, CheckCircle, Info, AlertTriangle, AlertCircle,
     Plus, MessageSquare, Trash2, Youtube, Bell,
-    ChevronLeft, ChevronRight
+    ChevronLeft, ChevronRight, EyeOff
 } from 'lucide-react';
 
-const StepEditor = ({ step, onChange, onCaptureImage, onAiImprove, onAiGenerate, onAiGenerateFromVideo, isAiLoading, videoTime, activeImageIndex, setActiveImageIndex, onSave }) => {
+const StepEditor = ({
+    step,
+    onChange,
+    onCaptureImage,
+    onAiImprove,
+    onAiGenerate,
+    onAiGenerateFromVideo,
+    isAiLoading,
+    videoTime,
+    activeImageIndex,
+    setActiveImageIndex,
+    onSave,
+    globalVideoSrc // Added to support previewing global video clips per step
+}) => {
     const { t, tt } = useLanguage();
     const [showMarkup, setShowMarkup] = useState(false);
 
@@ -159,7 +172,13 @@ const StepEditor = ({ step, onChange, onCaptureImage, onAiImprove, onAiGenerate,
                         position: 'relative',
                         boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
                     }}>
-                        {mainImage ? (
+                        {step.media?.type === 'video' ? (
+                            <video
+                                src={`${step.media.url || globalVideoSrc}#t=${step.startTime || 0}${step.duration ? ',' + (Math.round(((step.startTime || 0) + step.duration) * 10) / 10) : ''}`}
+                                controls
+                                style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }}
+                            />
+                        ) : mainImage ? (
                             <img src={mainImage} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Step Main" />
                         ) : (
                             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.1)' }}>
@@ -291,8 +310,30 @@ const StepEditor = ({ step, onChange, onCaptureImage, onAiImprove, onAiGenerate,
 
                             <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '14px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>
-                                        Data Capture Fields
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>
+                                            Data Capture Fields
+                                        </div>
+                                        <label style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            fontSize: '0.72rem',
+                                            color: step.hideDataCapture ? '#ec4899' : 'rgba(255,255,255,0.45)',
+                                            cursor: 'pointer',
+                                            padding: '2px 8px',
+                                            borderRadius: '4px',
+                                            background: step.hideDataCapture ? 'rgba(236, 72, 153, 0.1)' : 'transparent',
+                                            transition: 'all 0.2s'
+                                        }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={!!step.hideDataCapture}
+                                                onChange={(e) => onChange({ ...step, hideDataCapture: e.target.checked })}
+                                                style={{ cursor: 'pointer' }}
+                                            />
+                                            {step.hideDataCapture ? <EyeOff size={12} /> : <Eye size={12} />} Hide
+                                        </label>
                                     </div>
                                     <button
                                         onClick={handleAddDataCaptureField}

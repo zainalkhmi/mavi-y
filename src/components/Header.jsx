@@ -87,9 +87,9 @@ const MENU_ITEMS = [
 
 ];
 
-function Header({ videoName, onUpload, onLogout, sidebarCollapsed }) {
+function Header({ videoName, onUpload, sidebarCollapsed }) {
     const { t } = useLanguage();
-    const { userRole } = useAuth();
+    const { user } = useAuth();
     const navigate = useNavigate();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [dbStatus, setDbStatus] = useState({ isConfigured: false, isOnline: true, mode: 'Local' });
@@ -261,8 +261,6 @@ function Header({ videoName, onUpload, onLogout, sidebarCollapsed }) {
 
             {!sidebarCollapsed && (
                 <div id="header-tools" style={{ marginTop: 'auto', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', alignItems: 'center', padding: '0 12px' }}>
-                    {/* Admin Panel button removed as per user request */}
-
                     <button
                         className="btn"
                         onClick={() => setIsSettingsOpen(true)}

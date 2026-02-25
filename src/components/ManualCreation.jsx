@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getAllProjects } from '../utils/database';
 import { addKnowledgeBaseItem, updateKnowledgeBaseItem, getAllKnowledgeBaseItems, getKnowledgeBaseItem } from '../utils/knowledgeBaseDB';
 import { upsertManual, listManuals } from '../utils/tursoAPI';
+import { isTursoConfigured } from '../utils/tursoClient';
 import HelpButton from './HelpButton';
 import { helpContent } from '../utils/helpContent.jsx';
 import GuideHeader from './manual/GuideHeader';
@@ -21,6 +22,7 @@ import {
 } from '../utils/aiGenerator';
 import AIChatOverlay from './features/AIChatOverlay';
 import jsPDF from 'jspdf';
+import { QRCodeCanvas } from 'qrcode.react';
 import {
     FileSpreadsheet, FileText, Upload, Sparkles, MessageSquare,
     Cpu, Loader2, BarChart3, Settings, Book, Layout, List,
@@ -28,11 +30,13 @@ import {
     ChevronDown, Trash2, Plus, Info, Video, CheckCircle,
     Activity, Shield, Play, VideoOff, X, BookOpen, Sun, Moon, Palette,
     Code, Copy, ExternalLink, Printer, Box, AlertTriangle, AlertOctagon,
-    Clock
+    Clock, Edit3,
+    QrCode, Download
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useDialog } from '../contexts/DialogContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -219,6 +223,11 @@ function ManualCreation() {
     const [selectedProjectId, setSelectedProjectId] = useState('');
     const [selectedProject, setSelectedProject] = useState(null);
     const [videoSrc, setVideoSrc] = useState(null);
+    const [showQRModal, setShowQRModal] = useState(false);
+    const [operatorAnswers, setOperatorAnswers] = useState({});
+    const [showSessionSummary, setShowSessionSummary] = useState(false);
+    const [syncStatus, setSyncStatus] = useState('idle'); // idle, syncing, saved, error
+    const [isHistorySidebarOpen, setIsHistorySidebarOpen] = useState(false);
     const videoRef = useRef(null);
 
     const DEFAULT_HEADER_ORDER = [
@@ -366,8 +375,21 @@ function ManualCreation() {
     const [geminiVideoUri, setGeminiVideoUri] = useState(null);
     const [isFullAIAnalyzing, setIsFullAIAnalyzing] = useState(false);
     const [rawVideoFile, setRawVideoFile] = useState(null);
-    const [currentUserName, setCurrentUserName] = useState('User 1');
-    const [currentUserRole, setCurrentUserRole] = useState('Author');
+    const { user, userRole: rawUserRole } = useAuth();
+    const currentUserName = user?.email || 'User 1';
+
+    // Map internal role logic to the new roles
+    const currentUserRole = useMemo(() => {
+        if (!rawUserRole) return 'Author'; // Default fallback
+        const roleMap = {
+            'admin': 'Admin',
+            'drafter': 'Author',
+            'checker': 'Reviewer',
+            'approval': 'Approver'
+        };
+        return roleMap[rawUserRole] || 'Author';
+    }, [rawUserRole]);
+
     const [activeTab, setActiveTab] = useState('edit'); // edit, info, management, history
     const [uiTheme, setUiTheme] = useState('dark'); // dark | light | colorful
     const [showEmbedModal, setShowEmbedModal] = useState(false);
@@ -1043,11 +1065,32 @@ function ManualCreation() {
         setOperatorStepIndex(prev => Math.max(prev - 1, minIndex));
     };
 
-    const handleSaveManual = async () => {
-        if (!guide.title) {
-            await showAlert('Title Required', t('manual.alerts.enterTitle'));
+    const isFirstSyncRender = useRef(true);
+
+    // Auto-Sync Effect
+    useEffect(() => {
+        if (isFirstSyncRender.current) {
+            isFirstSyncRender.current = false;
             return;
         }
+
+        if (!guide.id || !guide.title || guide.title === tt('manual.newManual', 'New Manual')) return;
+
+        setSyncStatus('syncing');
+        const timer = setTimeout(() => {
+            handleSaveManual(true);
+        }, 5000); // 5s debounce to be conservative
+
+        return () => clearTimeout(timer);
+    }, [guide]);
+
+    const handleSaveManual = async (silent = false) => {
+        if (!guide.title) {
+            if (!silent) await showAlert('Title Required', t('manual.alerts.enterTitle'));
+            return;
+        }
+
+        if (silent) setSyncStatus('syncing');
 
         try {
             const manualData = {
@@ -1107,10 +1150,19 @@ function ManualCreation() {
                 kbId: nextKbId
             }));
 
-            await showAlert('Success', guide.kbId ? t('manual.alerts.updateSuccess') : t('manual.alerts.saveSuccess'));
+            setSyncStatus('saved');
+            if (!silent) {
+                await showAlert('Success', guide.kbId ? t('manual.alerts.updateSuccess') : t('manual.alerts.saveSuccess'));
+            }
+
+            // Revert status to idle after 3 seconds
+            setTimeout(() => setSyncStatus('idle'), 3000);
         } catch (error) {
             console.error('Error saving manual:', error);
-            await showAlert('Error', t('manual.alerts.saveFailed', { message: error.message }));
+            setSyncStatus('error');
+            if (!silent) {
+                await showAlert('Error', t('manual.alerts.saveFailed', { message: error.message }));
+            }
         }
     };
 
@@ -1426,207 +1478,185 @@ function ManualCreation() {
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
             const margin = 15;
-            let yPos = margin;
 
-            // Document Title
-            doc.setFontSize(18);
-            doc.setFont(undefined, 'bold');
-            doc.setTextColor(0, 0, 0);
-            doc.text(guide.title || 'Work Instructions', margin, yPos + 5);
-
-            // QR Code - Top Right Corner (web-accessible URL)
-            const baseUrl = window.location.origin;
-            const manualId = guide.kbId || guide.id || generateId();
-            const qrUrl = `${baseUrl}/#/manual/${manualId}?v=${encodeURIComponent(guide.version || '1.0')}&doc=${encodeURIComponent(guide.documentNumber || '')}&title=${encodeURIComponent(guide.title || '')}`;
-            try {
-                const QRCode = (await import('qrcode')).default;
-                const qrDataUrl = await QRCode.toDataURL(qrUrl, {
-                    width: 40,
-                    margin: 1,
-                    color: { dark: '#0078d4', light: '#ffffff' }
-                });
-                doc.addImage(qrDataUrl, 'PNG', pageWidth - margin - 11, margin, 11, 11);
-                doc.setFontSize(5);
-                doc.setTextColor(100, 100, 100);
-                doc.text('Scan', pageWidth - margin - 5.5, margin + 12, { align: 'center' });
-            } catch (qrError) {
-                console.log('QR code error:', qrError);
-            }
-
-            yPos += 12;
-
-            // Black line under title
-            doc.setLineWidth(0.5);
-            doc.setDrawColor(0, 0, 0);
-            doc.line(margin, yPos, pageWidth - margin, yPos);
-            yPos += 8;
-
-            // Document Metadata Table
-            doc.setFontSize(8);
-            const cellHeight = 6;
-            const labelWidth = 38;
-            const valueWidth = 52;
-
-            const drawMetaRow = (label1, value1, label2, value2, y) => {
-                const x1 = margin;
-                const x2 = margin + labelWidth + valueWidth;
-
-                // Draw all rectangles first (structure)
-                doc.setDrawColor(0, 0, 0);
-                doc.setLineWidth(0.1);
-
-                // Left label cell (with gray background)
-                doc.setFillColor(245, 245, 245);
-                doc.rect(x1, y, labelWidth, cellHeight, 'FD');
-
-                // Left value cell (white background)
-                doc.setFillColor(255, 255, 255);
-                doc.rect(x1 + labelWidth, y, valueWidth, cellHeight, 'FD');
-
-                // Right label cell (with gray background)
-                doc.setFillColor(245, 245, 245);
-                doc.rect(x2, y, labelWidth, cellHeight, 'FD');
-
-                // Right value cell (white background)
-                doc.setFillColor(255, 255, 255);
-                doc.rect(x2 + labelWidth, y, valueWidth, cellHeight, 'FD');
-
-                // Now add text on top
-                doc.setTextColor(0, 0, 0);
-
-                // Left pair text
-                doc.setFont(undefined, 'bold');
-                doc.text(label1, x1 + 2, y + 4);
-                doc.setFont(undefined, 'normal');
-                doc.text(value1 || '-', x1 + labelWidth + 2, y + 4);
-
-                // Right pair text
-                doc.setFont(undefined, 'bold');
-                doc.text(label2, x2 + 2, y + 4);
-                doc.setFont(undefined, 'normal');
-                doc.text(value2 || '-', x2 + labelWidth + 2, y + 4);
+            const colors = {
+                primary: [37, 99, 235], // MAVi Blue
+                text: [30, 41, 59],
+                muted: [100, 116, 139],
+                border: [226, 232, 240],
+                headerBg: [248, 250, 252]
             };
 
-            // Dynamic Metadata Rows based on headerOrder
-            const fields = guide.headerOrder || DEFAULT_HEADER_ORDER;
-            for (let i = 0; i < fields.length; i += 2) {
-                const field1 = fields[i];
-                const field2 = fields[i + 1];
+            const manualId = guide.kbId || guide.id || generateId();
+            const baseUrl = window.location.origin;
+            const qrUrl = `${baseUrl}/#/manual/${manualId}`;
 
-                if (field1 && field2) {
-                    const val1 = guide[field1.id] || '';
-                    const val2 = guide[field2.id] || '';
-                    drawMetaRow(field1.label, val1, field2.label, val2, yPos);
-                    yPos += cellHeight;
-                } else if (field1) {
-                    const val1 = guide[field1.id] || '';
-                    drawMetaRow(field1.label, val1, '', '', yPos);
-                    yPos += cellHeight;
-                }
-            }
+            // Helper for Header
+            const drawHeader = (pageNumber) => {
+                doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+                doc.setLineWidth(0.3);
 
-            // Description (full width)
-            doc.setFillColor(245, 245, 245);
-            doc.rect(margin, yPos, labelWidth, cellHeight, 'FD');
-            doc.setFillColor(255, 255, 255);
-            doc.rect(margin + labelWidth, yPos, pageWidth - margin - margin - labelWidth, cellHeight, 'FD');
+                // Header Container
+                doc.setFillColor(colors.headerBg[0], colors.headerBg[1], colors.headerBg[2]);
+                doc.rect(margin, 10, pageWidth - (margin * 2), 24, 'FD');
 
-            doc.setTextColor(0, 0, 0);
-            doc.setFont(undefined, 'bold');
-            doc.text('Description', margin + 2, yPos + 4);
-            doc.setFont(undefined, 'normal');
-            const descText = doc.splitTextToSize(guide.summary || '-', pageWidth - margin - margin - labelWidth - 4);
-            doc.text(descText, margin + labelWidth + 2, yPos + 4);
-            yPos += cellHeight + 10;
+                // Dividers
+                doc.line(margin + 50, 10, margin + 50, 34);
+                doc.line(pageWidth - margin - 40, 10, pageWidth - margin - 40, 34);
 
-            // Steps
-            guide.steps.forEach((step, index) => {
-                // Check if we need a new page
-                if (yPos > pageHeight - 80) {
-                    doc.addPage();
-                    yPos = margin;
-                }
-
-                // Step Title (above everything)
-                doc.setFontSize(12);
+                // Logo/Brand area
+                doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
                 doc.setFont(undefined, 'bold');
-                doc.setTextColor(0, 0, 0);
-                doc.text(`Step ${index + 1}: ${step.title}`, margin, yPos);
-                yPos += 8;
+                doc.setFontSize(14);
+                doc.text('MAVi', margin + 5, 22);
+                doc.setFontSize(6);
+                doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
+                doc.text('Work Instructions AI', margin + 5, 26);
 
-                const contentStartY = yPos;
-                const imageWidth = 70;
-                const imageHeight = 55;
-                const textStartX = margin + imageWidth + 5;
-                const textWidth = pageWidth - textStartX - margin;
+                // Title Area (Middle)
+                doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'bold');
+                const titleText = doc.splitTextToSize(guide.title || 'Work Instruction', pageWidth - margin - margin - 90);
+                doc.text(titleText, margin + 55, 18);
 
-                // Image on the left
+                doc.setFontSize(7);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
+                doc.text(`ID: ${guide.documentNumber || 'WI-TEMP-001'}`, margin + 55, 28);
+                doc.text(`Status: ${guide.workflow?.status || guide.status || 'Draft'}`, margin + 55, 31);
+
+                // Meta Area (Right)
+                doc.setFontSize(7);
+                doc.text(`Revision: ${guide.version || '1.0'}`, pageWidth - margin - 35, 16);
+                doc.text(`Date: ${new Date().toLocaleDateString()}`, pageWidth - margin - 35, 20);
+                doc.text(`Page: ${pageNumber}`, pageWidth - margin - 35, 24);
+            };
+
+            // Helper for Footer
+            const drawFooter = () => {
+                doc.setFontSize(7);
+                doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
+                doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+                doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+
+                doc.text('© MAVi Industrial Intelligence | Confidential', margin, pageHeight - 10);
+                doc.text(`Generated on ${new Date().toLocaleString()}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+            };
+
+            let yPos = 45;
+
+            // DRAW FIRST PAGE HEADER
+            drawHeader(1);
+            let currentPage = 1;
+
+            // Introduction Section
+            doc.setFontSize(11);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+            doc.text('INTRODUCTION', margin, yPos);
+            yPos += 6;
+
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
+            const summaryText = doc.splitTextToSize(guide.summary || 'No overview provided.', pageWidth - (margin * 2));
+            doc.text(summaryText, margin, yPos);
+            yPos += (summaryText.length * 5) + 8;
+
+            // Steps section
+            guide.steps.forEach((step, index) => {
+                // Space check
+                if (yPos > pageHeight - 70) {
+                    drawFooter();
+                    doc.addPage();
+                    currentPage++;
+                    drawHeader(currentPage);
+                    yPos = 45;
+                }
+
+                // Step Header
+                doc.setFillColor(241, 245, 249);
+                doc.rect(margin, yPos, pageWidth - (margin * 2), 8, 'F');
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
+                doc.text(`STEP ${index + 1}: ${step.title}`.toUpperCase(), margin + 4, yPos + 5.5);
+                yPos += 14;
+
+                const colWidth = (pageWidth - (margin * 2) - 8) / 2;
+                const imageH = 50;
+
+                // Left Column: Media
                 if (step.media && step.media.url) {
                     try {
-                        doc.addImage(step.media.url, 'JPEG', margin, yPos, imageWidth, imageHeight);
+                        doc.addImage(step.media.url, 'JPEG', margin, yPos, colWidth, imageH);
                     } catch (e) {
-                        console.error('PDF Image Error', e);
+                        doc.setDrawColor(200);
+                        doc.rect(margin, yPos, colWidth, imageH);
+                        doc.setFontSize(7);
+                        doc.text('[Image Placeholder]', margin + 10, yPos + 25);
                     }
+                } else {
+                    doc.setDrawColor(240);
+                    doc.rect(margin, yPos, colWidth, imageH);
+                    doc.setFontSize(7);
+                    doc.setTextColor(200);
+                    doc.text('No Media', margin + colWidth / 2, yPos + imageH / 2, { align: 'center' });
                 }
 
-                // Instructions and Alerts on the right
+                // Right Column: Content
                 let textY = yPos;
                 doc.setFontSize(9);
                 doc.setFont(undefined, 'normal');
-                doc.setTextColor(0, 0, 0);
+                doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
 
-                // Instructions
-                if (step.instructions) {
-                    const plainText = step.instructions.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
-                    if (plainText) {
-                        const splitInst = doc.splitTextToSize(plainText, textWidth);
-                        doc.text(splitInst, textStartX, textY);
-                        textY += (splitInst.length * 4) + 3;
-                    }
-                }
+                const instText = doc.splitTextToSize(step.instructions || '', colWidth);
+                doc.text(instText, margin + colWidth + 8, textY);
+                textY += (instText.length * 5) + 4;
 
-                // Alerts/Bullets
+                // Bullets in Right Column
                 if (step.bullets && step.bullets.length > 0) {
                     step.bullets.forEach(b => {
-                        let prefix = '';
-                        let color = [0, 0, 0];
+                        let color = [30, 41, 59];
+                        let prefix = '• ';
+                        if (b.type === 'warning') color = [239, 68, 68];
+                        if (b.type === 'caution') color = [245, 158, 11];
+                        if (b.type === 'note') color = [59, 130, 246];
 
-                        if (b.type === 'note') {
-                            prefix = 'NOTE: ';
-                            color = [0, 120, 212];
-                        } else if (b.type === 'warning') {
-                            prefix = 'WARNING: ';
-                            color = [255, 170, 0];
-                        } else if (b.type === 'caution') {
-                            prefix = 'CAUTION: ';
-                            color = [209, 52, 56];
-                        } else {
-                            prefix = '• ';
-                        }
-
-                        doc.setFont(undefined, 'bold');
                         doc.setTextColor(color[0], color[1], color[2]);
-                        const prefixWidth = doc.getTextWidth(prefix);
-                        doc.text(prefix, textStartX, textY);
-
-                        doc.setFont(undefined, 'normal');
-                        const bulletText = doc.splitTextToSize(b.text, textWidth - prefixWidth - 2);
-                        doc.text(bulletText, textStartX + prefixWidth, textY);
-                        textY += (bulletText.length * 4) + 2;
-                        doc.setTextColor(0, 0, 0);
+                        doc.setFont(undefined, 'bold');
+                        const bText = doc.splitTextToSize(`${b.type ? b.type.toUpperCase() + ': ' : ''}${b.text}`, colWidth - 5);
+                        doc.text(prefix, margin + colWidth + 8, textY);
+                        doc.text(bText, margin + colWidth + 12, textY);
+                        textY += (bText.length * 4) + 2;
                     });
                 }
 
-                // Move yPos to the bottom of the tallest content (image or text)
-                const imageBottom = contentStartY + imageHeight;
-                const textBottom = textY;
-                yPos = Math.max(imageBottom, textBottom) + 8;
+                yPos = Math.max(yPos + imageH, textY) + 12;
             });
+
+            // Final Footer for last page
+            drawFooter();
+
+            // Link to Web Version on the last page if there's space
+            if (yPos < pageHeight - 50) {
+                try {
+                    const QRCode = (await import('qrcode')).default;
+                    const qrDataUrl = await QRCode.toDataURL(qrUrl, { width: 50, margin: 1 });
+                    doc.addImage(qrDataUrl, 'PNG', margin, yPos, 25, 25);
+                    doc.setFontSize(7);
+                    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+                    doc.text('SCAN FOR DIGITAL ACCESS', margin + 28, yPos + 10);
+                    doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
+                    doc.textWithLink(qrUrl, margin + 28, yPos + 15, { url: qrUrl });
+                } catch (e) { }
+            }
 
             doc.save(`${(guide.title || 'manual').replace(/\s+/g, '_')}.pdf`);
         } catch (e) {
             console.error(e);
-            await showAlert('Export Error', t('manual.alerts.exportFailed', { message: e.message }));
+            if (showAlert) await showAlert('Export Error', t('manual.alerts.exportFailed', { message: e.message }));
         }
     };
 
@@ -1720,92 +1750,113 @@ function ManualCreation() {
             const PptxGenJS = PptxGenJSImport.default;
             const pptx = new PptxGenJS();
 
-            // Title slide
+            pptx.layout = 'LAYOUT_WIDE';
+            const BRAND_COLOR = '2563EB'; // Blue-600
+            const TEXT_COLOR = '1E293B'; // Slate-800
+
+            // 1. TITLE SLIDE
             const titleSlide = pptx.addSlide();
-            titleSlide.addText(guide.title || 'Work Instructions', {
-                x: 0.5,
-                y: 1.5,
-                w: 9,
-                h: 1.5,
-                fontSize: 44,
-                bold: true,
-                align: 'center',
-                color: '0078D4'
-            });
-            titleSlide.addText(`${guide.author || 'Author'} | ${guide.revisionDate || new Date().toLocaleDateString()}`, {
-                x: 0.5,
-                y: 3.5,
-                w: 9,
-                h: 0.5,
-                fontSize: 18,
-                align: 'center',
-                color: '666666'
+            titleSlide.background = { color: 'F8FAFC' };
+
+            // Decorative accents
+            titleSlide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: '100%', h: 0.1, fill: { color: BRAND_COLOR } });
+
+            titleSlide.addText(guide.title?.toUpperCase() || 'WORK INSTRUCTIONS', {
+                x: 0.5, y: 2.0, w: 9, h: 1.5,
+                fontSize: 42, bold: true, color: BRAND_COLOR, align: 'center', fontFace: 'Arial'
             });
 
-            // Step slides
-            for (let i = 0; i < guide.steps.length; i++) {
-                const step = guide.steps[i];
+            titleSlide.addText([
+                { text: `Doc ID: ${guide.documentNumber || 'WI-001'} | Rev: ${guide.version || '1.0'}\n`, options: { fontSize: 14, color: '64748B' } },
+                { text: `Status: ${guide.workflow?.status || guide.status || 'Internal Use Only'}`, options: { fontSize: 12, color: '94A3B8', italic: true } }
+            ], { x: 0.5, y: 3.5, w: 9, h: 1.0, align: 'center' });
+
+            titleSlide.addShape(pptx.ShapeType.rect, { x: 4.5, y: 5.5, w: 1.0, h: 0.05, fill: { color: BRAND_COLOR } });
+
+            // 2. STEP SLIDES
+            guide.steps.forEach((step, i) => {
                 const slide = pptx.addSlide();
 
-                // Step title
-                slide.addText(`Step ${i + 1}: ${step.title}`, {
-                    x: 0.5,
-                    y: 0.3,
-                    w: 9,
-                    h: 0.6,
-                    fontSize: 28,
-                    bold: true,
-                    color: '0078D4'
+                // Branded Header
+                slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: '100%', h: 0.6, fill: { color: BRAND_COLOR } });
+                slide.addText(`STEP ${i + 1}: ${step.title}`.toUpperCase(), {
+                    x: 0.3, y: 0.1, w: 9, h: 0.4,
+                    fontSize: 20, bold: true, color: 'FFFFFF'
                 });
 
-                // Image (if available)
+                // Layout: Split 50/50
+                const midX = 5.0;
+
+                // Left: Media
                 if (step.media && step.media.url) {
                     slide.addImage({
-                        data: step.media.url,
-                        x: 0.5,
-                        y: 1.2,
-                        w: 4,
-                        h: 3
+                        path: step.media.url,
+                        x: 0.4, y: 1.0, w: 4.5, h: 4.0,
+                        sizing: { type: 'contain', w: 4.5, h: 4.0 }
+                    });
+                } else {
+                    slide.addShape(pptx.ShapeType.rect, {
+                        x: 0.4, y: 1.0, w: 4.5, h: 4.0,
+                        fill: { color: 'F1F5F9' }, line: { color: 'CBD5E1', width: 1 }
+                    });
+                    slide.addText('NO MEDIA AVAILABLE', {
+                        x: 0.4, y: 1.0, w: 4.5, h: 4.0,
+                        fontSize: 14, color: '94A3B8', align: 'center', valign: 'middle'
                     });
                 }
 
-                // Instructions
-                if (step.instructions) {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = step.instructions;
-                    const plainText = tempDiv.textContent || tempDiv.innerText || '';
+                // Right: Content
+                const contentX = 5.2;
+                const contentW = 4.4;
 
-                    slide.addText(plainText, {
-                        x: step.media && step.media.url ? 5 : 0.5,
-                        y: 1.2,
-                        w: step.media && step.media.url ? 4.5 : 9,
-                        h: 3,
-                        fontSize: 14,
+                // Clean instructions
+                const cleanInst = (step.instructions || '')
+                    .replace(/<[^>]*>/g, '')
+                    .replace(/&nbsp;/g, ' ')
+                    .trim();
+
+                slide.addText(cleanInst, {
+                    x: contentX, y: 1.0, w: contentW, h: 2.5,
+                    fontSize: 14, color: TEXT_COLOR, valign: 'top', fontFace: 'Arial'
+                });
+
+                // Bullets/Alerts
+                if (step.bullets && step.bullets.length > 0) {
+                    const bulletsData = step.bullets.map(b => {
+                        let color = '1E293B';
+                        if (b.type === 'warning') color = 'EF4444';
+                        if (b.type === 'caution') color = 'F59E0B';
+                        if (b.type === 'note') color = '3B82F6';
+
+                        return {
+                            text: b.text,
+                            options: {
+                                bullet: { type: 'bullet' },
+                                color: color,
+                                fontSize: 12,
+                                margin: 5,
+                                bold: b.type !== 'note'
+                            }
+                        };
+                    });
+
+                    slide.addText(bulletsData, {
+                        x: contentX, y: 3.6, w: contentW, h: 3.0,
                         valign: 'top'
                     });
                 }
 
-                // Bullets
-                if (step.bullets && step.bullets.length > 0) {
-                    const bulletText = step.bullets.map(b => ({
-                        text: `${b.type.toUpperCase()}: ${b.text}`,
-                        options: { bullet: true, color: b.type === 'warning' ? 'FF0000' : b.type === 'caution' ? 'FFA500' : '0078D4' }
-                    }));
-
-                    slide.addText(bulletText, {
-                        x: 0.5,
-                        y: 4.5,
-                        w: 9,
-                        h: 2,
-                        fontSize: 12
-                    });
-                }
-            }
+                // Footer
+                slide.addText(`MAVi Work Instructions | ${guide.title} | Page ${i + 2}`, {
+                    x: 0, y: 7.1, w: '100%', h: 0.3,
+                    fontSize: 8, color: '94A3B8', align: 'center'
+                });
+            });
 
             await pptx.writeFile({ fileName: `${(guide.title || 'manual').replace(/\s+/g, '_')}.pptx` });
         } catch (e) {
             console.error(e);
-            await showAlert('Export Error', t('manual.alerts.powerPointExportFailed', { message: e.message }));
+            if (showAlert) await showAlert('Export Error', t('manual.alerts.powerPointExportFailed', { message: e.message }));
         }
     };
 
@@ -2091,6 +2142,15 @@ function ManualCreation() {
             <style>{`
                 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
                 @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+                @keyframes pulseSync {
+                    0% { transform: scale(1); opacity: 0.8; }
+                    50% { transform: scale(1.2); opacity: 1; }
+                    100% { transform: scale(1); opacity: 0.8; }
+                }
+                .pulse-sync {
+                    animation: pulseSync 2s ease-in-out infinite;
+                }
+                @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
                 .glass-panel {
                     background: var(--mc-panel-bg);
                     backdrop-filter: blur(12px);
@@ -2458,9 +2518,37 @@ function ManualCreation() {
 
                 <div style={{ height: '24px', width: '1px', background: 'var(--mc-divider)' }} />
 
-                <div style={{ display: 'flex', gap: '4px' }}>
-                    <button onClick={handleSaveManual} className="btn-icon-label" title={tt('common.save', 'Save')} style={{ color: '#16a34a' }}>
-                        <Save size={18} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div
+                        onClick={() => setGuide(prev => ({ ...prev, title: prompt('Nama Baru / New Title', guide.title) || guide.title }))}
+                        style={{
+                            fontSize: '0.9rem', fontWeight: 700, color: 'var(--mc-text)',
+                            maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap', cursor: 'pointer', transition: 'opacity 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+                        onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                        title="Klik untuk mengubah nama / Click to rename"
+                    >
+                        {guide.title || 'Untitled Manual'}
+                    </div>
+                    {/* Sync Status Indicator */}
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
+                        color: syncStatus === 'saved' ? '#10b981' : syncStatus === 'error' ? '#ef4444' : 'rgba(255,255,255,0.25)',
+                        marginLeft: '8px', padding: '2px 8px', borderRadius: '99px',
+                        background: syncStatus === 'syncing' ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                        transition: 'all 0.3s'
+                    }}>
+                        <Globe size={10} className={syncStatus === 'syncing' ? 'pulse-sync' : ''} />
+                        {syncStatus === 'syncing' ? 'Syncing' : syncStatus === 'saved' ? 'Saved' : syncStatus === 'error' ? 'Offline' : 'Ready'}
+                    </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto' }}>
+                    <button onClick={() => setGuide(prev => ({ ...prev, title: prompt('Nama Baru / New Title', guide.title) || guide.title }))} className="btn-icon-label" title="Ubah Nama (Rename)">
+                        <Edit3 size={18} />
                     </button>
                     <button onClick={handleLoadManualsList} className="btn-icon-label" title={tt('common.open', 'Open')}>
                         <FolderOpen size={18} />
@@ -2468,11 +2556,14 @@ function ManualCreation() {
                     <button onClick={() => setIsPreviewMode(!isPreviewMode)} className="btn-icon-label" title={tt('common.preview', 'Preview')} style={{ color: isPreviewMode ? '#3b82f6' : 'inherit' }}>
                         {isPreviewMode ? <Layout size={18} /> : <Eye size={18} />}
                     </button>
-                    <button onClick={handleCreateVersion} className="btn-icon-label" title={tt('manual.createVersionSnapshot', 'New Version')} style={{ color: '#93c5fd' }}>
-                        <Layers size={18} />
+                    <button onClick={() => setIsHistorySidebarOpen(!isHistorySidebarOpen)} className="btn-icon-label" title="Version Timeline" style={{ color: isHistorySidebarOpen ? '#3b82f6' : '#93c5fd', background: isHistorySidebarOpen ? 'rgba(59,130,246,0.1)' : '' }}>
+                        <Clock size={18} />
                     </button>
                     <button onClick={() => setShowEmbedModal(true)} className="btn-icon-label" title={t('manual.embedGuide')} style={{ color: '#a78bfa' }}>
                         <Code size={18} />
+                    </button>
+                    <button onClick={() => setShowQRModal(true)} className="btn-icon-label" title="Quick Access QR" style={{ color: '#ec4899' }}>
+                        <QrCode size={18} />
                     </button>
                     <button
                         onClick={() => setIsOperatorMode(prev => {
@@ -2491,16 +2582,42 @@ function ManualCreation() {
                     </button>
                 </div>
 
-                <div style={{ height: '24px', width: '1px', background: 'var(--mc-divider)' }} />
+                <div style={{ height: '24px', width: '1px', background: 'var(--mc-divider)', margin: '0 8px' }} />
+
+                {/* Draft/Published Toggle - Modern Interactive Approach */}
+                <div style={{
+                    display: 'flex', background: 'rgba(0,0,0,0.2)',
+                    borderRadius: '10px', padding: '2px', border: '1px solid rgba(255,255,255,0.05)'
+                }}>
+                    {['Draft', 'Released'].map(status => (
+                        <button
+                            key={status}
+                            onClick={() => handleWorkflowStatusChange(status)}
+                            style={{
+                                padding: '4px 14px', borderRadius: '8px',
+                                border: 'none', fontSize: '0.7rem', fontWeight: 800,
+                                cursor: 'pointer',
+                                background: (guide.workflow?.status || guide.status) === status
+                                    ? (status === 'Released' ? '#10b981' : '#3b82f6')
+                                    : 'transparent',
+                                color: (guide.workflow?.status || guide.status) === status ? '#fff' : 'rgba(255,255,255,0.4)',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em'
+                            }}
+                        >
+                            {status === 'Released' ? 'Published' : status}
+                        </button>
+                    ))}
+                </div>
 
                 {/* Tabs - The Landscape Optimizer */}
                 <div style={{ display: 'flex', gap: '4px', flex: 1, justifyContent: 'center' }}>
                     {[
-                        { id: 'intro', label: 'Introduction', icon: BookOpen },
+                        { id: 'intro', label: 'Intro', icon: BookOpen },
                         { id: 'info', label: 'Details', icon: Info },
-                        { id: 'edit', label: 'Guide Steps', icon: List },
-                        { id: 'management', label: 'Approval Process', icon: Shield },
-                        { id: 'history', label: 'History', icon: Activity }
+                        { id: 'edit', label: 'Steps', icon: List },
+                        { id: 'management', label: 'Compliance', icon: Shield },
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -2538,19 +2655,31 @@ function ManualCreation() {
                             value={uiTheme}
                             onChange={(e) => setUiTheme(e.target.value)}
                             className="pro-select"
-                            style={{ fontSize: '0.75rem', padding: '4px 28px 4px 10px', minWidth: '115px', height: '32px' }}
-                            title="Manual Creation Theme"
+                            style={{
+                                fontSize: '0.75rem',
+                                padding: '4px',
+                                minWidth: '32px',
+                                width: '32px',
+                                height: '32px',
+                                color: 'transparent',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid var(--mc-panel-border)',
+                                cursor: 'pointer',
+                                appearance: 'none',
+                                borderRadius: '8px'
+                            }}
+                            title="Switch Theme"
                         >
-                            <option value="dark">Dark Mode</option>
-                            <option value="light">Light Mode</option>
-                            <option value="colorful">Colorful</option>
+                            <option value="dark" style={{ color: '#1e293b', background: 'white' }}>Dark Mode</option>
+                            <option value="light" style={{ color: '#1e293b', background: 'white' }}>Light Mode</option>
+                            <option value="colorful" style={{ color: '#1e293b', background: 'white' }}>Colorful</option>
                         </select>
                         {uiTheme === 'light' ? (
-                            <Sun size={12} style={{ position: 'absolute', right: '8px', pointerEvents: 'none', opacity: 0.7 }} />
+                            <Sun size={14} style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', opacity: 0.8 }} />
                         ) : uiTheme === 'colorful' ? (
-                            <Palette size={12} style={{ position: 'absolute', right: '8px', pointerEvents: 'none', opacity: 0.7 }} />
+                            <Palette size={14} style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', opacity: 0.8 }} />
                         ) : (
-                            <Moon size={12} style={{ position: 'absolute', right: '8px', pointerEvents: 'none', opacity: 0.7 }} />
+                            <Moon size={14} style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', opacity: 0.8 }} />
                         )}
                     </div>
 
@@ -2559,13 +2688,28 @@ function ManualCreation() {
                             value={guide.workflow?.status || guide.status || 'Draft'}
                             onChange={(e) => handleWorkflowStatusChange(e.target.value)}
                             className="pro-select"
-                            style={{ fontSize: '0.75rem', padding: '4px 28px 4px 10px', minWidth: '100px', height: '32px' }}
+                            style={{
+                                fontSize: '0.75rem',
+                                padding: '4px',
+                                minWidth: '32px',
+                                width: '32px',
+                                height: '32px',
+                                color: 'transparent',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid var(--mc-panel-border)',
+                                cursor: 'pointer',
+                                appearance: 'none',
+                                borderRadius: '8px'
+                            }}
+                            title="Change Workflow Status"
                         >
                             {WORKFLOW_STATUSES.map((statusItem) => (
-                                <option key={statusItem} value={statusItem}>{getWorkflowStatusLabel(statusItem)}</option>
+                                <option key={statusItem} value={statusItem} style={{ color: '#1e293b', background: 'white' }}>
+                                    {getWorkflowStatusLabel(statusItem)}
+                                </option>
                             ))}
                         </select>
-                        <ChevronDown size={12} style={{ position: 'absolute', right: '8px', pointerEvents: 'none', opacity: 0.5 }} />
+                        <Activity size={14} style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', opacity: 0.8 }} />
                     </div>
 
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -2578,14 +2722,36 @@ function ManualCreation() {
                                 e.target.value = '';
                             }}
                             className="pro-select"
-                            style={{ fontSize: '0.75rem', padding: '4px 28px 4px 10px', minWidth: '100px', height: '32px' }}
+                            defaultValue=""
+                            style={{
+                                fontSize: '0.75rem',
+                                padding: '4px 28px 4px 10px',
+                                minWidth: '42px',
+                                width: '42px',
+                                height: '32px',
+                                color: 'transparent',
+                                background: 'var(--mc-accent-gradient)',
+                                border: 'none',
+                                cursor: 'pointer',
+                                appearance: 'none',
+                                borderRadius: '8px',
+                                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)'
+                            }}
+                            title="Export Guide (PDF, PPTX, Word)"
                         >
-                            <option value="">Export</option>
-                            <option value="pdf">PDF</option>
-                            <option value="word">Word</option>
-                            <option value="pptx">PPTX</option>
+                            <option value="" disabled></option>
+                            <option value="pdf" style={{ color: '#1e293b', background: 'white' }}>PDF Document</option>
+                            <option value="pptx" style={{ color: '#1e293b', background: 'white' }}>PowerPoint Presentation</option>
+                            <option value="word" style={{ color: '#1e293b', background: 'white' }}>Word Document</option>
                         </select>
-                        <FileDown size={12} style={{ position: 'absolute', right: '8px', pointerEvents: 'none', opacity: 0.5 }} />
+                        <FileDown size={16} style={{
+                            position: 'absolute',
+                            left: '50%',
+                            top: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            pointerEvents: 'none',
+                            color: 'white'
+                        }} />
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -3106,6 +3272,106 @@ function ManualCreation() {
                                                                 );
                                                             })}
                                                         </div>
+
+                                                        {/* Interactive Data Capture Fields */}
+                                                        {((step.questions || []).length > 0) && (
+                                                            <div style={{ marginTop: '32px', padding: '24px', background: uiTheme === 'light' ? '#f1f5f9' : 'rgba(255,255,255,0.05)', borderRadius: '16px', border: '1px solid var(--mc-panel-border)' }}>
+                                                                <h3 style={{ fontSize: '0.85rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#ec4899', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                    <Activity size={16} /> DATA COLLECTION
+                                                                </h3>
+                                                                <div style={{ display: 'grid', gap: '16px' }}>
+                                                                    {step.questions.map((q, qIdx) => (
+                                                                        <div key={q.id || qIdx} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                            <label style={{ fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                                {q.label}
+                                                                                {q.required && <span style={{ color: '#ef4444' }}>*</span>}
+                                                                            </label>
+
+                                                                            {q.type === 'text' || q.type === 'number' ? (
+                                                                                <input
+                                                                                    type={q.type}
+                                                                                    value={operatorAnswers[q.id] || ''}
+                                                                                    onChange={(e) => setOperatorAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                                                                                    placeholder={`Enter ${q.label.toLowerCase()}...`}
+                                                                                    style={{
+                                                                                        padding: '10px 14px', borderRadius: '10px',
+                                                                                        backgroundColor: uiTheme === 'light' ? '#ffffff' : 'rgba(0,0,0,0.2)',
+                                                                                        color: 'var(--mc-text)', border: '1px solid var(--mc-panel-border)',
+                                                                                        fontSize: '0.95rem'
+                                                                                    }}
+                                                                                />
+                                                                            ) : q.type === 'textarea' ? (
+                                                                                <textarea
+                                                                                    value={operatorAnswers[q.id] || ''}
+                                                                                    onChange={(e) => setOperatorAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                                                                                    placeholder={`Enter notes for ${q.label.toLowerCase()}...`}
+                                                                                    rows={3}
+                                                                                    style={{
+                                                                                        padding: '10px 14px', borderRadius: '10px',
+                                                                                        backgroundColor: uiTheme === 'light' ? '#ffffff' : 'rgba(0,0,0,0.2)',
+                                                                                        color: 'var(--mc-text)', border: '1px solid var(--mc-panel-border)',
+                                                                                        fontSize: '0.95rem', resize: 'none'
+                                                                                    }}
+                                                                                />
+                                                                            ) : q.type === 'select' ? (
+                                                                                <select
+                                                                                    value={operatorAnswers[q.id] || ''}
+                                                                                    onChange={(e) => setOperatorAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                                                                                    style={{
+                                                                                        padding: '10px 14px', borderRadius: '10px',
+                                                                                        backgroundColor: uiTheme === 'light' ? '#ffffff' : 'rgba(0,0,0,0.2)',
+                                                                                        color: 'var(--mc-text)', border: '1px solid var(--mc-panel-border)',
+                                                                                        fontSize: '0.95rem'
+                                                                                    }}
+                                                                                >
+                                                                                    <option value="">Select Option</option>
+                                                                                    {(q.options || []).map(opt => (
+                                                                                        <option key={opt} value={opt}>{opt}</option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            ) : q.type === 'radio' ? (
+                                                                                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                                                                                    {(q.options || []).map(opt => (
+                                                                                        <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                                                                            <input
+                                                                                                type="radio"
+                                                                                                name={q.id}
+                                                                                                value={opt}
+                                                                                                checked={operatorAnswers[q.id] === opt}
+                                                                                                onChange={(e) => setOperatorAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                                                                                            />
+                                                                                            {opt}
+                                                                                        </label>
+                                                                                    ))}
+                                                                                </div>
+                                                                            ) : q.type === 'checkbox' ? (
+                                                                                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                                                                                    {(q.options || []).map(opt => {
+                                                                                        const current = operatorAnswers[q.id] || [];
+                                                                                        return (
+                                                                                            <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                                                                                <input
+                                                                                                    type="checkbox"
+                                                                                                    value={opt}
+                                                                                                    checked={current.includes(opt)}
+                                                                                                    onChange={(e) => {
+                                                                                                        const next = e.target.checked
+                                                                                                            ? [...current, opt]
+                                                                                                            : current.filter(o => o !== opt);
+                                                                                                        setOperatorAnswers(prev => ({ ...prev, [q.id]: next }));
+                                                                                                    }}
+                                                                                                />
+                                                                                                {opt}
+                                                                                            </label>
+                                                                                        );
+                                                                                    })}
+                                                                                </div>
+                                                                            ) : null}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
@@ -3121,7 +3387,27 @@ function ManualCreation() {
                                             <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#94a3b8' }}>
                                                 STEP {operatorStepIndex + 1} OF {guide.steps.length}
                                             </div>
-                                            <button onClick={handleOperatorNext} className="btn-pro" style={{ padding: '12px 32px', backgroundColor: '#3b82f6', color: '#fff', border: 'none' }}>
+                                            <button
+                                                onClick={() => {
+                                                    const currentStep = guide.steps[operatorStepIndex];
+                                                    const missingRequired = (currentStep.questions || []).find(q =>
+                                                        q.required && (operatorAnswers[q.id] === undefined || operatorAnswers[q.id] === '')
+                                                    );
+
+                                                    if (missingRequired) {
+                                                        showAlert(`Please fill required field: ${missingRequired.label}`);
+                                                        return;
+                                                    }
+
+                                                    if (operatorStepIndex === guide.steps.length - 1) {
+                                                        setShowSessionSummary(true);
+                                                    } else {
+                                                        handleOperatorNext();
+                                                    }
+                                                }}
+                                                className="btn-pro"
+                                                style={{ padding: '12px 32px', backgroundColor: '#3b82f6', color: '#fff', border: 'none' }}
+                                            >
                                                 {operatorStepIndex === guide.steps.length - 1 ? 'Finish' : 'Next Step'}
                                             </button>
                                         </div>
@@ -3292,26 +3578,6 @@ function ManualCreation() {
                                     </div>
                                 )}
 
-                                {activeTab === 'history' && (
-                                    <div style={{ display: 'grid', gap: '16px', animation: 'fadeIn 0.3s' }}>
-                                        <div className="glass-panel" style={{ padding: '16px' }}>
-                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '12px' }}>Version History</div>
-                                            <div style={{ display: 'grid', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
-                                                {(guide.versionHistory || []).map(v => (
-                                                    <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', fontSize: '0.8rem' }}>
-                                                        <span>v{v.version} - {v.summary}</span>
-                                                        <button onClick={() => handleRestoreVersion(v)} style={{ color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer' }}>Restore</button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="glass-panel" style={{ padding: '16px' }}>
-                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '12px' }}>Audit Trail</div>
-                                            <div style={{ fontSize: '0.85rem', opacity: 0.6 }}>{(guide.auditTrail || []).length} events recorded.</div>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         )}
                     </div>
@@ -3604,6 +3870,167 @@ function ManualCreation() {
                     activeStepId: activeStepId
                 }}
             />
+            {/* Session Summary Modal */}
+            {
+                showSessionSummary && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        backdropFilter: 'blur(12px)',
+                        zIndex: 3000,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: '20px'
+                    }}>
+                        <div className="glass-panel" style={{
+                            maxWidth: '650px', width: '100%',
+                            maxHeight: '85vh', overflowY: 'auto',
+                            padding: '40px',
+                            animation: 'slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                            textAlign: 'center'
+                        }}>
+                            <div style={{
+                                width: '80px', height: '80px',
+                                borderRadius: '24px',
+                                background: 'linear-gradient(135deg, #10b981, #059669)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: '#fff', margin: '0 auto 24px',
+                                boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)'
+                            }}>
+                                <CheckCircle size={40} />
+                            </div>
+
+                            <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '8px', color: '#fff' }}>
+                                Session Completed!
+                            </h2>
+                            <p style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '40px' }}>
+                                All steps verified and data captured successfully.
+                            </p>
+
+                            <div style={{ textAlign: 'left', background: 'rgba(255,255,255,0.03)', borderRadius: '20px', padding: '24px', marginBottom: '32px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <h3 style={{ fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#10b981', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Activity size={14} /> CAPTURED DATA SUMMARY
+                                </h3>
+
+                                <div style={{ display: 'grid', gap: '12px' }}>
+                                    {guide.steps.some(s => (s.questions || []).length > 0) ? (
+                                        guide.steps.flatMap(step => (step.questions || []).map(q => {
+                                            const ans = operatorAnswers[q.id];
+                                            const displayAns = Array.isArray(ans) ? ans.join(', ') : (ans || '-');
+                                            return (
+                                                <div key={q.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{q.label}</div>
+                                                    <div style={{ color: '#10b981', fontWeight: 700 }}>{displayAns}</div>
+                                                </div>
+                                            );
+                                        }))
+                                    ) : (
+                                        <div style={{ textAlign: 'center', opacity: 0.4, padding: '20px', fontSize: '0.9rem' }}>
+                                            No data fields were required for this manual.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '16px' }}>
+                                <button
+                                    onClick={() => {
+                                        setShowSessionSummary(false);
+                                        setIsOperatorMode(false);
+                                        setOperatorAnswers({});
+                                    }}
+                                    className="btn-pro"
+                                    style={{ flex: 1, padding: '14px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                                >
+                                    Close & Reset
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        showAlert('Report Saved', 'Execution data has been logged to the audit trail.');
+                                        setShowSessionSummary(false);
+                                        setIsOperatorMode(false);
+                                        setOperatorAnswers({});
+                                    }}
+                                    className="btn-pro"
+                                    style={{ flex: 1, padding: '14px', borderRadius: '12px', background: '#3b82f6', color: '#fff', border: 'none', fontWeight: 700 }}
+                                >
+                                    Save & Exit
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Version History Sidebar Overlay */}
+            {isHistorySidebarOpen && !isPreviewMode && !isOperatorMode && (
+                <div style={{
+                    position: 'fixed', top: '56px', right: 0, bottom: 0,
+                    width: '320px', backgroundColor: 'rgba(15, 23, 42, 0.98)',
+                    backdropFilter: 'blur(20px)', borderLeft: '1px solid rgba(255,255,255,0.1)',
+                    zIndex: 1000, display: 'flex', flexDirection: 'column',
+                    animation: 'slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: '-10px 0 30px rgba(0,0,0,0.5)'
+                }}>
+                    <div style={{ padding: '24px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Clock size={16} style={{ color: '#3b82f6' }} />
+                            <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Timeline</h3>
+                        </div>
+                        <button onClick={() => setIsHistorySidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>
+                            <X size={18} />
+                        </button>
+                    </div>
+
+                    <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <button
+                            onClick={handleCreateVersion}
+                            className="btn-pro"
+                            style={{ width: '100%', justifyContent: 'center', backgroundColor: '#3b82f6', border: 'none', color: '#fff', padding: '10px' }}
+                        >
+                            <Plus size={16} /> New Snapshot
+                        </button>
+                    </div>
+
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+                        {(guide.history || []).length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(255,255,255,0.3)' }}>
+                                <Layers size={32} style={{ margin: '0 auto 12px', opacity: 0.2 }} />
+                                <div style={{ fontSize: '0.85rem' }}>No snapshots yet</div>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {[...(guide.history || [])].reverse().map((item, idx) => (
+                                    <div key={item.timestamp || idx} style={{
+                                        padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)',
+                                        border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '8px'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>Ver {item.version}</div>
+                                                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>
+                                                    {new Date(item.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => handleRestoreVersion(item)}
+                                                style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 700, background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: 'none', cursor: 'pointer' }}
+                                            >
+                                                RESTORE
+                                            </button>
+                                        </div>
+                                        {item.summary && (
+                                            <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', background: 'rgba(0,0,0,0.15)', padding: '6px 10px', borderRadius: '6px' }}>
+                                                "{item.summary}"
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Embed Guide Modal */}
             {
                 showEmbedModal && (
@@ -3771,6 +4198,98 @@ function ManualCreation() {
                                 >
                                     Done
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* QR Code Modal */}
+            {
+                showQRModal && (
+                    <div style={{
+                        position: 'fixed', inset: 0, zIndex: 1000,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)', backdropFilter: 'blur(8px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <div className="glass-panel" style={{
+                            width: '450px',
+                            maxHeight: '90vh',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            overflow: 'hidden',
+                            boxShadow: '0 30px 60px rgba(0,0,0,0.5)',
+                            animation: 'slideUp 0.4s ease-out'
+                        }}>
+                            <div style={{ padding: '24px', borderBottom: '1px solid var(--mc-divider)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #ec4899, #d946ef)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                                        <QrCode size={20} />
+                                    </div>
+                                    <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Quick Access QR</h2>
+                                </div>
+                                <button onClick={() => setShowQRModal(false)} className="btn-icon-label">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div style={{ padding: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
+                                <div style={{
+                                    padding: '24px',
+                                    background: 'white',
+                                    borderRadius: '24px',
+                                    boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+                                    border: '8px solid white'
+                                }}>
+                                    <QRCodeCanvas
+                                        id="manual-qr-code"
+                                        value={window.location.href}
+                                        size={256}
+                                        level="H"
+                                        includeMargin={false}
+                                    />
+                                </div>
+
+                                <div style={{ textAlign: 'center' }}>
+                                    <h3 style={{ margin: '0 0 8px 0', fontSize: '1.1rem' }}>{guide.title || 'Untitled Manual'}</h3>
+                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--mc-muted-text)', maxWidth: '280px' }}>
+                                        Scan this code to instantly open this work instruction on any mobile device.
+                                    </p>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
+                                    <button
+                                        onClick={() => {
+                                            const canvas = document.getElementById('manual-qr-code');
+                                            const pngUrl = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+                                            let downloadLink = document.createElement("a");
+                                            downloadLink.href = pngUrl;
+                                            downloadLink.download = `${guide.title || 'manual'}-qr.png`;
+                                            document.body.appendChild(downloadLink);
+                                            downloadLink.click();
+                                            document.body.removeChild(downloadLink);
+                                        }}
+                                        className="btn-pro"
+                                        style={{ flex: 1, height: '44px', justifyContent: 'center', background: 'rgba(236, 72, 153, 0.1)', borderColor: 'rgba(236, 72, 153, 0.3)', color: '#ec4899' }}
+                                    >
+                                        <Download size={18} /> Save QR Image
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(window.location.href);
+                                            showAlert('Link copied to clipboard!');
+                                        }}
+                                        className="btn-pro"
+                                        style={{ flex: 1, height: '44px', justifyContent: 'center' }}
+                                    >
+                                        <Copy size={18} /> Copy Link
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style={{ padding: '20px', borderTop: '1px solid var(--mc-divider)', background: 'var(--mc-faint-bg)', fontSize: '0.8rem', color: 'var(--mc-muted-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Info size={14} />
+                                <span>This QR code leads to the exact ID of this manual.</span>
                             </div>
                         </div>
                     </div>

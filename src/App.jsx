@@ -142,8 +142,7 @@ const LoadingSpinner = () => (
 );
 
 function AppContent() {
-  const { user, signOut } = useAuth();
-  const isAuthenticated = !!user;
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { showAlert, showConfirm, showPrompt } = useDialog();
@@ -251,11 +250,7 @@ function AppContent() {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleLogout = async () => {
-    await signOut();
-    closeProject();
-    navigate('/');
-  };
+
 
   const handleLoadVideoFromKB = (videoUrl, videoTitle) => {
     setVideoSrc(videoUrl);
@@ -507,7 +502,6 @@ function AppContent() {
               onSaveProjectAs={() => setShowSaveAsDialog(true)}
               onExportProject={handleExportProject}
               onImportProject={handleImportProject}
-              onLogout={handleLogout}
             />
           </div>
 

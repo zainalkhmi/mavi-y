@@ -24,7 +24,8 @@ import {
     Settings,
     Database,
     CheckCircle,
-    XCircle
+    XCircle,
+    UserCircle
 } from 'lucide-react';
 import { generateLicenseKey } from '../utils/licenseUtils';
 import {
@@ -117,6 +118,13 @@ function AdminPanel() {
     const [menuVisibility, setMenuVisibility] = useState(getDefaultMenuVisibilityMap());
     const [menuVisibilityLoading, setMenuVisibilityLoading] = useState(false);
     const [menuVisibilitySaving, setMenuVisibilitySaving] = useState(false);
+
+    // User Management state
+    const [users, setUsers] = useState([]);
+    const [usersLoading, setUsersLoading] = useState(false);
+    const [isAddingUser, setIsAddingUser] = useState(false);
+    const [newUserEmail, setNewUserEmail] = useState('');
+    const [newUserRole, setNewUserRole] = useState('drafter');
 
     const availableFeatures = [
         { id: 'smoke', label: 'Basic Smoke Test', group: 'General' },
@@ -240,6 +248,8 @@ function AdminPanel() {
             loadInstallers();
         } else if (activeTab === 'menu-control') {
             loadMenuVisibility();
+        } else if (activeTab === 'users') {
+            loadUsers();
         }
     }, [activeTab]);
 
@@ -323,6 +333,63 @@ function AdminPanel() {
         } finally {
             setMenuVisibilitySaving(false);
         }
+    };
+
+    const loadUsers = async () => {
+        setUsersLoading(true);
+        try {
+            const saved = localStorage.getItem('mavi_users_list');
+            if (saved) {
+                setUsers(JSON.parse(saved));
+            } else {
+                // Initial default users
+                const defaults = [
+                    { id: '1', email: 'admin@mavi.app', role: 'admin', createdAt: new Date().toISOString() },
+                    { id: '2', email: 'drafter@mavi.app', role: 'drafter', createdAt: new Date().toISOString() },
+                    { id: '3', email: 'checker@mavi.app', role: 'checker', createdAt: new Date().toISOString() },
+                    { id: '4', email: 'approval@mavi.app', role: 'approval', createdAt: new Date().toISOString() }
+                ];
+                setUsers(defaults);
+                localStorage.setItem('mavi_users_list', JSON.stringify(defaults));
+            }
+        } catch (error) {
+            console.error('Failed to load users:', error);
+        } finally {
+            setUsersLoading(false);
+        }
+    };
+
+    const handleAddUser = async () => {
+        if (!newUserEmail) {
+            await showAlert('Error', 'Please enter an email address');
+            return;
+        }
+        const newUser = {
+            id: Date.now().toString(),
+            email: newUserEmail,
+            role: newUserRole,
+            createdAt: new Date().toISOString()
+        };
+        const updatedUsers = [...users, newUser];
+        setUsers(updatedUsers);
+        localStorage.setItem('mavi_users_list', JSON.stringify(updatedUsers));
+        setNewUserEmail('');
+        setIsAddingUser(false);
+        await showAlert('Success', `User ${newUserEmail} added successfully.`);
+    };
+
+    const handleDeleteUser = async (userId) => {
+        if (await showConfirm('Delete User', 'Are you sure you want to delete this user?')) {
+            const updatedUsers = users.filter(u => u.id !== userId);
+            setUsers(updatedUsers);
+            localStorage.setItem('mavi_users_list', JSON.stringify(updatedUsers));
+        }
+    };
+
+    const handleChangeUserRole = async (userId, newRole) => {
+        const updatedUsers = users.map(u => u.id === userId ? { ...u, role: newRole } : u);
+        setUsers(updatedUsers);
+        localStorage.setItem('mavi_users_list', JSON.stringify(updatedUsers));
     };
 
     const handleInstallerUpload = async (e) => {
@@ -736,6 +803,25 @@ function AdminPanel() {
                         }}
                     >
                         <ShieldCheck size={18} /> Key Generator
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('users')}
+                        style={{
+                            padding: '12px 24px',
+                            backgroundColor: activeTab === 'users' ? '#0078d4' : 'transparent',
+                            color: activeTab === 'users' ? 'white' : '#888',
+                            border: 'none',
+                            borderBottom: activeTab === 'users' ? '3px solid #0078d4' : '3px solid transparent',
+                            cursor: 'pointer',
+                            fontSize: '1rem',
+                            fontWeight: '600',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}
+                    >
+                        <UserCircle size={18} /> Users
                     </button>
                     <button
                         onClick={() => setActiveTab('installers')}
@@ -1807,6 +1893,175 @@ function AdminPanel() {
                                     <li>Core database connectivity (Turso)</li>
                                     <li>MaviClass content loading</li>
                                 </ul>
+                            </div>
+                        </div>
+                    </div>
+                ) : activeTab === 'users' ? (
+                    <div style={{ padding: '30px', overflowY: 'auto', height: '100%' }}>
+                        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                                <div>
+                                    <h2 style={{ color: 'white', fontSize: '1.8rem', marginBottom: '10px' }}>User Management</h2>
+                                    <p style={{ color: '#888' }}>
+                                        Manage application users, assign roles, and control access levels.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setIsAddingUser(true)}
+                                    style={{
+                                        padding: '12px 24px',
+                                        backgroundColor: '#0078d4',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px'
+                                    }}
+                                >
+                                    <Plus size={18} /> Add User
+                                </button>
+                            </div>
+
+                            {isAddingUser && (
+                                <div style={{
+                                    backgroundColor: '#1e1e1e',
+                                    padding: '24px',
+                                    borderRadius: '12px',
+                                    border: '1px solid #0078d4',
+                                    marginBottom: '30px',
+                                    display: 'flex',
+                                    gap: '15px',
+                                    alignItems: 'flex-end'
+                                }}>
+                                    <div style={{ flex: 2 }}>
+                                        <label style={{ display: 'block', color: '#aaa', fontSize: '0.85rem', marginBottom: '8px' }}>Email Address</label>
+                                        <input
+                                            type="email"
+                                            value={newUserEmail}
+                                            onChange={(e) => setNewUserEmail(e.target.value)}
+                                            placeholder="user@example.com"
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px',
+                                                backgroundColor: '#0a0a0a',
+                                                border: '1px solid #333',
+                                                borderRadius: '6px',
+                                                color: 'white'
+                                            }}
+                                        />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', color: '#aaa', fontSize: '0.85rem', marginBottom: '8px' }}>Assign Role</label>
+                                        <select
+                                            value={newUserRole}
+                                            onChange={(e) => setNewUserRole(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px',
+                                                backgroundColor: '#0a0a0a',
+                                                border: '1px solid #333',
+                                                borderRadius: '6px',
+                                                color: 'white'
+                                            }}
+                                        >
+                                            <option value="admin">Admin</option>
+                                            <option value="drafter">Drafter</option>
+                                            <option value="checker">Checker</option>
+                                            <option value="approval">Approval</option>
+                                        </select>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <button
+                                            onClick={handleAddUser}
+                                            style={{ padding: '10px 20px', backgroundColor: '#0078d4', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                                        >
+                                            Save
+                                        </button>
+                                        <button
+                                            onClick={() => setIsAddingUser(false)}
+                                            style={{ padding: '10px 20px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div style={{ backgroundColor: '#1e1e1e', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', color: '#ccc' }}>
+                                    <thead>
+                                        <tr style={{ backgroundColor: '#111', borderBottom: '1px solid #333', textAlign: 'left' }}>
+                                            <th style={{ padding: '16px' }}>Email</th>
+                                            <th style={{ padding: '16px' }}>Role</th>
+                                            <th style={{ padding: '16px' }}>Created At</th>
+                                            <th style={{ padding: '16px', textAlign: 'right' }}>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {usersLoading ? (
+                                            <tr><td colSpan="4" style={{ padding: '40px', textAlign: 'center' }}>Loading users...</td></tr>
+                                        ) : users.length === 0 ? (
+                                            <tr><td colSpan="4" style={{ padding: '40px', textAlign: 'center' }}>No users found.</td></tr>
+                                        ) : (
+                                            users.map(u => (
+                                                <tr key={u.id} style={{ borderBottom: '1px solid #2a2a2a' }}>
+                                                    <td style={{ padding: '16px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                            <div style={{ backgroundColor: '#0078d420', padding: '8px', borderRadius: '50%' }}>
+                                                                <UserCircle size={18} color="#0078d4" />
+                                                            </div>
+                                                            <span style={{ color: 'white', fontWeight: '500' }}>{u.email}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '16px' }}>
+                                                        <select
+                                                            value={u.role}
+                                                            onChange={(e) => handleChangeUserRole(u.id, e.target.value)}
+                                                            style={{
+                                                                padding: '6px 12px',
+                                                                backgroundColor: '#0a0a0a',
+                                                                border: '1px solid #333',
+                                                                borderRadius: '6px',
+                                                                color: '#0078d4',
+                                                                fontSize: '0.85rem',
+                                                                fontWeight: '600'
+                                                            }}
+                                                        >
+                                                            <option value="admin">Admin</option>
+                                                            <option value="drafter">Drafter</option>
+                                                            <option value="checker">Checker</option>
+                                                            <option value="approval">Approval</option>
+                                                        </select>
+                                                    </td>
+                                                    <td style={{ padding: '16px', color: '#666', fontSize: '0.85rem' }}>
+                                                        {new Date(u.createdAt).toLocaleDateString()}
+                                                    </td>
+                                                    <td style={{ padding: '16px', textAlign: 'right' }}>
+                                                        <button
+                                                            onClick={() => handleDeleteUser(u.id)}
+                                                            disabled={u.email === user?.email}
+                                                            style={{
+                                                                padding: '8px',
+                                                                backgroundColor: 'transparent',
+                                                                color: u.email === user?.email ? '#333' : '#f44336',
+                                                                border: 'none',
+                                                                cursor: u.email === user?.email ? 'not-allowed' : 'pointer',
+                                                                transition: 'all 0.2s',
+                                                                opacity: 0.8
+                                                            }}
+                                                            title={u.email === user?.email ? "Cannot delete yourself" : "Delete user"}
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>

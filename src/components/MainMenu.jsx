@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useDialog } from '../contexts/DialogContext';
 import { getMenuVisibilitySettings } from '../utils/tursoAPI';
 import {
     LayoutGrid,
@@ -29,7 +30,6 @@ import {
     Radio,
     Settings,
     Search,
-    ChevronRight,
     ArrowRight
 } from 'lucide-react';
 
@@ -91,7 +91,6 @@ const MENU_ITEMS = [
         descriptionId: 'Jelajahi dan kelola file proyek Anda',
         category: 'CORE'
     },
-
     // AI STUDIO
     {
         path: '/studio-model',
@@ -113,8 +112,6 @@ const MENU_ITEMS = [
         category: 'AI',
         beta: true
     },
-
-
     // INDUSTRIAL ENGINEERING
     {
         path: '/swcs',
@@ -198,7 +195,6 @@ const MENU_ITEMS = [
         descriptionId: 'Buat manual instruksi kerja',
         category: 'IE'
     },
-
     // ADVANCED
     {
         path: '/comparison',
@@ -227,8 +223,7 @@ const MENU_ITEMS = [
         descriptionId: 'Perbandingan timeline multi-proyek',
         category: 'ADVANCED'
     },
-
-    // LEARNING & COLLABORATION
+    // LEARNING & HELP
     {
         path: '/mavi-class',
         icon: <GraduationCap />,
@@ -261,7 +256,7 @@ const MENU_ITEMS = [
 function MainMenu() {
     const navigate = useNavigate();
     const { currentLanguage } = useLanguage();
-    const { userRole } = useAuth();
+    const { user } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
     const [menuVisibilityMap, setMenuVisibilityMap] = useState({});
     const isId = currentLanguage === 'id';
@@ -278,16 +273,11 @@ function MainMenu() {
 
     useEffect(() => {
         loadMenuVisibility();
-
-        const handleVisibilityUpdated = () => {
-            loadMenuVisibility();
-        };
-
+        const handleVisibilityUpdated = () => loadMenuVisibility();
         window.addEventListener('menu-visibility-updated', handleVisibilityUpdated);
         return () => window.removeEventListener('menu-visibility-updated', handleVisibilityUpdated);
     }, []);
 
-    // Premium Animations and Dynamic Styles
     useEffect(() => {
         const style = document.createElement('style');
         style.innerHTML = `
@@ -333,31 +323,25 @@ function MainMenu() {
         return () => document.head.removeChild(style);
     }, []);
 
-    const menuItemsWithAdmin = useMemo(() => {
-        return MENU_ITEMS.filter(item => menuVisibilityMap[item.path] !== false);
-    }, [menuVisibilityMap]);
-
-    const filteredItems = useMemo(() => {
-        if (!searchQuery.trim()) return menuItemsWithAdmin;
+    const menuItems = useMemo(() => {
+        const filtered = MENU_ITEMS.filter(item => menuVisibilityMap[item.path] !== false);
+        if (!searchQuery.trim()) return filtered;
         const query = searchQuery.toLowerCase();
-        return menuItemsWithAdmin.filter(item => {
+        return filtered.filter(item => {
             const label = isId ? item.labelId : item.label;
             const description = isId ? item.descriptionId : item.description;
-            return label.toLowerCase().includes(query) ||
-                description.toLowerCase().includes(query);
+            return label.toLowerCase().includes(query) || description.toLowerCase().includes(query);
         });
-    }, [searchQuery, isId, menuItemsWithAdmin]);
+    }, [searchQuery, isId, menuVisibilityMap]);
 
     const groupedItems = useMemo(() => {
         const groups = {};
-        filteredItems.forEach(item => {
-            if (!groups[item.category]) {
-                groups[item.category] = [];
-            }
+        menuItems.forEach(item => {
+            if (!groups[item.category]) groups[item.category] = [];
             groups[item.category].push(item);
         });
         return groups;
-    }, [filteredItems]);
+    }, [menuItems]);
 
     return (
         <div style={{
@@ -368,11 +352,8 @@ function MainMenu() {
             padding: '40px 60px',
             position: 'relative'
         }}>
-            {/* Ambient Background Orbs */}
             <div style={{ position: 'absolute', top: '-100px', left: '10%', width: '500px', height: '500px', background: 'rgba(59, 130, 246, 0.05)', filter: 'blur(120px)', borderRadius: '50%', animation: 'orbFloat 20s infinite ease-in-out' }} />
-            <div style={{ position: 'absolute', bottom: '10%', right: '5%', width: '400px', height: '400px', background: 'rgba(139, 92, 246, 0.05)', filter: 'blur(100px)', borderRadius: '50%', animation: 'orbFloat 18s infinite ease-in-out reverse' }} />
 
-            {/* Header Section */}
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -392,10 +373,7 @@ function MainMenu() {
                             <LayoutGrid size={32} color="white" />
                         </div>
                         <div>
-                            <h1 style={{
-                                margin: 0, fontSize: '2.4rem', fontWeight: '900', color: '#fff',
-                                letterSpacing: '-0.04em'
-                            }}>
+                            <h1 style={{ margin: 0, fontSize: '2.4rem', fontWeight: '900', color: '#fff', letterSpacing: '-0.04em' }}>
                                 {isId ? 'Menu Utama MAVi' : 'MAVi Main Menu'}
                             </h1>
                             <p style={{ margin: '4px 0 0 0', color: 'rgba(255,255,255,0.4)', fontSize: '1rem', fontWeight: '500' }}>
@@ -405,7 +383,7 @@ function MainMenu() {
                     </div>
                 </div>
 
-                <div className="menu-stagger-item" style={{ animationDelay: '0.1s' }}>
+                <div className="menu-stagger-item" style={{ animationDelay: '0.1s', display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <div style={{ position: 'relative', width: '320px' }}>
                         <Search size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
                         <input
@@ -414,22 +392,19 @@ function MainMenu() {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="pro-input"
-                            style={{
-                                width: '100%', padding: '14px 20px 14px 48px', fontSize: '0.95rem',
-                                borderRadius: '14px', color: '#fff', outline: 'none'
-                            }}
+                            style={{ width: '100%', padding: '14px 20px 14px 48px', fontSize: '0.95rem', borderRadius: '14px', color: '#fff', outline: 'none' }}
                         />
                     </div>
+
+
                 </div>
             </div>
 
-            {/* Content Grid */}
             <div style={{ position: 'relative', zIndex: 10 }}>
                 {Object.keys(MENU_CATEGORIES).map((catKey, categoryIndex) => {
                     const items = groupedItems[catKey];
                     if (!items || items.length === 0) return null;
                     const cat = MENU_CATEGORIES[catKey];
-
                     return (
                         <div key={catKey} className="menu-stagger-item" style={{ marginBottom: '50px', animationDelay: `${0.2 + categoryIndex * 0.1}s` }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
@@ -439,61 +414,14 @@ function MainMenu() {
                                 </h2>
                                 <div style={{ height: '1px', flex: 1, background: 'linear-gradient(90deg, rgba(255,255,255,0.1), transparent)' }} />
                             </div>
-
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-                                {items.map((item, itemIdx) => (
-                                    <div
-                                        key={item.path}
-                                        onClick={() => navigate(item.path)}
-                                        className="glass-card"
-                                        style={{
-                                            borderRadius: '24px', padding: '28px', cursor: 'pointer',
-                                            position: 'relative', overflow: 'hidden'
-                                        }}
-                                    >
-                                        <div style={{ color: cat.color, marginBottom: '20px' }}>
-                                            {React.cloneElement(item.icon, { size: 28 })}
-                                        </div>
-                                        <h3 style={{ margin: '0 0 10px 0', fontSize: '1.15rem', fontWeight: '700', color: '#fff' }}>
-                                            {isId ? item.labelId : item.label}
-                                        </h3>
-                                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)', lineHeight: '1.5', fontWeight: '500' }}>
-                                            {isId ? item.descriptionId : item.description}
-                                        </p>
-
-                                        <div style={{
-                                            position: 'absolute', bottom: '24px', right: '24px',
-                                            padding: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)',
-                                            color: 'rgba(255,255,255,0.2)', transition: 'all 0.3s'
-                                        }} className="go-arrow">
-                                            <ArrowRight size={18} />
-                                        </div>
-
-                                        {item.beta && (
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: '20px',
-                                                right: '20px',
-                                                backgroundColor: '#f59e0b',
-                                                color: '#000',
-                                                padding: '4px 8px',
-                                                borderRadius: '8px',
-                                                fontSize: '0.7rem',
-                                                fontWeight: '900',
-                                                textTransform: 'uppercase',
-                                                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.2)'
-                                            }}>
-                                                Beta
-                                            </div>
-                                        )}
-
-                                        <style>{`
-                                            .glass-card:hover .go-arrow {
-                                                background: ${cat.color}20;
-                                                color: ${cat.color};
-                                                transform: translateX(4px);
-                                            }
-                                        `}</style>
+                                {items.map((item) => (
+                                    <div key={item.path} onClick={() => navigate(item.path)} className="glass-card" style={{ borderRadius: '24px', padding: '28px', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
+                                        <div style={{ color: cat.color, marginBottom: '20px' }}>{React.cloneElement(item.icon, { size: 28 })}</div>
+                                        <h3 style={{ margin: '0 0 10px 0', fontSize: '1.15rem', fontWeight: '700', color: '#fff' }}>{isId ? item.labelId : item.label}</h3>
+                                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)', lineHeight: '1.5', fontWeight: '500' }}>{isId ? item.descriptionId : item.description}</p>
+                                        <div style={{ position: 'absolute', bottom: '24px', right: '24px', padding: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.2)' }}><ArrowRight size={18} /></div>
+                                        {item.beta && <div style={{ position: 'absolute', top: '20px', right: '20px', backgroundColor: '#f59e0b', color: '#000', padding: '4px 8px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: '900', textTransform: 'uppercase' }}>Beta</div>}
                                     </div>
                                 ))}
                             </div>
@@ -502,17 +430,10 @@ function MainMenu() {
                 })}
             </div>
 
-            {/* Floating Quick Navigation or Tips */}
-            <div className="menu-stagger-item" style={{
-                marginTop: '60px', padding: '30px', borderRadius: '24px',
-                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-                border: '1px solid rgba(59, 130, 246, 0.2)', animationDelay: '0.8s'
-            }}>
+            <div className="menu-stagger-item" style={{ marginTop: '60px', padding: '30px', borderRadius: '24px', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)', border: '1px solid rgba(59, 130, 246, 0.2)', animationDelay: '0.8s' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                     <Zap size={20} color="#3b82f6" />
-                    <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: '#fff' }}>
-                        {isId ? 'Eksplorasi Cepat' : 'Pro Experience'}
-                    </h4>
+                    <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: '#fff' }}>{isId ? 'Eksplorasi Cepat' : 'Pro Experience'}</h4>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>
                     <div>

@@ -5,34 +5,28 @@ const AuthContext = createContext({});
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(() => {
-        const saved = localStorage.getItem('mavi_user');
-        return saved ? JSON.parse(saved) : { id: 'local-user', email: 'user@local.app' };
-    });
-
-    const [userRole, setUserRole] = useState(() => localStorage.getItem('mavi_user_role') || 'standard_user');
+    // Default to an admin user to bypass all login blocks
+    const [user, setUser] = useState({ id: 'local-admin', email: 'admin@mavi.app' });
+    const [userRole, setUserRole] = useState('admin');
     const [loading, setLoading] = useState(false);
 
-    const signIn = async () => ({ data: { user: { id: 'local' } }, error: null });
-    const signUp = async () => ({ data: { user: { id: 'local' } }, error: null });
-    const signOut = async () => {
-        setUser(null);
-        setUserRole(null);
-        localStorage.removeItem('mavi_user');
-        localStorage.removeItem('mavi_user_role');
+    const signIn = async (email, password, role = 'admin') => {
+        return { data: { user }, error: null };
     };
 
-    const adminLogin = (password) => {
-        if (password === 'b6434eju') {
-            setUserRole('admin');
-            localStorage.setItem('mavi_user_role', 'admin');
-            return true;
-        }
-        return false;
+    const signUp = async (email, password) => {
+        return { data: { user }, error: null };
     };
+
+    const signOut = async () => {
+        // Sign out does nothing in "no-login" mode
+        console.log('Sign out disabled in this version');
+    };
+
+    const adminLogin = (password) => true;
 
     const value = {
-        session: { user: { id: 'local-user' } },
+        session: user ? { user } : null,
         user,
         userRole,
         roleError: null,

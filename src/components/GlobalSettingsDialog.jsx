@@ -13,6 +13,11 @@ import {
     listGoogleDriveProjectFiles,
     getStoredGoogleToken
 } from '../utils/googleDrive';
+import {
+    getSupabaseSettings,
+    saveSupabaseSettings,
+    testSupabaseConnection
+} from '../utils/supabaseClient';
 
 
 function GlobalSettingsDialog({ isOpen, onClose }) {
@@ -34,6 +39,11 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
     const [isDriveSigning, setIsDriveSigning] = useState(false);
     const [isDriveTesting, setIsDriveTesting] = useState(false);
     const [driveConnectionStatus, setDriveConnectionStatus] = useState(null);
+
+    // Supabase Storage Settings State
+    const [supabaseSettings, setSupabaseSettings] = useState(getSupabaseSettings());
+    const [isSupabaseTesting, setIsSupabaseTesting] = useState(false);
+    const [supabaseConnectionStatus, setSupabaseConnectionStatus] = useState(null);
 
     // Jitsi Settings State
     const [jitsiSettings, setJitsiSettings] = useState(getJitsiSettings());
@@ -60,6 +70,8 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
             setTestStatusAI(null);
             setDriveSettings(getGoogleDriveSettings());
             setDriveConnectionStatus(null);
+            setSupabaseSettings(getSupabaseSettings());
+            setSupabaseConnectionStatus(null);
             setJitsiSettings(getJitsiSettings());
 
         }
@@ -71,6 +83,10 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
 
     const handleJitsiSettingChange = (key, value) => {
         setJitsiSettings(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleSupabaseSettingChange = (key, value) => {
+        setSupabaseSettings(prev => ({ ...prev, [key]: value }));
     };
 
     const toggleToolbarButton = (button) => {
@@ -118,6 +134,22 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
             await showAlert('Connection Failed', error.message || 'Failed to connect to Google Drive.');
         } finally {
             setIsDriveTesting(false);
+        }
+    };
+
+    const handleTestSupabaseConnection = async () => {
+        setIsSupabaseTesting(true);
+        setSupabaseConnectionStatus(null);
+        try {
+            await testSupabaseConnection(supabaseSettings);
+            setSupabaseConnectionStatus('success');
+            await showAlert('Success', 'Supabase storage connection successful.');
+        } catch (error) {
+            console.error('Supabase test failed:', error);
+            setSupabaseConnectionStatus('error');
+            await showAlert('Connection Failed', error.message || 'Failed to connect to Supabase Storage.');
+        } finally {
+            setIsSupabaseTesting(false);
         }
     };
 
@@ -247,6 +279,7 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
         }
 
         saveGoogleDriveSettings(driveSettings);
+        saveSupabaseSettings(supabaseSettings);
         saveJitsiSettings(jitsiSettings);
 
 
@@ -669,6 +702,94 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                                 OAuth token: {getStoredGoogleToken().token ? 'Connected' : 'Not connected'}
                                 {driveConnectionStatus === 'success' && <span style={{ color: '#16a34a', marginLeft: '8px' }}>✓ OK</span>}
                                 {driveConnectionStatus === 'error' && <span style={{ color: '#ef4444', marginLeft: '8px' }}>✗ Failed</span>}
+                            </div>
+
+                            <div style={{ marginTop: '18px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '18px' }}>
+                                <div style={{
+                                    padding: '14px',
+                                    borderRadius: '10px',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    marginBottom: '14px'
+                                }}>
+                                    <div style={{ color: 'white', fontWeight: 600, marginBottom: '6px' }}>Supabase Storage (Manual Media)</div>
+                                    <div style={{ color: '#aaa', fontSize: '0.85rem' }}>
+                                        Upload video/image manual media to Supabase so guide data can be accessed online across devices.
+                                    </div>
+                                </div>
+
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'white', cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={!!supabaseSettings.enabled}
+                                        onChange={(e) => handleSupabaseSettingChange('enabled', e.target.checked)}
+                                    />
+                                    Enable Supabase Media Storage
+                                </label>
+
+                                <div style={{ marginTop: '10px' }}>
+                                    <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem' }}>Supabase URL</label>
+                                    <input
+                                        type="text"
+                                        value={supabaseSettings.url || ''}
+                                        onChange={(e) => handleSupabaseSettingChange('url', e.target.value)}
+                                        placeholder="https://your-project-ref.supabase.co"
+                                        style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px' }}
+                                    />
+                                </div>
+
+                                <div style={{ marginTop: '10px' }}>
+                                    <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem' }}>Supabase Anon Key</label>
+                                    <input
+                                        type="password"
+                                        value={supabaseSettings.anonKey || ''}
+                                        onChange={(e) => handleSupabaseSettingChange('anonKey', e.target.value)}
+                                        placeholder="eyJ..."
+                                        style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px' }}
+                                    />
+                                </div>
+
+                                <div style={{ marginTop: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem' }}>Bucket</label>
+                                        <input
+                                            type="text"
+                                            value={supabaseSettings.bucket || ''}
+                                            onChange={(e) => handleSupabaseSettingChange('bucket', e.target.value)}
+                                            placeholder="manual-media"
+                                            style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem' }}>Folder</label>
+                                        <input
+                                            type="text"
+                                            value={supabaseSettings.folder || ''}
+                                            onChange={(e) => handleSupabaseSettingChange('folder', e.target.value)}
+                                            placeholder="manuals"
+                                            style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style={{ marginTop: '10px' }}>
+                                    <button
+                                        onClick={handleTestSupabaseConnection}
+                                        disabled={isSupabaseTesting || !supabaseSettings.url || !supabaseSettings.anonKey}
+                                        style={{
+                                            padding: '10px 14px',
+                                            backgroundColor: supabaseConnectionStatus === 'success' ? '#16a34a' : 'rgba(255,255,255,0.05)',
+                                            border: '1px solid rgba(255,255,255,0.15)',
+                                            color: 'white',
+                                            borderRadius: '10px',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {isSupabaseTesting ? 'Testing...' : 'Test Supabase Connection'}
+                                    </button>
+                                    {supabaseConnectionStatus === 'success' && <span style={{ color: '#16a34a', marginLeft: '8px' }}>✓ OK</span>}
+                                    {supabaseConnectionStatus === 'error' && <span style={{ color: '#ef4444', marginLeft: '8px' }}>✗ Failed</span>}
+                                </div>
                             </div>
                         </div>
                     ) : (

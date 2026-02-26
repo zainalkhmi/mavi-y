@@ -4,6 +4,12 @@ import { getAllProjects } from '../utils/database';
 import { addKnowledgeBaseItem, updateKnowledgeBaseItem, getAllKnowledgeBaseItems, getKnowledgeBaseItem } from '../utils/knowledgeBaseDB';
 import { upsertManual, listManuals } from '../utils/tursoAPI';
 import { isTursoConfigured } from '../utils/tursoClient';
+import {
+    getSupabaseSettings,
+    isSupabaseConfigured,
+    uploadBlobToSupabase,
+    uploadDataUrlToSupabase
+} from '../utils/supabaseClient';
 import HelpButton from './HelpButton';
 import { helpContent } from '../utils/helpContent.jsx';
 import GuideHeader from './manual/GuideHeader';
@@ -59,6 +65,79 @@ const ensureUniqueStepIds = (steps = []) => {
 
         return { ...step, id: nextId, images };
     });
+};
+
+const isBlobUrl = (value) => typeof value === 'string' && value.startsWith('blob:');
+
+const readBlobAsDataUrl = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => resolve(ev.target?.result || null);
+    reader.onerror = () => reject(new Error('Failed to read blob as data URL'));
+    reader.readAsDataURL(blob);
+});
+
+const toPersistableSteps = (steps = [], fallbackVideoUrl = null) => {
+    return (Array.isArray(steps) ? steps : []).map((step) => {
+        const media = step?.media;
+        if (!media || typeof media !== 'object') return step;
+
+        if (media.type === 'video') {
+            const url = media.url;
+            const normalizedUrl = isBlobUrl(url) ? (fallbackVideoUrl || null) : url;
+            return {
+                ...step,
+                media: {
+                    ...media,
+                    url: normalizedUrl
+                }
+            };
+        }
+
+        if (isBlobUrl(media.url)) {
+            return {
+                ...step,
+                media: {
+                    ...media,
+                    url: null
+                }
+            };
+        }
+
+        return step;
+    });
+};
+
+const sanitizePathPart = (value) => String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60) || 'manual';
+
+const normalizeReferenceUrl = (value = '') => {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+
+    const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+    try {
+        const parsed = new URL(withProtocol);
+        if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+        return parsed.href;
+    } catch {
+        return null;
+    }
+};
+
+const extractReferenceLinks = (rawValue = '') => {
+    return String(rawValue || '')
+        .split(/[\n,;]+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((item) => ({
+            label: item,
+            url: normalizeReferenceUrl(item)
+        }))
+        .filter((item) => !!item.url);
 };
 
 const USER_ROLES = ['Author', 'Reviewer', 'Approver', 'Operator', 'Admin'];
@@ -284,6 +363,8 @@ function ManualCreation() {
         notifications: [],
         eSignatures: [],
         readAcks: [],
+        stepStatusMap: {},
+        stepChangeLog: [],
         steps: [],
         images: [], // Global images if any, but steps will have their own
         // Dozuki-style Introduction fields
@@ -293,7 +374,8 @@ function ManualCreation() {
         flags: ['In Progress'],
         accessControl: { isPublic: true, teams: [], individuals: [] },
         editPermissions: 0,
-        tags: []
+        tags: [],
+        sourceVideoUrl: null
     });
 
     const normalizeGuide = (manual) => {
@@ -341,6 +423,8 @@ function ManualCreation() {
             notifications: Array.isArray(contentObj?.notifications) ? contentObj.notifications : [],
             eSignatures: Array.isArray(contentObj?.eSignatures) ? contentObj.eSignatures : [],
             readAcks: Array.isArray(contentObj?.readAcks) ? contentObj.readAcks : [],
+            stepStatusMap: contentObj?.stepStatusMap && typeof contentObj.stepStatusMap === 'object' ? contentObj.stepStatusMap : {},
+            stepChangeLog: Array.isArray(contentObj?.stepChangeLog) ? contentObj.stepChangeLog : [],
             steps: ensureUniqueStepIds(manual?.steps || contentObj?.steps || manual?.content || []),
             // Introduction fields fallback
             guideType: manual?.guideType || contentObj?.guideType || 'Replacement',
@@ -349,7 +433,8 @@ function ManualCreation() {
             flags: manual?.flags || contentObj?.flags || ['In Progress'],
             accessControl: manual?.accessControl || contentObj?.accessControl || { isPublic: true, teams: [], individuals: [] },
             editPermissions: manual?.editPermissions || contentObj?.editPermissions || 0,
-            tags: manual?.tags || contentObj?.tags || []
+            tags: manual?.tags || contentObj?.tags || [],
+            sourceVideoUrl: manual?.sourceVideoUrl || contentObj?.sourceVideoUrl || null
         };
     };
 
@@ -375,6 +460,7 @@ function ManualCreation() {
     const [geminiVideoUri, setGeminiVideoUri] = useState(null);
     const [isFullAIAnalyzing, setIsFullAIAnalyzing] = useState(false);
     const [rawVideoFile, setRawVideoFile] = useState(null);
+    const [persistentVideoSrc, setPersistentVideoSrc] = useState(null);
     const { user, userRole: rawUserRole } = useAuth();
     const currentUserName = user?.email || 'User 1';
 
@@ -470,6 +556,11 @@ function ManualCreation() {
             if (project.videoBlob) {
                 setVideoSrc(URL.createObjectURL(project.videoBlob));
                 setRawVideoFile(new File([project.videoBlob], 'source_video.mp4', { type: project.videoBlob.type || 'video/mp4' }));
+                readBlobAsDataUrl(project.videoBlob)
+                    .then((dataUrl) => setPersistentVideoSrc(dataUrl || null))
+                    .catch(() => setPersistentVideoSrc(null));
+            } else {
+                setPersistentVideoSrc(null);
             }
 
             if (project.measurements) {
@@ -494,6 +585,7 @@ function ManualCreation() {
         } else {
             setSelectedProject(null);
             setVideoSrc(null);
+            setPersistentVideoSrc(null);
             setGuide(createDefaultGuide());
             setActiveStepId(null);
         }
@@ -545,8 +637,23 @@ function ManualCreation() {
         notifications: currentGuide.notifications,
         eSignatures: currentGuide.eSignatures,
         readAcks: currentGuide.readAcks,
-        steps: currentGuide.steps
+        stepStatusMap: currentGuide.stepStatusMap,
+        stepChangeLog: currentGuide.stepChangeLog,
+        sourceVideoUrl: currentGuide.sourceVideoUrl || persistentVideoSrc || null,
+        steps: toPersistableSteps(currentGuide.steps, currentGuide.sourceVideoUrl || persistentVideoSrc || null)
     });
+
+    const appendStepAuditEvent = (prevGuide, stepId, action, details = '') => {
+        const entry = {
+            id: generateId(),
+            stepId,
+            action,
+            details,
+            actor: `${currentUserName} (${currentUserRole})`,
+            timestamp: new Date().toISOString()
+        };
+        return [entry, ...(prevGuide.stepChangeLog || [])].slice(0, 500);
+    };
 
     const hasAnyRole = (...roles) => currentUserRole === 'Admin' || roles.includes(currentUserRole);
 
@@ -1056,7 +1163,29 @@ function ManualCreation() {
         });
     };
 
-    const handleOperatorNext = () => {
+    const isQuestionAnswered = (question, value) => {
+        if (question?.type === 'checkbox') {
+            return Array.isArray(value) ? value.length > 0 : Boolean(value);
+        }
+        return String(value ?? '').trim().length > 0;
+    };
+
+    const findMissingRequiredQuestion = (questions = [], answers = {}) => {
+        return questions.find((q) => q?.required && !isQuestionAnswered(q, answers?.[q.id]));
+    };
+
+    const handleOperatorNext = async () => {
+        const currentStep = guide.steps[operatorStepIndex] || null;
+        if (currentStep && !currentStep.hideDataCapture) {
+            const questions = getStepDataCaptureFields(currentStep);
+            const answers = operatorDataCaptureAnswers?.[currentStep.id] || {};
+            const missingRequired = findMissingRequiredQuestion(questions, answers);
+            if (missingRequired) {
+                await showAlert('Validation', `Please fill required field: ${missingRequired.label}`);
+                return;
+            }
+        }
+
         setOperatorStepIndex(prev => Math.min(prev + 1, Math.max(guide.steps.length - 1, 0)));
     };
 
@@ -1205,9 +1334,10 @@ function ManualCreation() {
         if (!currentStep) return;
 
         const update = { startTime: time };
+        const resolvedVideoUrl = persistentVideoSrc || guide.sourceVideoUrl || (!isBlobUrl(videoSrc) ? videoSrc : null);
         // Auto-set as video media if not already set or if it's an image
-        if (!currentStep.media || currentStep.media.type !== 'youtube') {
-            update.media = { type: 'video', url: videoSrc };
+        if ((!currentStep.media || currentStep.media.type !== 'youtube') && resolvedVideoUrl) {
+            update.media = { type: 'video', url: resolvedVideoUrl };
         }
         handleStepChange(activeStepId, update);
     };
@@ -1221,10 +1351,11 @@ function ManualCreation() {
         const startTime = currentStep.startTime || 0;
         const duration = Math.max(0, time - startTime);
         const update = { duration: Math.round(duration * 10) / 10 };
+        const resolvedVideoUrl = persistentVideoSrc || guide.sourceVideoUrl || (!isBlobUrl(videoSrc) ? videoSrc : null);
 
         // Auto-set as video media if not already set or if it's an image
-        if (!currentStep.media || currentStep.media.type !== 'youtube') {
-            update.media = { type: 'video', url: videoSrc };
+        if ((!currentStep.media || currentStep.media.type !== 'youtube') && resolvedVideoUrl) {
+            update.media = { type: 'video', url: resolvedVideoUrl };
         }
         handleStepChange(activeStepId, update);
     };
@@ -1247,7 +1378,21 @@ function ManualCreation() {
     };
 
 
-    const handleStepSelect = (id) => setActiveStepId(id);
+    const handleStepSelect = (id) => {
+        setActiveStepId(id);
+        setGuide(prev => {
+            const current = prev.stepStatusMap?.[id] || 'not_started';
+            if (current === 'completed' || current === 'in_progress') return prev;
+            return {
+                ...prev,
+                stepStatusMap: {
+                    ...(prev.stepStatusMap || {}),
+                    [id]: 'in_progress'
+                },
+                stepChangeLog: appendStepAuditEvent(prev, id, 'Status Changed', 'not_started -> in_progress')
+            };
+        });
+    };
 
     const handleAddStep = () => {
         const newStep = {
@@ -1259,7 +1404,12 @@ function ManualCreation() {
         };
         setGuide(prev => ({
             ...prev,
-            steps: ensureUniqueStepIds([...prev.steps, newStep])
+            steps: ensureUniqueStepIds([...prev.steps, newStep]),
+            stepStatusMap: {
+                ...(prev.stepStatusMap || {}),
+                [newStep.id]: 'not_started'
+            },
+            stepChangeLog: appendStepAuditEvent(prev, newStep.id, 'Step Created', `Added ${newStep.title}`)
         }));
         setActiveStepId(newStep.id);
     };
@@ -1268,9 +1418,30 @@ function ManualCreation() {
         if (!await showConfirm(t('manual.alerts.confirmDeleteStep'))) return;
         setGuide(prev => {
             const newSteps = prev.steps.filter(s => s.id !== id);
-            return { ...prev, steps: newSteps };
+            const nextStatus = { ...(prev.stepStatusMap || {}) };
+            delete nextStatus[id];
+            return {
+                ...prev,
+                steps: newSteps,
+                stepStatusMap: nextStatus,
+                stepChangeLog: appendStepAuditEvent(prev, id, 'Step Deleted', 'Step removed from guide')
+            };
         });
         if (activeStepId === id) setActiveStepId(null);
+    };
+
+    const handleReorderStep = (fromIndex, toIndex) => {
+        setGuide(prev => {
+            if (fromIndex < 0 || toIndex < 0 || fromIndex >= prev.steps.length || toIndex >= prev.steps.length) return prev;
+            const nextSteps = [...prev.steps];
+            const [moved] = nextSteps.splice(fromIndex, 1);
+            nextSteps.splice(toIndex, 0, moved);
+            return {
+                ...prev,
+                steps: nextSteps,
+                stepChangeLog: appendStepAuditEvent(prev, moved?.id, 'Step Reordered', `Moved from ${fromIndex + 1} to ${toIndex + 1}`)
+            };
+        });
     };
 
     const handleEditStep = (id) => {
@@ -1286,6 +1457,11 @@ function ManualCreation() {
     const handleStepChange = (id, fieldOrUpdate, value) => {
         setGuide(prev => ({
             ...prev,
+            stepStatusMap: {
+                ...(prev.stepStatusMap || {}),
+                [id]: prev.stepStatusMap?.[id] === 'completed' ? 'completed' : 'in_progress'
+            },
+            stepChangeLog: appendStepAuditEvent(prev, id, 'Step Updated', typeof fieldOrUpdate === 'string' ? fieldOrUpdate : 'bulk_update'),
             steps: prev.steps.map(s => {
                 if (s.id !== id) return s;
                 if (typeof fieldOrUpdate === 'string') {
@@ -1457,14 +1633,41 @@ function ManualCreation() {
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
 
         const currentStep = guide.steps.find(s => s.id === activeStepId);
-        if (currentStep) {
-            const existingImages = Array.isArray(currentStep.images) ? currentStep.images : [];
-            const nextImages = [...existingImages, dataUrl];
-            handleStepChange(activeStepId, {
-                images: nextImages,
-                media: { type: 'image', url: dataUrl }
-            });
+        if (!currentStep) return;
+
+        const existingImages = Array.isArray(currentStep.images) ? currentStep.images : [];
+
+        if (isSupabaseConfigured()) {
+            const cfg = getSupabaseSettings();
+            const guideKey = sanitizePathPart(guide.cloudId || guide.kbId || guide.id);
+            const stepKey = sanitizePathPart(activeStepId);
+            const fileName = `${Date.now()}-capture.jpg`;
+            const path = `${sanitizePathPart(cfg.folder || 'manuals')}/${guideKey}/steps/${stepKey}/${fileName}`;
+
+            uploadDataUrlToSupabase(path, dataUrl)
+                .then((publicUrl) => {
+                    const nextImages = [...existingImages, publicUrl];
+                    handleStepChange(activeStepId, {
+                        images: nextImages,
+                        media: { type: 'image', url: publicUrl }
+                    });
+                })
+                .catch((err) => {
+                    console.warn('Supabase image upload failed, fallback to local data URL:', err);
+                    const nextImages = [...existingImages, dataUrl];
+                    handleStepChange(activeStepId, {
+                        images: nextImages,
+                        media: { type: 'image', url: dataUrl }
+                    });
+                });
+            return;
         }
+
+        const nextImages = [...existingImages, dataUrl];
+        handleStepChange(activeStepId, {
+            images: nextImages,
+            media: { type: 'image', url: dataUrl }
+        });
     };
 
     const exportToPDF = async () => {
@@ -1983,6 +2186,7 @@ function ManualCreation() {
     const activeStep = guide.steps.find(s => s.id === activeStepId);
     const operatorCurrentStep = guide.steps[operatorStepIndex] || null;
     const operatorStepDataFields = getStepDataCaptureFields(operatorCurrentStep);
+    const guideReferenceLinks = useMemo(() => extractReferenceLinks(guide.documentNumber), [guide.documentNumber]);
     const operatorStepAnswerMap = operatorCurrentStep
         ? (operatorDataCaptureAnswers?.[operatorCurrentStep.id] || {})
         : {};
@@ -2795,6 +2999,23 @@ function ManualCreation() {
                                     <div style={{ height: '8px', borderRadius: '999px', backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
                                         <div style={{ width: `${operatorProgress}%`, height: '100%', background: 'linear-gradient(90deg, #16a34a, #22c55e)' }} />
                                     </div>
+
+                                    {guideReferenceLinks.length > 0 && (
+                                        <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
+                                            <button
+                                                onClick={() => window.open(guideReferenceLinks[0].url, '_blank', 'noopener,noreferrer')}
+                                                className="btn-pro"
+                                                style={{
+                                                    backgroundColor: 'rgba(59,130,246,0.15)',
+                                                    color: '#93c5fd',
+                                                    borderColor: 'rgba(59,130,246,0.35)',
+                                                    fontSize: '0.78rem'
+                                                }}
+                                            >
+                                                <ExternalLink size={14} /> Open Reference
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {operatorCurrentStep ? (
@@ -3140,6 +3361,20 @@ function ManualCreation() {
                                             <div className="dozuki-badge" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6' }}>
                                                 {guide.version || '1.0'}
                                             </div>
+                                            {guideReferenceLinks.length > 0 && (
+                                                <button
+                                                    className="dozuki-badge"
+                                                    onClick={() => window.open(guideReferenceLinks[0].url, '_blank', 'noopener,noreferrer')}
+                                                    style={{
+                                                        cursor: 'pointer',
+                                                        border: '1px solid rgba(34,197,94,0.35)',
+                                                        background: 'rgba(34,197,94,0.1)',
+                                                        color: '#22c55e'
+                                                    }}
+                                                >
+                                                    <ExternalLink size={14} /> Open Reference
+                                                </button>
+                                            )}
                                         </div>
 
                                         {guide.summary && (
@@ -3390,9 +3625,9 @@ function ManualCreation() {
                                             <button
                                                 onClick={() => {
                                                     const currentStep = guide.steps[operatorStepIndex];
-                                                    const missingRequired = !currentStep.hideDataCapture && (currentStep.questions || []).find(q =>
-                                                        q.required && (operatorAnswers[q.id] === undefined || operatorAnswers[q.id] === '')
-                                                    );
+                                                    const missingRequired = !currentStep.hideDataCapture
+                                                        ? findMissingRequiredQuestion((currentStep.questions || []), operatorAnswers)
+                                                        : null;
 
                                                     if (missingRequired) {
                                                         showAlert(`Please fill required field: ${missingRequired.label}`);
@@ -3426,6 +3661,8 @@ function ManualCreation() {
                                                 onAddStep={handleAddStep}
                                                 onEditStep={handleEditStep}
                                                 onDeleteStep={handleDeleteStep}
+                                                onReorderStep={handleReorderStep}
+                                                stepStatuses={guide.stepStatusMap}
                                                 horizontal={true}
                                             />
                                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '12px', backgroundColor: 'rgba(0, 0, 0, 0.15)' }}>
@@ -3456,6 +3693,41 @@ function ManualCreation() {
                                                         const url = URL.createObjectURL(file);
                                                         setVideoSrc(url);
                                                         setRawVideoFile(file);
+
+                                                        if (isSupabaseConfigured()) {
+                                                            const cfg = getSupabaseSettings();
+                                                            const guideKey = sanitizePathPart(guide.cloudId || guide.kbId || guide.id);
+                                                            const ext = (file.name?.split('.').pop() || 'mp4').replace(/[^a-z0-9]/gi, '');
+                                                            const fileName = `${Date.now()}-source.${ext || 'mp4'}`;
+                                                            const path = `${sanitizePathPart(cfg.folder || 'manuals')}/${guideKey}/source/${fileName}`;
+
+                                                            uploadBlobToSupabase(path, file, file.type || 'video/mp4')
+                                                                .then((publicUrl) => {
+                                                                    setPersistentVideoSrc(publicUrl);
+                                                                    setGuide(prev => ({ ...prev, sourceVideoUrl: publicUrl }));
+                                                                })
+                                                                .catch((err) => {
+                                                                    console.warn('Supabase video upload failed, fallback to data URL:', err);
+                                                                    readBlobAsDataUrl(file)
+                                                                        .then((dataUrl) => {
+                                                                            setPersistentVideoSrc(dataUrl || null);
+                                                                            if (dataUrl) {
+                                                                                setGuide(prev => ({ ...prev, sourceVideoUrl: dataUrl }));
+                                                                            }
+                                                                        })
+                                                                        .catch(() => setPersistentVideoSrc(null));
+                                                                });
+                                                        } else {
+                                                            readBlobAsDataUrl(file)
+                                                                .then((dataUrl) => {
+                                                                    setPersistentVideoSrc(dataUrl || null);
+                                                                    if (dataUrl) {
+                                                                        setGuide(prev => ({ ...prev, sourceVideoUrl: dataUrl }));
+                                                                    }
+                                                                })
+                                                                .catch(() => setPersistentVideoSrc(null));
+                                                        }
+
                                                         setGeminiVideoUri(null);
                                                     }
                                                 }}
@@ -3532,6 +3804,32 @@ function ManualCreation() {
                                                             <div style={{ fontSize: '0.85rem', color: '#fff', marginBottom: '4px', fontWeight: '600' }}>{activeStep.title || 'Untitled Step'}</div>
                                                             <div style={{ fontSize: '0.7rem', color: '#93c5fd', wordBreak: 'break-all', opacity: 0.8 }}>{buildStepPublicLink(activeStep, 0)}</div>
                                                         </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {guideReferenceLinks.length > 0 && (
+                                                <div className="glass-panel" style={{ padding: '20px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                                                    <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '800', marginBottom: '16px' }}>Document References</div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                        {guideReferenceLinks.slice(0, 5).map((ref, index) => (
+                                                            <button
+                                                                key={`${ref.url}-${index}`}
+                                                                onClick={() => window.open(ref.url, '_blank', 'noopener,noreferrer')}
+                                                                className="btn-pro"
+                                                                style={{
+                                                                    justifyContent: 'space-between',
+                                                                    width: '100%',
+                                                                    background: 'rgba(34,197,94,0.08)',
+                                                                    borderColor: 'rgba(34,197,94,0.25)',
+                                                                    color: '#86efac'
+                                                                }}
+                                                                title={ref.url}
+                                                            >
+                                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px', textAlign: 'left' }}>{ref.label}</span>
+                                                                <ExternalLink size={14} />
+                                                            </button>
+                                                        ))}
                                                     </div>
                                                 </div>
                                             )}
@@ -3993,15 +4291,15 @@ function ManualCreation() {
                     </div>
 
                     <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-                        {(guide.history || []).length === 0 ? (
+                        {(guide.versionHistory || []).length === 0 ? (
                             <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(255,255,255,0.3)' }}>
                                 <Layers size={32} style={{ margin: '0 auto 12px', opacity: 0.2 }} />
                                 <div style={{ fontSize: '0.85rem' }}>No snapshots yet</div>
                             </div>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {[...(guide.history || [])].reverse().map((item, idx) => (
-                                    <div key={item.timestamp || idx} style={{
+                                {(guide.versionHistory || []).map((item, idx) => (
+                                    <div key={item.id || idx} style={{
                                         padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)',
                                         border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '8px'
                                     }}>
@@ -4009,7 +4307,7 @@ function ManualCreation() {
                                             <div>
                                                 <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>Ver {item.version}</div>
                                                 <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>
-                                                    {new Date(item.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                    {new Date(item.updatedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                 </div>
                                             </div>
                                             <button

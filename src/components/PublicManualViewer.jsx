@@ -2,6 +2,32 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { getKnowledgeBaseItem, getItemByCloudId, updateKnowledgeBaseItem } from '../utils/knowledgeBaseDB';
 import { getManualByCloudId, appendManualAcknowledgement, appendManualDataCapture } from '../utils/tursoAPI';
 
+const normalizeReferenceUrl = (value = '') => {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+    const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+    try {
+        const parsed = new URL(withProtocol);
+        if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+        return parsed.href;
+    } catch {
+        return null;
+    }
+};
+
+const extractReferenceLinks = (rawValue = '') => {
+    return String(rawValue || '')
+        .split(/[\n,;]+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((item) => ({
+            label: item,
+            url: normalizeReferenceUrl(item)
+        }))
+        .filter((item) => !!item.url);
+};
+
 const PublicManualViewer = ({ manualId, onClose }) => {
     const [manual, setManual] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -59,6 +85,8 @@ const PublicManualViewer = ({ manualId, onClose }) => {
     const steps = manual?.steps || contentObj?.steps || manual?.content || [];
     const manualStatus = manual?.status || contentObj?.status || contentObj?.workflow?.status || 'Draft';
     const manualVersion = manual?.version || contentObj?.version || '1.0';
+    const documentReferenceRaw = manual?.documentNumber || contentObj?.documentNumber || '';
+    const referenceLinks = useMemo(() => extractReferenceLinks(documentReferenceRaw), [documentReferenceRaw]);
     const readAcks = Array.isArray(contentObj?.readAcks) ? contentObj.readAcks : [];
     const dataCaptures = Array.isArray(contentObj?.dataCaptures) ? contentObj.dataCaptures : [];
 
@@ -473,6 +501,16 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                     padding: 10px 16px;
                     min-width: 105px;
                 }
+                .dozuki-ref-link {
+                    border: 1px solid #16a34a;
+                    border-radius: 8px;
+                    background: #f0fdf4;
+                    color: #166534;
+                    font-weight: 700;
+                    cursor: pointer;
+                    padding: 8px 12px;
+                    font-size: 12px;
+                }
                 .dozuki-btn.primary {
                     border-color: #1674ea;
                     background: #1674ea;
@@ -568,6 +606,20 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                             <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>
                                 {manual.title || 'Manual'} • v{manualVersion}
                             </div>
+                            {referenceLinks.length > 0 && (
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                                    {referenceLinks.slice(0, 3).map((ref, idx) => (
+                                        <button
+                                            key={`${ref.url}-${idx}`}
+                                            className="dozuki-ref-link"
+                                            onClick={() => window.open(ref.url, '_blank', 'noopener,noreferrer')}
+                                            title={ref.url}
+                                        >
+                                            Open Ref {idx + 1}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                             <div className="dozuki-step-title">{currentStep?.title || 'Untitled Step'}</div>
                         </div>
 

@@ -1,6 +1,13 @@
 import React from 'react';
 import { Camera, Upload, X, Image, Video } from 'lucide-react';
 
+const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => resolve(ev.target?.result || null);
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+});
+
 const StepMediaControls = ({
     step,
     onCaptureImage,
@@ -111,14 +118,20 @@ const StepMediaControls = ({
                 }}>
                     <Video size={14} />
                     <span>Upload Video Clip</span>
-                    <input type="file" hidden accept="video/*" onChange={(e) => {
+                    <input type="file" hidden accept="video/*" onChange={async (e) => {
                         const file = e.target.files[0];
-                        if (file) {
-                            const url = URL.createObjectURL(file);
+                        if (!file) return;
+
+                        try {
+                            const dataUrl = await readFileAsDataUrl(file);
+                            if (!dataUrl) return;
+
                             handleStepUpdate(step.id, {
                                 ...step,
-                                media: { type: 'video', url }
+                                media: { type: 'video', url: dataUrl }
                             });
+                        } catch (error) {
+                            console.error('Failed to read uploaded video as data URL:', error);
                         }
                     }} />
                 </label>

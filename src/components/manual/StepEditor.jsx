@@ -329,7 +329,7 @@ const StepEditor = ({
                                             <input
                                                 type="checkbox"
                                                 checked={!!step.hideDataCapture}
-                                                onChange={(e) => onChange({ ...step, hideDataCapture: e.target.checked })}
+                                                onChange={(e) => handleStepUpdate({ hideDataCapture: e.target.checked })}
                                                 style={{ cursor: 'pointer' }}
                                             />
                                             {step.hideDataCapture ? <EyeOff size={12} /> : <Eye size={12} />} Hide

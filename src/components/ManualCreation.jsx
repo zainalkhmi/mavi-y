@@ -328,6 +328,8 @@ function ManualCreation() {
         Released: ['Approved', 'Released']
     };
 
+    const getAllowedWorkflowTransitions = (status) => WORKFLOW_TRANSITIONS[status] || [status];
+
     const createDefaultGuide = () => ({
         id: generateId(),
         title: '',
@@ -506,6 +508,8 @@ function ManualCreation() {
     }, []);
 
     const manualPublicLink = `${window.location.origin}/#/manual/${guide.cloudId || guide.kbId || guide.id}?v=${encodeURIComponent(guide.version || '1.0')}`;
+    // Deep-link QR: menggunakan route yang benar (/manual-creation?manual=<id>) agar QR code bisa langsung membuka SOP
+    const manualQRLink = `${window.location.origin}/#/manual-creation?manual=${guide.cloudId || guide.kbId || guide.id}`;
     const buildStepPublicLink = (step, stepIndex) => {
         const stationName = step?.title || `Step ${stepIndex + 1}`;
         return `${manualPublicLink}&stepId=${encodeURIComponent(step?.id || '')}&step=${stepIndex + 1}&station=${encodeURIComponent(stationName)}`;
@@ -548,6 +552,15 @@ function ManualCreation() {
             console.error('Error loading manual by ID:', error);
         }
     };
+
+    // Deep link: jika URL mengandung ?manual=<id>, otomatis buka manual tersebut
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const manualIdFromUrl = params.get('manual');
+        if (manualIdFromUrl) {
+            loadManualById(manualIdFromUrl);
+        }
+    }, []);
 
     useEffect(() => {
         if (selectedProjectId && projects.length > 0) {
@@ -707,7 +720,7 @@ function ManualCreation() {
     const handleWorkflowStatusChange = async (nextStatus) => {
         if (!(await guardPermission(nextStatus === 'Released' ? canRelease : canEditManual, `status change to ${nextStatus}`))) return;
         const currentStatus = guide.workflow?.status || guide.status || 'Draft';
-        const allowed = WORKFLOW_TRANSITIONS[currentStatus] || [currentStatus];
+        const allowed = getAllowedWorkflowTransitions(currentStatus);
 
         if (!allowed.includes(nextStatus)) {
             await showAlert(
@@ -819,6 +832,11 @@ function ManualCreation() {
 
     const handleSubmitForApproval = async () => {
         if (!(await guardPermission(canSubmitApproval, 'submit for approval'))) return;
+        const workflowStatus = guide.workflow?.status || guide.status || 'Draft';
+        if (workflowStatus !== 'Draft') {
+            await showAlert('Invalid Status', 'Manual can only be submitted for approval from Draft status.');
+            return;
+        }
         if (!(guide.approvalMatrix || []).length) {
             await showAlert('Approval Matrix Missing', 'Please add at least one approval level before submitting.');
             return;
@@ -854,7 +872,19 @@ function ManualCreation() {
         if (!(await guardPermission(canApprove, `${decision.toLowerCase()} approval`))) return;
         const note = window.prompt(`${decision} note (optional):`, '') || '';
         setGuide(prev => {
-            const updatedRequests = (prev.approvalRequests || []).map(r =>
+            const existingRequests = prev.approvalRequests || [];
+            const targetRequest = existingRequests.find(r => r.id === requestId);
+            if (!targetRequest) return prev;
+            if (targetRequest.status !== 'Pending') {
+                return prev;
+            }
+
+            const blockingLowerLevel = existingRequests.some(r => r.level < targetRequest.level && r.status !== 'Approved');
+            if (blockingLowerLevel) {
+                return prev;
+            }
+
+            const updatedRequests = existingRequests.map(r =>
                 r.id === requestId ? { ...r, status: decision, note, actedAt: new Date().toISOString() } : r
             );
 
@@ -1412,6 +1442,62 @@ function ManualCreation() {
             stepChangeLog: appendStepAuditEvent(prev, newStep.id, 'Step Created', `Added ${newStep.title}`)
         }));
         setActiveStepId(newStep.id);
+    };
+
+    const resolveAnalysisMeasurements = () => {
+        if (Array.isArray(selectedProject?.measurements) && selectedProject.measurements.length > 0) {
+            return selectedProject.measurements;
+        }
+
+        if (Array.isArray(currentProject?.measurements) && currentProject.measurements.length > 0) {
+            return currentProject.measurements;
+        }
+
+        const matchedById = projects.find((p) => p?.projectName === selectedProjectId);
+        if (Array.isArray(matchedById?.measurements) && matchedById.measurements.length > 0) {
+            return matchedById.measurements;
+        }
+
+        return [];
+    };
+
+    const handleImportFromAnalysis = async () => {
+        const analysisMeasurements = resolveAnalysisMeasurements();
+
+        if (!analysisMeasurements.length) {
+            await showAlert(
+                'No Analysis Data',
+                t('manual.alerts.uploadVideoFirst') || 'No analysis data found. Please select a project with measurements first.'
+            );
+            return;
+        }
+
+        const confirmAppend = await showConfirm(
+            tt('manual.alerts.confirmAppendSteps', 'Import {{count}} steps from analysis?', { count: analysisMeasurements.length }),
+            'This will add steps based on your video measurements.'
+        );
+
+        if (!confirmAppend) return;
+
+        const newSteps = analysisMeasurements.map(m => ({
+            id: generateId(),
+            title: m.elementName || tt('manual.untitledStep', 'Untitled Step'),
+            media: { type: 'video', url: null },
+            instructions: m.elementName || '',
+            bullets: [],
+            startTime: m.startTime,
+            duration: m.duration
+        }));
+
+        setGuide(prev => ({
+            ...prev,
+            steps: ensureUniqueStepIds([...prev.steps, ...newSteps]),
+            auditTrail: appendAuditEvent(prev, 'Imported from Analysis', `Added ${newSteps.length} steps`)
+        }));
+
+        if (newSteps.length > 0 && !activeStepId) {
+            setActiveStepId(newSteps[0].id);
+        }
     };
 
     const handleDeleteStep = async (id) => {
@@ -3481,6 +3567,16 @@ function ManualCreation() {
                                                             dangerouslySetInnerHTML={{ __html: step.instructions }}
                                                         />
 
+                                                        {step.voiceInstruction && (
+                                                            <div style={{ marginTop: '-12px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                                                                <Volume2 size={20} style={{ color: '#3b82f6' }} />
+                                                                <div style={{ flex: 1 }}>
+                                                                    <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#3b82f6', marginBottom: '4px' }}>Audio Guide</div>
+                                                                    <audio src={step.voiceInstruction} controls style={{ width: '100%', height: '32px' }} />
+                                                                </div>
+                                                            </div>
+                                                        )}
+
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                                             {(step.bullets || []).map((b, bIdx) => {
                                                                 if (['note', 'warning', 'caution'].includes(b.type)) {
@@ -3662,6 +3758,7 @@ function ManualCreation() {
                                                 onEditStep={handleEditStep}
                                                 onDeleteStep={handleDeleteStep}
                                                 onReorderStep={handleReorderStep}
+                                                onImportFromAnalysis={handleImportFromAnalysis}
                                                 stepStatuses={guide.stepStatusMap}
                                                 horizontal={true}
                                             />
@@ -4542,7 +4639,7 @@ function ManualCreation() {
                                 }}>
                                     <QRCodeCanvas
                                         id="manual-qr-code"
-                                        value={window.location.href}
+                                        value={manualQRLink}
                                         size={256}
                                         level="H"
                                         includeMargin={false}
@@ -4575,7 +4672,7 @@ function ManualCreation() {
                                     </button>
                                     <button
                                         onClick={() => {
-                                            navigator.clipboard.writeText(window.location.href);
+                                            navigator.clipboard.writeText(manualQRLink);
                                             showAlert('Link copied to clipboard!');
                                         }}
                                         className="btn-pro"

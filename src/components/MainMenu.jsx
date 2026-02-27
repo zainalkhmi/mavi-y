@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useDialog } from '../contexts/DialogContext';
-import { getMenuVisibilitySettings } from '../utils/tursoAPI';
+import { getMenuVisibilitySettings, listManuals } from '../utils/tursoAPI';
+import { getAllKnowledgeBaseItems } from '../utils/knowledgeBaseDB';
 import {
     LayoutGrid,
     Cpu,
@@ -259,6 +260,14 @@ function MainMenu() {
     const { user } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
     const [menuVisibilityMap, setMenuVisibilityMap] = useState({});
+    const [sopOverview, setSopOverview] = useState({
+        total: 0,
+        released: 0,
+        inReview: 0,
+        draft: 0,
+        latestManual: null,
+        loading: true
+    });
     const isId = currentLanguage === 'id';
 
     const loadMenuVisibility = async () => {
@@ -276,6 +285,57 @@ function MainMenu() {
         const handleVisibilityUpdated = () => loadMenuVisibility();
         window.addEventListener('menu-visibility-updated', handleVisibilityUpdated);
         return () => window.removeEventListener('menu-visibility-updated', handleVisibilityUpdated);
+    }, []);
+
+    useEffect(() => {
+        const loadSopOverview = async () => {
+            try {
+                const [cloudManuals, kbItems] = await Promise.all([
+                    listManuals().catch(() => []),
+                    getAllKnowledgeBaseItems().catch(() => [])
+                ]);
+
+                const localManuals = (kbItems || []).filter((item) => item?.type === 'manual');
+                const mergedMap = new Map();
+
+                [...cloudManuals, ...localManuals].forEach((manual) => {
+                    const key = String(manual?.cloudId || manual?.cloud_id || manual?.id || Math.random());
+                    mergedMap.set(key, manual);
+                });
+
+                const merged = Array.from(mergedMap.values());
+                const getStatus = (manual) => {
+                    return manual?.status
+                        || manual?.content?.status
+                        || manual?.content?.workflow?.status
+                        || 'Draft';
+                };
+
+                const sorted = [...merged].sort((a, b) => {
+                    const da = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
+                    const db = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
+                    return db - da;
+                });
+
+                const released = merged.filter((m) => getStatus(m) === 'Released').length;
+                const inReview = merged.filter((m) => getStatus(m) === 'In Review').length;
+                const draft = merged.filter((m) => getStatus(m) === 'Draft').length;
+
+                setSopOverview({
+                    total: merged.length,
+                    released,
+                    inReview,
+                    draft,
+                    latestManual: sorted[0] || null,
+                    loading: false
+                });
+            } catch (error) {
+                console.error('Failed to load SOP overview:', error);
+                setSopOverview((prev) => ({ ...prev, loading: false }));
+            }
+        };
+
+        loadSopOverview();
     }, []);
 
     useEffect(() => {
@@ -397,6 +457,75 @@ function MainMenu() {
                     </div>
 
 
+                </div>
+            </div>
+
+            <div
+                className="menu-stagger-item"
+                style={{
+                    marginBottom: '36px',
+                    padding: '24px',
+                    borderRadius: '22px',
+                    background: 'linear-gradient(135deg, rgba(59,130,246,0.16), rgba(16,185,129,0.10))',
+                    border: '1px solid rgba(147,197,253,0.35)',
+                    animationDelay: '0.18s'
+                }}
+            >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                            <BookOpen size={18} color="#93c5fd" />
+                            <span style={{ fontWeight: 800, letterSpacing: '0.04em', fontSize: '0.78rem', textTransform: 'uppercase', color: '#bfdbfe' }}>
+                                {isId ? 'SOP Intro Hub' : 'SOP Intro Hub'}
+                            </span>
+                        </div>
+                        <h3 style={{ margin: 0, color: '#fff', fontSize: '1.35rem' }}>
+                            {isId ? 'Work Instruction Center' : 'Work Instruction Center'}
+                        </h3>
+                        <p style={{ margin: '6px 0 0 0', color: 'rgba(255,255,255,0.55)', fontSize: '0.9rem' }}>
+                            {isId ? 'Akses cepat untuk membuat, meninjau, dan mengeksekusi SOP.' : 'Quick access to create, review, and execute SOP flows.'}
+                        </p>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(92px, 1fr))', gap: '10px', minWidth: '380px' }}>
+                        {[
+                            { label: isId ? 'Total' : 'Total', value: sopOverview.total, color: '#e2e8f0' },
+                            { label: isId ? 'Released' : 'Released', value: sopOverview.released, color: '#6ee7b7' },
+                            { label: isId ? 'Review' : 'Review', value: sopOverview.inReview, color: '#fde68a' },
+                            { label: isId ? 'Draft' : 'Draft', value: sopOverview.draft, color: '#93c5fd' }
+                        ].map((stat) => (
+                            <div key={stat.label} style={{
+                                background: 'rgba(2, 6, 23, 0.36)',
+                                border: '1px solid rgba(255,255,255,0.12)',
+                                borderRadius: '12px',
+                                padding: '10px 12px'
+                            }}>
+                                <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>{stat.label}</div>
+                                <div style={{ fontSize: '1.15rem', fontWeight: 800, color: stat.color }}>
+                                    {sopOverview.loading ? '…' : stat.value}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div style={{ marginTop: '18px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <button
+                        onClick={() => navigate('/manual-creation')}
+                        className="glass-card"
+                        style={{ borderRadius: '12px', border: '1px solid rgba(96,165,250,0.5)', padding: '10px 14px', color: '#dbeafe', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                        {isId ? 'Buat SOP Baru' : 'Create New SOP'}
+                    </button>
+                    <button
+                        onClick={() => navigate('/manual-creation')}
+                        className="glass-card"
+                        style={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)', padding: '10px 14px', color: '#f8fafc', fontWeight: 700, cursor: 'pointer' }}
+                        title={sopOverview.latestManual?.title || ''}
+                    >
+                        {isId ? 'Buka SOP Terbaru' : 'Open Latest SOP'}
+                        {sopOverview.latestManual?.title ? `: ${sopOverview.latestManual.title}` : ''}
+                    </button>
                 </div>
             </div>
 

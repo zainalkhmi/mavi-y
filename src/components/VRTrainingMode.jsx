@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     Play, Pause, SkipBack, SkipForward, Maximize, Minimize,
     ChevronLeft, ChevronRight, PenTool, Eraser, Info,
-    Settings, Zap, Sparkles, FolderOpen, Target
+    Settings, Zap, Sparkles, FolderOpen, Target,
+    Activity, ShieldAlert, Clock, Gauge
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import VideoAnnotation from './features/VideoAnnotation';
@@ -32,6 +33,8 @@ function VRTrainingMode() {
     const [lineWidth, setLineWidth] = useState(3);
     const [annotations, setAnnotations] = useState([]);
     const [isHoveringControls, setIsHoveringControls] = useState(false);
+    const [showSafetyAlert, setShowSafetyAlert] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
 
     const videoRef = useRef(null);
     const containerRef = useRef(null);
@@ -68,6 +71,26 @@ function VRTrainingMode() {
         } else {
             setNextStep(null);
             setStepIndex(currentIndex);
+        }
+
+        // Simulate Proximity Alerts based on time (for demo/training)
+        // In a real scenario, this would come from a real-time object detection stream
+        if (activeStep) {
+            const stepProgress = (currentTime - activeStep.startTime) / activeStep.duration;
+            if (activeStep.elementName.toLowerCase().includes('cut') && stepProgress > 0.5 && stepProgress < 0.7) {
+                setShowSafetyAlert(true);
+                setAlertMessage('PROXIMITY ALERT: KEEP HANDS CLEAR OF BLADE');
+            } else if (activeStep.elementName.toLowerCase().includes('heat') && stepProgress > 0.3 && stepProgress < 0.5) {
+                setShowSafetyAlert(true);
+                setAlertMessage('TEMPERATURE HAZARD: USE PROTECTIVE GEAR');
+            } else if (activeStep.elementName.toLowerCase().includes('lift') && stepProgress > 0.1 && stepProgress < 0.3) {
+                setShowSafetyAlert(true);
+                setAlertMessage('ERGONOMIC WARNING: CHECK LIFTING POSTURE');
+            } else {
+                setShowSafetyAlert(false);
+            }
+        } else {
+            setShowSafetyAlert(false);
         }
     }, [currentTime, measurements]);
 
@@ -404,6 +427,83 @@ function VRTrainingMode() {
                     }} />
                 </div>
 
+                {/* Performance HUD - Standard vs Actual */}
+                {currentStep && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '120px',
+                        right: '40px',
+                        background: 'rgba(15, 23, 42, 0.85)',
+                        backdropFilter: 'blur(15px)',
+                        padding: '24px',
+                        borderRadius: '24px',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        width: '240px',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                        animation: 'fadeIn 0.5s ease'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+                            <Gauge size={18} color="#00d2ff" />
+                            <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#00d2ff', letterSpacing: '1px' }}>PERFORMANCE HUD</span>
+                        </div>
+
+                        <div style={{ display: 'grid', gap: '15px' }}>
+                            <div>
+                                <div style={{ fontSize: '0.65rem', color: '#64748b', marginBottom: '4px' }}>STANDARD TIME</div>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fff' }}>{currentStep.duration.toFixed(1)}s</div>
+                            </div>
+
+                            <div>
+                                <div style={{ fontSize: '0.65rem', color: '#64748b', marginBottom: '4px' }}>ACTUAL TIME</div>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: (currentTime - currentStep.startTime) > currentStep.duration ? '#f87171' : '#4ade80' }}>
+                                    {(currentTime - currentStep.startTime).toFixed(1)}s
+                                </div>
+                            </div>
+
+                            <div style={{
+                                marginTop: '5px',
+                                padding: '10px',
+                                background: 'rgba(255,255,255,0.03)',
+                                borderRadius: '12px',
+                                textAlign: 'center'
+                            }}>
+                                <div style={{ fontSize: '0.6rem', color: '#64748b', marginBottom: '2px' }}>DIFFERENCE</div>
+                                <div style={{
+                                    fontSize: '0.9rem',
+                                    fontWeight: '900',
+                                    color: (currentTime - currentStep.startTime) > currentStep.duration ? '#f87171' : '#4ade80'
+                                }}>
+                                    {((currentTime - currentStep.startTime) - currentStep.duration).toFixed(1)}s
+                                    ({(currentTime - currentStep.startTime) > currentStep.duration ? 'BEHIND' : 'AHEAD'})
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Safety & Proximity Alerts */}
+                {showSafetyAlert && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        background: 'rgba(239, 68, 68, 0.9)',
+                        backdropFilter: 'blur(20px)',
+                        padding: '30px 50px',
+                        borderRadius: '30px',
+                        border: '4px solid #fff',
+                        boxShadow: '0 0 100px rgba(239, 68, 68, 0.8)',
+                        zIndex: 100,
+                        textAlign: 'center',
+                        animation: 'pulse 1s infinite alternate cubic-bezier(0.4, 0, 0.6, 1)'
+                    }}>
+                        <ShieldAlert size={64} color="white" style={{ marginBottom: '15px' }} />
+                        <h2 style={{ fontSize: '2rem', fontWeight: 900, color: '#fff', margin: '0 0 5px 0' }}>DANGER</h2>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fff' }}>{alertMessage}</div>
+                    </div>
+                )}
+
                 {/* Next Step Preview */}
                 {nextStep && (
                     <div style={{
@@ -693,6 +793,10 @@ function VRTrainingMode() {
                         background: #00d2ff;
                         border-radius: 50%;
                         cursor: pointer;
+                    }
+                    @keyframes pulse {
+                        from { transform: translate(-50%, -50%) scale(0.95); opacity: 0.8; }
+                        to { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
                     }
                 `}
             </style>

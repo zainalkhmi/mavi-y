@@ -6,7 +6,7 @@ import {
     Sparkles, Eye, Zap, Image, Camera, Upload,
     Edit3, X, CheckCircle, Info, AlertTriangle, AlertCircle,
     Plus, MessageSquare, Trash2, Youtube, Bell,
-    ChevronLeft, ChevronRight, EyeOff
+    ChevronLeft, ChevronRight, EyeOff, Mic, Square, Volume2
 } from 'lucide-react';
 
 const StepEditor = ({
@@ -25,6 +25,47 @@ const StepEditor = ({
 }) => {
     const { t, tt } = useLanguage();
     const [showMarkup, setShowMarkup] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const mediaRecorderRef = React.useRef(null);
+    const audioChunksRef = React.useRef([]);
+
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64Audio = reader.result;
+                    handleStepUpdate({ voiceInstruction: base64Audio });
+                };
+                reader.readAsDataURL(audioBlob);
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+        } catch (err) {
+            console.error('Error starting recording:', err);
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        }
+    };
 
     if (!step) return (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'rgba(255, 255, 255, 0.3)', gap: '16px' }}>
@@ -436,6 +477,45 @@ const StepEditor = ({
                                             </div>
                                         );
                                     })}
+                                </div>
+                            </div>
+
+                            {/* Voice Instruction */}
+                            <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '14px' }}>
+                                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)', marginBottom: '10px' }}>
+                                    Voice Instruction
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    {!isRecording ? (
+                                        <button
+                                            onClick={startRecording}
+                                            className="btn-pro"
+                                            style={{ padding: '6px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                        >
+                                            <Mic size={14} /> Record Audio
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={stopRecording}
+                                            className="btn-pro"
+                                            style={{ padding: '6px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.4)' }}
+                                        >
+                                            <Square size={14} /> Stop Recording
+                                        </button>
+                                    )}
+
+                                    {step.voiceInstruction && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <audio src={step.voiceInstruction} controls style={{ height: '30px', scale: '0.8' }} />
+                                            <button
+                                                onClick={() => handleStepUpdate({ voiceInstruction: null })}
+                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                                                title="Delete recording"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

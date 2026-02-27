@@ -167,6 +167,18 @@ const PublicManualViewer = ({ manualId, onClose }) => {
     };
 
     const allRequiredAnswered = currentQuestions.every((q) => !q.required || isQuestionAnswered(q));
+    const isReleased = manualStatus === 'Released';
+    const isVersionMatch = !requestedVersion || requestedVersion === manualVersion;
+    const ackBlockedReason = !isReleased
+        ? `SOP status saat ini ${manualStatus}. Acknowledge hanya aktif saat Released.`
+        : !isVersionMatch
+            ? `Versi yang dipindai (${requestedVersion}) berbeda dari versi terbaru (${manualVersion}).`
+            : '';
+    const captureBlockedReason = !isReleased
+        ? `Data capture dibatasi saat status ${manualStatus}. Rilis SOP terlebih dahulu.`
+        : !isVersionMatch
+            ? `Data capture untuk versi ${requestedVersion} tidak diizinkan. Gunakan versi terbaru ${manualVersion}.`
+            : '';
 
     const setAnswer = (questionId, value) => {
         const key = currentStep?.id || currentStepIndex;
@@ -197,8 +209,20 @@ const PublicManualViewer = ({ manualId, onClose }) => {
             alert('Please enter your name before acknowledging.');
             return;
         }
-        if (manualStatus !== 'Released') {
+        if (ackName.trim().length < 3) {
+            alert('Name must be at least 3 characters.');
+            return;
+        }
+        if (!['Operator', 'Reviewer', 'Approver', 'Author'].includes(ackRole)) {
+            alert('Invalid role selected for acknowledgement.');
+            return;
+        }
+        if (!isReleased) {
             alert('This SOP is not Released yet and cannot be acknowledged.');
+            return;
+        }
+        if (!isVersionMatch) {
+            alert(`Acknowledgement blocked: scanned version ${requestedVersion} is different from latest version ${manualVersion}.`);
             return;
         }
 
@@ -266,6 +290,14 @@ const PublicManualViewer = ({ manualId, onClose }) => {
         if (!manual || !currentStep) return;
         if (!allRequiredAnswered) {
             alert('Please fill all required data capture fields before submitting.');
+            return;
+        }
+        if (!isReleased) {
+            alert(`Data capture is only allowed when SOP is Released. Current status: ${manualStatus}.`);
+            return;
+        }
+        if (!isVersionMatch) {
+            alert(`Data capture blocked for scanned version ${requestedVersion}. Please use latest version ${manualVersion}.`);
             return;
         }
 
@@ -516,6 +548,22 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                     background: #1674ea;
                     color: #fff;
                 }
+                .dozuki-status-note {
+                    margin-top: 8px;
+                    font-size: 12px;
+                    border-radius: 6px;
+                    padding: 8px;
+                }
+                .dozuki-status-note.warning {
+                    color: #92400e;
+                    background: #fff7ed;
+                    border: 1px solid #fed7aa;
+                }
+                .dozuki-status-note.info {
+                    color: #1d4ed8;
+                    background: #eff6ff;
+                    border: 1px solid #bfdbfe;
+                }
                 .dozuki-btn:disabled {
                     opacity: 0.6;
                     cursor: not-allowed;
@@ -685,13 +733,13 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                                     </div>
                                 ))}
 
-                                {manualStatus !== 'Released' && (
-                                    <div style={{ fontSize: 12, color: '#92400e', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6, padding: 8 }}>
-                                        SOP status saat ini <strong>{manualStatus}</strong>. Acknowledge aktif saat status Released.
+                                {!!captureBlockedReason && (
+                                    <div className="dozuki-status-note warning">
+                                        {captureBlockedReason}
                                     </div>
                                 )}
                                 {requestedVersion && requestedVersion !== manualVersion && (
-                                    <div style={{ marginTop: 8, fontSize: 12, color: '#1d4ed8', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, padding: 8 }}>
+                                    <div className="dozuki-status-note info">
                                         Anda scan versi <strong>{requestedVersion}</strong>, versi terbaru <strong>{manualVersion}</strong>.
                                     </div>
                                 )}
@@ -701,7 +749,7 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                                 <button
                                     className="dozuki-btn primary"
                                     style={{ marginTop: 10, width: '100%' }}
-                                    disabled={isSubmittingCapture || !allRequiredAnswered}
+                                    disabled={isSubmittingCapture || !allRequiredAnswered || !!captureBlockedReason}
                                     onClick={handleSubmitDataCapture}
                                 >
                                     {isSubmittingCapture ? 'Submitting data...' : 'Submit Data Capture'}
@@ -720,12 +768,17 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                                 </select>
                                 <button
                                     className="dozuki-btn primary"
-                                    disabled={isSubmittingAck || manualStatus !== 'Released' || alreadyAcknowledged}
+                                    disabled={isSubmittingAck || !!ackBlockedReason || alreadyAcknowledged}
                                     onClick={handleAcknowledge}
                                 >
                                     {alreadyAcknowledged ? 'Already Acknowledged' : (isSubmittingAck ? 'Saving...' : 'Acknowledge')}
                                 </button>
                             </div>
+                            {!!ackBlockedReason && (
+                                <div className="dozuki-status-note warning" style={{ marginBottom: 10 }}>
+                                    {ackBlockedReason}
+                                </div>
+                            )}
 
                             <div className="dozuki-actions">
                                 <button

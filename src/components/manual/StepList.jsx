@@ -1,8 +1,8 @@
 import React from 'react';
-import { Plus, Trash2, List, Pencil, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
+import { Plus, Trash2, List, Pencil, ArrowUp, ArrowDown, GripVertical, Zap } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-const StepList = ({ steps, activeStepId, onSelectStep, onAddStep, onDeleteStep, onEditStep, onReorderStep, stepStatuses = {}, horizontal = false }) => {
+const StepList = ({ steps, activeStepId, onSelectStep, onAddStep, onDeleteStep, onEditStep, onReorderStep, onImportFromAnalysis, stepStatuses = {}, horizontal = false }) => {
     const { t } = useLanguage();
     const [draggedIndex, setDraggedIndex] = React.useState(null);
     const idCounts = React.useMemo(() => {
@@ -205,6 +205,26 @@ const StepList = ({ steps, activeStepId, onSelectStep, onAddStep, onDeleteStep, 
                 >
                     <Plus size={14} />
                 </button>
+                <button
+                    onClick={onImportFromAnalysis}
+                    className="btn-pro"
+                    title="Generate from Analysis"
+                    style={{
+                        backgroundColor: 'rgba(234, 179, 8, 0.15)',
+                        color: '#facc15',
+                        borderColor: 'rgba(234, 179, 8, 0.3)',
+                        padding: '6px',
+                        fontSize: '0.75rem',
+                        height: '32px',
+                        width: '32px',
+                        minWidth: '32px',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        marginLeft: '4px'
+                    }}
+                >
+                    <Zap size={14} />
+                </button>
             </div>
         );
     }
@@ -244,6 +264,24 @@ const StepList = ({ steps, activeStepId, onSelectStep, onAddStep, onDeleteStep, 
                     }}
                 >
                     <Plus size={14} />
+                </button>
+                <button
+                    onClick={onImportFromAnalysis}
+                    className="btn-pro"
+                    title="Generate from Analysis"
+                    style={{
+                        backgroundColor: 'rgba(234, 179, 8, 0.15)',
+                        color: '#facc15',
+                        borderColor: 'rgba(234, 179, 8, 0.3)',
+                        padding: '6px',
+                        width: '32px',
+                        minWidth: '32px',
+                        justifyContent: 'center',
+                        fontSize: '0.75rem',
+                        marginLeft: '4px'
+                    }}
+                >
+                    <Zap size={14} />
                 </button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>

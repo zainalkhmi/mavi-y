@@ -8,8 +8,8 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { getMachineId } from '../utils/licenseUtils';
-import { createLicenseRequest, getLatestCloudInstaller } from '../utils/tursoAPI';
-import { getTursoStatus } from '../utils/tursoClient';
+import { createLicenseRequest } from '../utils/supabaseLicenseDB';
+import { isSupabaseReady } from '../utils/supabaseManualDB';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const TRIAL_DURATION_MS = 30 * 60 * 1000;
@@ -48,8 +48,11 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
 
         // Poll DB status
         const fetchStatus = async () => {
-            const status = await getTursoStatus();
-            setDbStatus(status);
+            const ready = isSupabaseReady();
+            setDbStatus({
+                configured: ready,
+                connected: ready
+            });
         };
         fetchStatus();
         const interval = setInterval(fetchStatus, 5000);

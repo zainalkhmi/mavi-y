@@ -55,22 +55,23 @@ const SystemDiagnostics = () => {
             addResult('Database', 'SQLite', 'error', 'Failed: ' + e.message);
         }
 
-        // 3. Cloud (Turso)
+        // 3. Cloud (Supabase)
         try {
             await sleep(300);
-            const { getTursoStatus } = await import('../utils/tursoClient');
+            const { isSupabaseConfigured, isSupabaseReady } = await import('../utils/supabaseManualDB');
             const start = performance.now();
-            const status = await getTursoStatus();
+            const configured = isSupabaseConfigured();
+            const ready = isSupabaseReady();
 
-            if (status.connected) {
-                addResult('Cloud', 'Turso Database', 'success', 'Connected', Math.round(performance.now() - start) + 'ms');
-            } else if (status.configured) {
-                addResult('Cloud', 'Turso Database', 'warning', 'Offline (Mock Fallback)', Math.round(performance.now() - start) + 'ms');
+            if (ready) {
+                addResult('Cloud', 'Supabase Database', 'success', 'Connected & Ready', Math.round(performance.now() - start) + 'ms');
+            } else if (configured) {
+                addResult('Cloud', 'Supabase Database', 'warning', 'Configured but Offline', Math.round(performance.now() - start) + 'ms');
             } else {
-                addResult('Cloud', 'Turso Database', 'error', 'Not Configured');
+                addResult('Cloud', 'Supabase Database', 'error', 'Not Configured');
             }
         } catch (e) {
-            addResult('Cloud', 'Turso Database', 'error', 'Check Failed: ' + e.message);
+            addResult('Cloud', 'Supabase Database', 'error', 'Check Failed: ' + e.message);
         }
 
         // 4. Local Activation

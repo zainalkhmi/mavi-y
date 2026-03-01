@@ -22,7 +22,7 @@ import {
     updateYouTubeLink,
     deleteYouTubeLink,
     searchYouTubeLinks
-} from '../utils/tursoAPI.js';
+} from '../utils/supabaseYouTubeDB.js';
 import { useDialog } from '../contexts/DialogContext.jsx';
 
 function AdminYouTubeManager() {

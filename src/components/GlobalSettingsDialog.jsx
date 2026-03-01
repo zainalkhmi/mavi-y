@@ -18,6 +18,12 @@ import {
     saveSupabaseSettings,
     testSupabaseConnection
 } from '../utils/supabaseClient';
+import {
+    saveTursoCredentials,
+    clearTursoCredentials,
+    getTursoStatus,
+    getDefaultCredentials
+} from '../utils/tursoClient';
 
 
 function GlobalSettingsDialog({ isOpen, onClose }) {
@@ -44,6 +50,12 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
     const [supabaseSettings, setSupabaseSettings] = useState(getSupabaseSettings());
     const [isSupabaseTesting, setIsSupabaseTesting] = useState(false);
     const [supabaseConnectionStatus, setSupabaseConnectionStatus] = useState(null);
+
+    // Turso Settings State
+    const [dbUrl, setDbUrl] = useState('');
+    const [authToken, setAuthToken] = useState('');
+    const [dbStatus, setDbStatus] = useState(null);
+    const [isCheckingDb, setIsCheckingDb] = useState(false);
 
     // Jitsi Settings State
     const [jitsiSettings, setJitsiSettings] = useState(getJitsiSettings());
@@ -74,7 +86,36 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
             setSupabaseConnectionStatus(null);
             setJitsiSettings(getJitsiSettings());
 
+            const storedUrl = localStorage.getItem('turso_db_url');
+            const storedToken = localStorage.getItem('turso_auth_token');
+            if (storedUrl && storedToken) {
+                setDbUrl(storedUrl);
+                setAuthToken(storedToken);
+            } else {
+                const defaults = getDefaultCredentials();
+                setDbUrl(defaults.dbUrl || '');
+                setAuthToken(defaults.authToken || '');
+            }
+
         }
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const checkDbStatus = async () => {
+            setIsCheckingDb(true);
+            try {
+                const status = await getTursoStatus();
+                setDbStatus(status);
+            } catch {
+                setDbStatus(null);
+            } finally {
+                setIsCheckingDb(false);
+            }
+        };
+
+        checkDbStatus();
     }, [isOpen]);
 
     const handleDriveSettingChange = (key, value) => {
@@ -150,6 +191,42 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
             await showAlert('Connection Failed', error.message || 'Failed to connect to Supabase Storage.');
         } finally {
             setIsSupabaseTesting(false);
+        }
+    };
+
+    const handleSaveTursoSettings = async () => {
+        if (!dbUrl || !authToken) {
+            await showAlert('Warning', 'Please fill in both Turso Database URL and Auth Token');
+            return;
+        }
+
+        saveTursoCredentials(dbUrl.trim(), authToken.trim());
+        await showAlert('Success', 'Turso credentials saved. Testing connection...');
+
+        setIsCheckingDb(true);
+        try {
+            const status = await getTursoStatus();
+            setDbStatus(status);
+        } finally {
+            setIsCheckingDb(false);
+        }
+    };
+
+    const handleClearTursoSettings = async () => {
+        const ok = await showConfirm('Clear Turso Credentials', 'Remove saved Turso credentials and revert to default environment values?');
+        if (!ok) return;
+
+        clearTursoCredentials();
+        const defaults = getDefaultCredentials();
+        setDbUrl(defaults.dbUrl || '');
+        setAuthToken(defaults.authToken || '');
+
+        setIsCheckingDb(true);
+        try {
+            const status = await getTursoStatus();
+            setDbStatus(status);
+        } finally {
+            setIsCheckingDb(false);
         }
     };
 
@@ -282,6 +359,10 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
         saveSupabaseSettings(supabaseSettings);
         saveJitsiSettings(jitsiSettings);
 
+        if (dbUrl && authToken) {
+            saveTursoCredentials(dbUrl.trim(), authToken.trim());
+        }
+
 
         onClose();
     };
@@ -303,9 +384,9 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
         }}>
             <div style={{
                 backgroundColor: '#1e1e1e',
-                width: '750px',
-                maxWidth: '95%',
-                height: '70vh',
+                width: '1500px',
+                maxWidth: '98%',
+                height: '90vh',
                 borderRadius: '24px',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -702,6 +783,81 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                                 OAuth token: {getStoredGoogleToken().token ? 'Connected' : 'Not connected'}
                                 {driveConnectionStatus === 'success' && <span style={{ color: '#16a34a', marginLeft: '8px' }}>✓ OK</span>}
                                 {driveConnectionStatus === 'error' && <span style={{ color: '#ef4444', marginLeft: '8px' }}>✗ Failed</span>}
+                            </div>
+
+                            <div style={{ marginTop: '18px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '18px' }}>
+                                <div style={{
+                                    padding: '14px',
+                                    borderRadius: '10px',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    marginBottom: '14px'
+                                }}>
+                                    <div style={{ color: 'white', fontWeight: 600, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Key size={16} /> Turso Database
+                                    </div>
+                                    <div style={{ color: '#aaa', fontSize: '0.85rem' }}>
+                                        Configure Turso cloud database credentials used by cloud data sync and admin features.
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem' }}>Turso Database URL</label>
+                                    <input
+                                        type="text"
+                                        value={dbUrl}
+                                        onChange={(e) => setDbUrl(e.target.value)}
+                                        placeholder="libsql://your-db.turso.io"
+                                        style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px' }}
+                                    />
+                                </div>
+
+                                <div style={{ marginTop: '10px' }}>
+                                    <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem' }}>Turso Auth Token</label>
+                                    <input
+                                        type="password"
+                                        value={authToken}
+                                        onChange={(e) => setAuthToken(e.target.value)}
+                                        placeholder="eyJ..."
+                                        style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px' }}
+                                    />
+                                </div>
+
+                                <div style={{ marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                    <button
+                                        onClick={handleSaveTursoSettings}
+                                        style={{
+                                            padding: '10px 14px',
+                                            backgroundColor: '#0078d4',
+                                            border: 'none',
+                                            color: 'white',
+                                            borderRadius: '10px',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        Save Turso Credentials
+                                    </button>
+
+                                    <button
+                                        onClick={handleClearTursoSettings}
+                                        style={{
+                                            padding: '10px 14px',
+                                            backgroundColor: 'rgba(255,255,255,0.05)',
+                                            border: '1px solid rgba(255,255,255,0.15)',
+                                            color: 'white',
+                                            borderRadius: '10px',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        Clear Turso Credentials
+                                    </button>
+                                </div>
+
+                                <div style={{ color: '#aaa', fontSize: '0.85rem', marginTop: '8px' }}>
+                                    {isCheckingDb ? 'Checking Turso connection...' : (dbStatus?.message || 'Turso status unknown')}
+                                    {dbStatus?.connected && <span style={{ color: '#16a34a', marginLeft: '8px' }}>✓ Connected</span>}
+                                    {dbStatus && !dbStatus.connected && <span style={{ color: '#ef4444', marginLeft: '8px' }}>✗ Not Connected</span>}
+                                </div>
                             </div>
 
                             <div style={{ marginTop: '18px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '18px' }}>

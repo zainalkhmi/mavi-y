@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getAllProjects } from '../utils/database';
-import { addKnowledgeBaseItem, updateKnowledgeBaseItem, getAllKnowledgeBaseItems, getKnowledgeBaseItem } from '../utils/knowledgeBaseDB';
-import { upsertManual, listManuals } from '../utils/tursoAPI';
-import { isTursoConfigured } from '../utils/tursoClient';
+import {
+    upsertManual,
+    listManuals,
+    getManualById,
+    deleteManual,
+    isSupabaseReady
+} from '../utils/supabaseManualDB';
 import {
     getSupabaseSettings,
     isSupabaseConfigured,
@@ -297,7 +301,7 @@ function ManualCreation() {
         return !value || value === key ? interpolate(fallback, params) : value;
     };
     const { currentProject } = useProject();
-    const { showAlert, showConfirm } = useDialog();
+    const { showAlert, showConfirm, showPrompt } = useDialog();
     const [projects, setProjects] = useState([]);
     const [selectedProjectId, setSelectedProjectId] = useState('');
     const [selectedProject, setSelectedProject] = useState(null);
@@ -544,7 +548,7 @@ function ManualCreation() {
 
     const loadManualById = async (id) => {
         try {
-            const manual = await getKnowledgeBaseItem(id);
+            const manual = await getManualById(id);
             if (manual) {
                 handleOpenManual(manual);
             }
@@ -1249,69 +1253,47 @@ function ManualCreation() {
             return;
         }
 
+        if (!isSupabaseReady()) {
+            if (!silent) await showAlert('Storage Not Configured', 'Supabase is not configured. Please set your Supabase URL and Anon Key in App Settings.');
+            return;
+        }
+
         if (silent) setSyncStatus('syncing');
+        const isUpdate = Boolean(guide.id && String(guide.id).includes('-'));
 
         try {
-            const manualData = {
+            const result = await upsertManual({
+                id: isUpdate ? guide.id : undefined,
                 title: guide.title,
+                summary: guide.summary || '',
                 description: guide.summary || '',
-                category: 'Work Instruction',
-                type: 'manual',
-                version: guide.version,
+                documentNumber: guide.documentNumber || '',
+                version: guide.version || '1.0',
                 status: guide.workflow?.status || guide.status || 'Draft',
                 author: guide.author || '',
-                documentNumber: guide.documentNumber || '',
+                difficulty: guide.difficulty || 'Moderate',
+                timeRequired: guide.timeRequired || '',
+                category: 'Work Instruction',
+                industry: guide.category || '',
+                createdAt: guide.createdAt || new Date().toISOString(),
                 content: {
                     ...buildGuideSnapshot(guide),
                     status: guide.workflow?.status || guide.status || 'Draft'
-                },
-                updatedAt: new Date().toISOString(),
-                industry: guide.category || '',
-                createdAt: guide.createdAt || new Date().toISOString()
-            };
-
-            // 1) Save to Turso cloud first for QR cross-device access
-            const cloudResult = await upsertManual({
-                cloudId: guide.cloudId,
-                ...manualData
+                }
             });
-            const nextCloudId = cloudResult?.cloudId || guide.cloudId;
 
-            // 2) Keep local KB in sync (best-effort fallback cache)
-            let nextKbId = guide.kbId;
-            if (guide.kbId) {
-                try {
-                    await updateKnowledgeBaseItem(guide.kbId, {
-                        ...manualData,
-                        cloudId: nextCloudId
-                    });
-                } catch {
-                    const localResult = await addKnowledgeBaseItem({
-                        ...manualData,
-                        cloudId: nextCloudId
-                    });
-                    if (localResult?.id) nextKbId = localResult.id;
-                }
-            } else {
-                const localResult = await addKnowledgeBaseItem({
-                    ...manualData,
-                    cloudId: nextCloudId
-                });
-                if (localResult?.id) {
-                    nextKbId = localResult.id;
-                }
-            }
+            const nextId = result.id;
 
             setGuide(prev => ({
                 ...prev,
-                cloudId: nextCloudId,
-                id: nextCloudId || prev.id,
-                kbId: nextKbId
+                id: nextId,
+                cloudId: nextId,
+                kbId: nextId
             }));
 
             setSyncStatus('saved');
             if (!silent) {
-                await showAlert('Success', guide.kbId ? t('manual.alerts.updateSuccess') : t('manual.alerts.saveSuccess'));
+                await showAlert('Success', isUpdate ? t('manual.alerts.updateSuccess') : t('manual.alerts.saveSuccess'));
             }
 
             // Revert status to idle after 3 seconds
@@ -1325,29 +1307,28 @@ function ManualCreation() {
         }
     };
 
+    useEffect(() => {
+        const onKeyDown = (event) => {
+            const isSaveShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's';
+            if (!isSaveShortcut) return;
+
+            event.preventDefault();
+            if (syncStatus === 'syncing') return;
+            handleSaveManual(false);
+        };
+
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [syncStatus, handleSaveManual]);
+
     const handleLoadManualsList = async () => {
         try {
-            // Load from both Cloud (Turso manuals table) and Local KB (which now also checks Turso KB table)
-            const items = await getAllKnowledgeBaseItems();
-            const localManuals = items.filter(item => item.type === 'manual');
-
-            let cloudManuals = [];
-            if (isTursoConfigured()) {
-                try {
-                    cloudManuals = await listManuals();
-                } catch (e) {
-                    console.warn('Sync notice: Could not list manuals from Turso:', e);
-                }
+            if (!isSupabaseReady()) {
+                await showAlert('Storage Not Configured', 'Supabase is not configured. Please set your Supabase URL and Anon Key in App Settings.');
+                return;
             }
 
-            const mergedMap = new Map();
-            // Order matters: later items overwrite earlier ones. Local/KB items are usually richer.
-            [...cloudManuals, ...localManuals].forEach((m) => {
-                const key = String(m.cloudId || m.cloud_id || m.id);
-                mergedMap.set(key, m);
-            });
-
-            const manuals = Array.from(mergedMap.values());
+            const manuals = await listManuals();
             setSavedManuals(manuals);
             setShowOpenDialog(true);
         } catch (error) {
@@ -1534,10 +1515,20 @@ function ManualCreation() {
         const step = guide.steps.find((s) => s.id === id);
         if (!step) return;
 
-        const nextTitle = window.prompt('Edit step title:', step.title || '');
+        showPrompt('Edit Step Title', 'Update step name:', step.title || '').then((nextTitle) => {
+            if (nextTitle === null) return;
+            handleStepChange(id, { title: nextTitle.trim() || tt('manual.untitledStep', 'Untitled Step') });
+        });
+    };
+
+    const handleRenameGuideTitle = async () => {
+        const nextTitle = await showPrompt('Rename Manual', 'Nama Baru / New Title', guide.title || '');
         if (nextTitle === null) return;
 
-        handleStepChange(id, { title: nextTitle.trim() || tt('manual.untitledStep', 'Untitled Step') });
+        const trimmed = nextTitle.trim();
+        if (!trimmed) return;
+
+        setGuide(prev => ({ ...prev, title: trimmed }));
     };
 
     const handleStepChange = (id, fieldOrUpdate, value) => {
@@ -2810,7 +2801,7 @@ function ManualCreation() {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div
-                        onClick={() => setGuide(prev => ({ ...prev, title: prompt('Nama Baru / New Title', guide.title) || guide.title }))}
+                        onClick={handleRenameGuideTitle}
                         style={{
                             fontSize: '0.9rem', fontWeight: 700, color: 'var(--mc-text)',
                             maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -2837,7 +2828,24 @@ function ManualCreation() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto' }}>
-                    <button onClick={() => setGuide(prev => ({ ...prev, title: prompt('Nama Baru / New Title', guide.title) || guide.title }))} className="btn-icon-label" title="Ubah Nama (Rename)">
+                    <button
+                        onClick={() => handleSaveManual(false)}
+                        className="btn-pro"
+                        disabled={syncStatus === 'syncing'}
+                        title={syncStatus === 'syncing' ? 'Saving...' : tt('common.save', 'Save')}
+                        style={{
+                            padding: '7px 12px',
+                            background: syncStatus === 'saved' ? 'rgba(16,185,129,0.16)' : 'var(--mc-accent-gradient)',
+                            border: 'none',
+                            color: '#fff',
+                            opacity: syncStatus === 'syncing' ? 0.7 : 1,
+                            cursor: syncStatus === 'syncing' ? 'not-allowed' : 'pointer'
+                        }}
+                    >
+                        <Save size={16} />
+                        {syncStatus === 'syncing' ? 'Saving...' : tt('common.save', 'Save')}
+                    </button>
+                    <button onClick={handleRenameGuideTitle} className="btn-icon-label" title="Ubah Nama (Rename)">
                         <Edit3 size={18} />
                     </button>
                     <button onClick={handleLoadManualsList} className="btn-icon-label" title={tt('common.open', 'Open')}>
@@ -3750,22 +3758,23 @@ function ManualCreation() {
                                 {activeTab === 'edit' && (
                                     <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
                                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                                            <StepList
-                                                steps={guide.steps}
-                                                activeStepId={activeStepId}
-                                                onSelectStep={handleStepSelect}
-                                                onAddStep={handleAddStep}
-                                                onEditStep={handleEditStep}
-                                                onDeleteStep={handleDeleteStep}
-                                                onReorderStep={handleReorderStep}
-                                                onImportFromAnalysis={handleImportFromAnalysis}
-                                                stepStatuses={guide.stepStatusMap}
-                                                horizontal={true}
-                                            />
                                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '12px', backgroundColor: 'rgba(0, 0, 0, 0.15)' }}>
                                                 <div style={{ opacity: canEditManual ? 1 : 0.65, pointerEvents: canEditManual ? 'auto' : 'none' }}>
                                                     <StepEditor
                                                         step={activeStep}
+                                                        stepListPanel={(
+                                                            <StepList
+                                                                steps={guide.steps}
+                                                                activeStepId={activeStepId}
+                                                                onSelectStep={handleStepSelect}
+                                                                onAddStep={handleAddStep}
+                                                                onEditStep={handleEditStep}
+                                                                onDeleteStep={handleDeleteStep}
+                                                                onReorderStep={handleReorderStep}
+                                                                onImportFromAnalysis={handleImportFromAnalysis}
+                                                                stepStatuses={guide.stepStatusMap}
+                                                            />
+                                                        )}
                                                         onChange={handleStepChange}
                                                         onCaptureImage={handleCaptureFrame}
                                                         onAiImprove={handleAiImprove}

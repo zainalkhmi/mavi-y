@@ -125,6 +125,7 @@ async function init() {
         });
 
         const OPFS_CHECK = 'opfs' in sqlite3;
+        const crossOriginIsolated = typeof self !== 'undefined' ? self.crossOriginIsolated : false;
         console.log('SQLite WASM Bootstrapped. OPFS support:', OPFS_CHECK);
 
         if (OPFS_CHECK) {
@@ -139,7 +140,11 @@ async function init() {
             }
         } else {
             db = new sqlite3.oo1.DB('/motion_study.sqlite', 'c');
-            console.warn('OPFS not available in worker, using transient storage');
+            if (!crossOriginIsolated) {
+                console.warn('OPFS not available in worker (crossOriginIsolated=false). Using transient storage. To enable persistent OPFS in dev, run with VITE_ENABLE_OPFS=true.');
+            } else {
+                console.warn('OPFS not available in worker, using transient storage');
+            }
             storageMode = 'WASM (Transient Memory)';
         }
 

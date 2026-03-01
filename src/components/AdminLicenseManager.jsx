@@ -19,9 +19,9 @@ import {
     createLicense,
     updateLicense,
     deleteLicense
-} from '../utils/tursoAPI.js';
+} from '../utils/supabaseLicenseDB.js';
 import { generateLicenseKey } from '../utils/licenseUtils.js';
-import { getTursoStatus } from '../utils/tursoClient.js';
+import { isSupabaseReady } from '../utils/supabaseManualDB.js';
 import { useDialog } from '../contexts/DialogContext.jsx';
 
 function AdminLicenseManager() {
@@ -71,8 +71,13 @@ function AdminLicenseManager() {
     };
 
     const checkDatabaseStatus = async () => {
-        const status = await getTursoStatus();
-        setDbStatus(status);
+        const ready = isSupabaseReady();
+        setDbStatus({
+            configured: ready,
+            connected: ready,
+            mode: 'Supabase',
+            message: ready ? 'Supabase is ready' : 'Supabase is not configured'
+        });
     };
 
     const loadLicenses = async () => {

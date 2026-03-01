@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getMenuVisibilitySettings } from '../utils/tursoAPI';
+import { getMenuVisibilitySettings } from '../utils/supabaseSettingsDB';
 
 import { useLanguage } from '../contexts/LanguageContext';
 import GlobalSettingsDialog from './GlobalSettingsDialog';

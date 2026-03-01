@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Key, AlertCircle } from 'lucide-react';
 import { getMachineId, validateKeyFormat } from '../../utils/licenseUtils';
-import { getClientNetworkContext, validateAndBindLicense } from '../../utils/tursoAPI';
+import { getClientNetworkContext, validateAndBindLicense } from '../../utils/supabaseLicenseDB';
 import LandingPage from '../LandingPage';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';

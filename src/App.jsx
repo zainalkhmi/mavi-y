@@ -12,6 +12,7 @@ import ValueStreamMap from './components/ValueStreamMap';
 import RealtimeCompliance from './components/RealtimeCompliance';
 import AdminPanel from './components/AdminPanel';
 import FileExplorer from './components/FileExplorer';
+import ManualCreation from './components/ManualCreation.jsx';
 
 import BroadcastControls from './components/features/BroadcastControls';
 import BroadcastManager from './components/features/BroadcastManager';
@@ -43,7 +44,8 @@ const lazyWithRetry = (importer, componentName = 'component', devImportPath = nu
       const message = String(error?.message || error || '');
       const isDynamicImportFetchError =
         message.includes('Failed to fetch dynamically imported module') ||
-        message.includes('Importing a module script failed');
+        message.includes('Importing a module script failed') ||
+        message.includes('error loading dynamically imported module');
 
       // In dev mode, try a direct cache-busted import before forcing full reload.
       if (import.meta.env.DEV && isDynamicImportFetchError && devImportPath) {
@@ -61,6 +63,14 @@ const lazyWithRetry = (importer, componentName = 'component', devImportPath = nu
       if (isDynamicImportFetchError && retryCount < maxReloadRetries) {
         sessionStorage.setItem(storageKey, String(retryCount + 1));
         window.location.reload();
+      }
+
+      if (import.meta.env.DEV && isDynamicImportFetchError) {
+        console.warn(`[lazyWithRetry] ${componentName} failed to load after retry attempts.`, {
+          message,
+          devImportPath,
+          retryCount,
+        });
       }
       throw error;
     }
@@ -84,11 +94,6 @@ const MTMCalculator = React.lazy(() => import('./components/MTMCalculator'));
 const AllowanceCalculator = React.lazy(() => import('./components/AllowanceCalculator'));
 const MultiAxialAnalysis = React.lazy(() => import('./components/MultiAxialAnalysis'));
 const MultiCameraFusion = React.lazy(() => import('./components/MultiCameraFusion'));
-const ManualCreation = lazyWithRetry(
-  () => import('./components/ManualCreation'),
-  'ManualCreation',
-  '/src/components/ManualCreation.jsx'
-);
 const VRTrainingMode = React.lazy(() => import('./components/VRTrainingMode'));
 const KnowledgeBase = React.lazy(() => import('./components/KnowledgeBase'));
 const ObjectTracking = React.lazy(() => import('./components/ObjectTracking'));
@@ -223,20 +228,7 @@ function AppContent() {
     startupInitializedRef.current = true;
 
     const timer = setTimeout(() => {
-      // Initialize Turso Client
-      import('./utils/tursoClient').then(({ initTursoClient }) => {
-        console.log('🔄 Auto-connecting to Turso...');
-        initTursoClient()
-          .then((client) => {
-            if (client && client.isMock) {
-              console.warn('⚠️ Turso auto-connected in offline/mock mode (data will not persist)');
-            } else {
-              console.log('✅ Turso auto-connected successfully');
-            }
-          })
-          .catch(err => console.error('❌ Turso auto-connect failed:', err));
-      }).catch(err => console.error('❌ Failed to load Turso client module:', err));
-
+      // Pre-load pose detector in background after startup
       initializePoseDetector()
         .then((detector) => {
           if (detector) {
@@ -246,6 +238,14 @@ function AppContent() {
           }
         })
         .catch(err => console.warn('Pose detector preload failed:', err));
+
+      // Pre-warm heavy lazy route to reduce transient dev-time
+      // "Failed to fetch dynamically imported module" on first navigation.
+      if (import.meta.env.DEV) {
+        import('./components/ManualCreation.jsx').catch((err) => {
+          console.warn('ManualCreation prewarm failed (non-blocking):', err);
+        });
+      }
     }, 2000);
     return () => clearTimeout(timer);
   }, []);

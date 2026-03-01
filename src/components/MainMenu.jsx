@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useDialog } from '../contexts/DialogContext';
-import { getMenuVisibilitySettings, listManuals } from '../utils/tursoAPI';
+import { listManuals } from '../utils/supabaseManualDB';
+import { getMenuVisibilitySettings } from '../utils/supabaseSettingsDB';
 import { getAllKnowledgeBaseItems } from '../utils/knowledgeBaseDB';
 import {
     LayoutGrid,

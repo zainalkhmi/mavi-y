@@ -3,7 +3,7 @@ import * as tf from '@tensorflow/tfjs-core';
 import '@tensorflow/tfjs-backend-webgl';
 
 let detector = null;
-
+let isInitializing = false;
 let failedInitialization = false;
 
 /**
@@ -12,7 +12,16 @@ let failedInitialization = false;
  */
 export const initializePoseDetector = async () => {
     if (detector) return detector;
-    if (failedInitialization) return null; // Prevent retry loop if already failed
+    if (isInitializing) {
+        // Wait for existing initialization to complete
+        while (isInitializing) {
+            await new Promise(r => setTimeout(r, 100));
+        }
+        return detector;
+    }
+    if (failedInitialization) return null;
+
+    isInitializing = true;
 
     // Check online status before trying to fetch model
     if (!navigator.onLine) {
@@ -39,9 +48,10 @@ export const initializePoseDetector = async () => {
         return detector;
     } catch (error) {
         console.error('❌ Failed to initialize pose detector:', error);
-        failedInitialization = true; // Mark as failed so we don't keep trying
-        // Don't throw, just return null so app continues gracefully
+        failedInitialization = true;
         return null;
+    } finally {
+        isInitializing = false;
     }
 };
 

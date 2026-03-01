@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Filter, Grid, List, Plus, Star, Eye, TrendingUp, Calendar, Tag, BookOpen, Cloud, RefreshCw, Download } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Filter, Grid, List, Plus, Star, Eye, TrendingUp, Calendar, Tag, BookOpen, Cloud, RefreshCw, Download, Upload } from 'lucide-react';
 import {
     getAllKnowledgeBaseItems,
     searchKnowledgeBase,
@@ -20,6 +20,7 @@ import {
     importKnowledgeBaseBackupFromGoogleDriveFile,
     downloadGoogleDriveFileBlob
 } from '../utils/googleDrive';
+import { importManualPackageZip, getManualPackageLocal } from '../utils/manualPackage';
 
 function KnowledgeBase({ onLoadVideo }) {
     const { showAlert, showConfirm } = useDialog();
@@ -38,6 +39,12 @@ function KnowledgeBase({ onLoadVideo }) {
     const [showDrivePanel, setShowDrivePanel] = useState(false);
     const [driveFiles, setDriveFiles] = useState([]);
     const [driveBusy, setDriveBusy] = useState(false);
+    const importZipInputRef = useRef(null);
+
+    const getTauriInvoke = () => {
+        const internalInvoke = window.__TAURI_INTERNALS__?.invoke;
+        return typeof internalInvoke === 'function' ? internalInvoke : null;
+    };
 
     // Load items on mount
     useEffect(() => {
@@ -202,6 +209,63 @@ function KnowledgeBase({ onLoadVideo }) {
         }
     };
 
+    const handleImportManualZip = async (file) => {
+        if (!file) return;
+
+        try {
+            const imported = await importManualPackageZip(file);
+            const localPackage = await getManualPackageLocal(imported?.id);
+            const manual = localPackage?.manual;
+
+            if (!manual) {
+                throw new Error('Manual data not found in ZIP package.');
+            }
+
+            const localManualId = imported?.id || manual.localManualId || manual.cloudId || manual.kbId || manual.id;
+            const nextData = {
+                title: manual.title || imported?.manifest?.title || file.name.replace(/\.zip$/i, ''),
+                description: manual.summary || manual.description || '',
+                content: manual,
+                type: 'manual',
+                category: 'Work Instruction',
+                industry: manual.category || '',
+                cloudId: localManualId,
+                version: manual.version || imported?.manifest?.version || '1.0',
+                status: manual.workflow?.status || manual.status || 'Draft',
+                author: manual.author || '',
+                documentNumber: manual.documentNumber || '',
+                localManualId,
+                createdAt: manual.createdAt,
+                updatedAt: new Date().toISOString(),
+                syncStatus: 'local'
+            };
+
+            const existingItems = await getAllKnowledgeBaseItems();
+            const existing = existingItems.find((item) => {
+                const contentObj = item?.content && typeof item.content === 'object' ? item.content : null;
+                return String(item?.cloudId || '') === String(localManualId)
+                    || String(item?.localManualId || '') === String(localManualId)
+                    || String(contentObj?.localManualId || '') === String(localManualId)
+                    || String(contentObj?.cloudId || '') === String(localManualId);
+            });
+
+            if (existing?.id) {
+                await updateKnowledgeBaseItem(existing.id, nextData);
+            } else {
+                await addKnowledgeBaseItem(nextData);
+            }
+
+            await loadItems();
+            await loadTags();
+            await showAlert('Import Success', 'Manual ZIP imported and saved to Knowledge Base successfully.');
+        } catch (error) {
+            console.error('Manual ZIP import failed:', error);
+            await showAlert('Import ZIP Failed', error.message || 'Failed to import manual ZIP package.');
+        } finally {
+            if (importZipInputRef.current) importZipInputRef.current.value = '';
+        }
+    };
+
     const getTypeIcon = (type) => {
         switch (type) {
             case 'template': return '📋';
@@ -250,6 +314,23 @@ function KnowledgeBase({ onLoadVideo }) {
                     </div>
                     <div style={{ display: 'flex', gap: '10px' }}>
                         <button
+                            onClick={() => importZipInputRef.current?.click()}
+                            style={{
+                                padding: '12px 18px',
+                                background: 'rgba(255,255,255,0.06)',
+                                border: '1px solid rgba(255,255,255,0.12)',
+                                borderRadius: '12px',
+                                color: 'white',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}
+                        >
+                            <Upload size={18} /> Import ZIP
+                        </button>
+                        <button
                             onClick={async () => {
                                 const next = !showDrivePanel;
                                 setShowDrivePanel(next);
@@ -291,6 +372,14 @@ function KnowledgeBase({ onLoadVideo }) {
                         </button>
                     </div>
                 </div>
+
+                <input
+                    ref={importZipInputRef}
+                    type="file"
+                    accept=".zip,application/zip"
+                    style={{ display: 'none' }}
+                    onChange={(e) => handleImportManualZip(e.target.files?.[0])}
+                />
 
                 {showDrivePanel && (
                     <div style={{
@@ -640,6 +729,25 @@ function KnowledgeBase({ onLoadVideo }) {
                                 }}>
                                     {item.type === 'best_practice' ? 'Best Practice' : item.type.charAt(0).toUpperCase() + item.type.slice(1)}
                                 </div>
+
+                                {item.syncStatus === 'local-file' && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '12px',
+                                        left: '12px',
+                                        padding: '4px 10px',
+                                        borderRadius: '20px',
+                                        backgroundColor: 'rgba(255,165,0,0.8)',
+                                        backdropFilter: 'blur(4px)',
+                                        fontSize: '0.70rem',
+                                        fontWeight: 'bold',
+                                        color: 'white',
+                                        zIndex: 2,
+                                        border: '1px solid rgba(255,255,255,0.2)'
+                                    }}>
+                                        Local File
+                                    </div>
+                                )}
 
                                 {/* Icon/Thumbnail Area */}
                                 <div style={{

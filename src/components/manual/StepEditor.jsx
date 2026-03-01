@@ -11,11 +11,13 @@ import {
 
 const StepEditor = ({
     step,
+    stepListPanel,
     onChange,
     onCaptureImage,
     onAiImprove,
     onAiGenerate,
     onAiGenerateFromVideo,
+    onAiChat,
     isAiLoading,
     videoTime,
     activeImageIndex,
@@ -68,11 +70,41 @@ const StepEditor = ({
     };
 
     if (!step) return (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'rgba(255, 255, 255, 0.3)', gap: '16px' }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '20px', backgroundColor: 'rgba(255, 255, 255, 0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                <Edit3 size={32} />
+        <div style={{ flex: 1, color: '#fff', backgroundColor: 'transparent', height: '100%' }}>
+            <div style={{ display: 'flex', gap: '24px', height: '100%' }}>
+                {stepListPanel && (
+                    <div style={{ flex: '1', maxWidth: '420px' }}>
+                        <div
+                            style={{
+                                height: '320px',
+                                borderRadius: '12px',
+                                overflow: 'hidden',
+                                border: '1px solid rgba(255, 255, 255, 0.08)',
+                                backgroundColor: 'rgba(255,255,255,0.02)'
+                            }}
+                        >
+                            {stepListPanel}
+                        </div>
+                    </div>
+                )}
+
+                <div
+                    style={{
+                        flex: stepListPanel ? '1.2' : 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'rgba(255, 255, 255, 0.3)',
+                        gap: '16px'
+                    }}
+                >
+                    <div style={{ width: '64px', height: '64px', borderRadius: '20px', backgroundColor: 'rgba(255, 255, 255, 0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                        <Edit3 size={32} />
+                    </div>
+                    <span style={{ fontWeight: '500' }}>{t('manual.selectStepToEdit')}</span>
+                </div>
             </div>
-            <span style={{ fontWeight: '500' }}>{t('manual.selectStepToEdit')}</span>
         </div>
     );
 
@@ -196,6 +228,32 @@ const StepEditor = ({
         handleStepUpdate({ questions: next });
     };
 
+    const toolbarIconButtonStyle = {
+        width: '28px',
+        height: '28px',
+        minWidth: '28px',
+        padding: 0,
+        borderRadius: '7px',
+        border: '1px solid rgba(255,255,255,0.14)',
+        background: 'rgba(15, 23, 42, 0.6)',
+        color: 'rgba(255,255,255,0.78)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer'
+    };
+
+    const bulletInputStyle = {
+        flex: 1,
+        border: 'none',
+        borderBottom: '1px dashed rgba(255,255,255,0.35)',
+        background: 'transparent',
+        padding: '6px 0',
+        fontSize: '0.95rem',
+        color: 'rgba(255,255,255,0.92)',
+        outline: 'none'
+    };
+
     return (
         <div style={{ flex: 1, color: '#fff', backgroundColor: 'transparent' }}>
 
@@ -255,6 +313,21 @@ const StepEditor = ({
                             </button>
                         )}
                     </div>
+
+                    {stepListPanel && (
+                        <div
+                            style={{
+                                marginTop: '12px',
+                                height: '320px',
+                                borderRadius: '12px',
+                                overflow: 'hidden',
+                                border: '1px solid rgba(255, 255, 255, 0.08)',
+                                backgroundColor: 'rgba(255,255,255,0.02)'
+                            }}
+                        >
+                            {stepListPanel}
+                        </div>
+                    )}
                 </div>
 
                 {/* Right Column: Text & Instructions */}
@@ -264,6 +337,62 @@ const StepEditor = ({
                             <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#333' }} />
                         </div>
                         <div style={{ flex: 1 }}>
+                            {/* AI Actions Toolbar */}
+                            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                                <button
+                                    className="btn-pro"
+                                    onClick={onAiGenerate}
+                                    disabled={isAiLoading || !step.title}
+                                    style={{
+                                        padding: '6px 12px', fontSize: '0.75rem', backgroundColor: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.3)'
+                                    }}
+                                    title="Auto-generate instructions from step title"
+                                >
+                                    {isAiLoading ? <span className="spinner" style={{ width: 14, height: 14 }} /> : <Zap size={14} />}
+                                    Generate
+                                </button>
+
+                                <button
+                                    className="btn-pro"
+                                    onClick={onAiImprove}
+                                    disabled={isAiLoading || !step.instructions}
+                                    style={{
+                                        padding: '6px 12px', fontSize: '0.75rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', borderColor: 'rgba(34, 197, 94, 0.3)'
+                                    }}
+                                    title="Improve grammar & clarity of current instructions"
+                                >
+                                    {isAiLoading ? <span className="spinner" style={{ width: 14, height: 14 }} /> : <Sparkles size={14} />}
+                                    AI Improve
+                                </button>
+
+                                <button
+                                    className="btn-pro"
+                                    onClick={onAiGenerateFromVideo}
+                                    disabled={isAiLoading}
+                                    style={{
+                                        padding: '6px 12px', fontSize: '0.75rem', backgroundColor: 'rgba(168, 85, 247, 0.1)', color: '#a855f7', borderColor: 'rgba(168, 85, 247, 0.3)'
+                                    }}
+                                    title="Analyze full video and generate all steps"
+                                >
+                                    {isAiLoading ? <span className="spinner" style={{ width: 14, height: 14 }} /> : <Youtube size={14} />}
+                                    Analyze Video
+                                </button>
+
+                                {onAiChat && (
+                                    <button
+                                        className="btn-pro"
+                                        onClick={onAiChat}
+                                        style={{
+                                            padding: '6px 12px', fontSize: '0.75rem', backgroundColor: 'rgba(236, 72, 153, 0.1)', color: '#ec4899', borderColor: 'rgba(236, 72, 153, 0.3)'
+                                        }}
+                                        title="Ask Mavi AI about this manual"
+                                    >
+                                        <MessageSquare size={14} />
+                                        Mavi AI Chat
+                                    </button>
+                                )}
+                            </div>
+
                             <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', marginBottom: '12px', backgroundColor: 'rgba(0,0,0,0.2)' }}>
                                 <RichTextEditor
                                     value={step.instructions}
@@ -273,23 +402,52 @@ const StepEditor = ({
                             </div>
 
                             {/* Toolbar */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                <div style={{ display: 'flex', gap: '2px', background: 'rgba(255,255,255,0.03)', padding: '2px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                    <button className="btn-icon" style={{ color: 'rgba(255,255,255,0.6)', padding: '4px' }}><ChevronLeft size={14} /></button>
-                                    <button className="btn-icon" style={{ color: 'rgba(255,255,255,0.6)', padding: '4px' }}><ChevronRight size={14} /></button>
-                                    <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
-                                    <button className="btn-pro-tab" style={{ padding: '4px 8px', fontSize: '0.7rem' }} onClick={() => handleBulletAdd('step')}><Plus size={14} style={{ marginRight: '4px' }} />Step</button>
-                                    <button className="btn-pro-tab" style={{ padding: '4px 8px', fontSize: '0.7rem' }} onClick={() => handleBulletAdd('note')} title="Add Note"><Info size={14} /></button>
-                                    <button className="btn-pro-tab" style={{ padding: '4px 8px', fontSize: '0.7rem' }} onClick={() => handleBulletAdd('caution')} title="Add Caution"><AlertCircle size={14} /></button>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', gap: '12px' }}>
+                                <div style={{ display: 'flex', gap: '4px', background: 'rgba(15, 23, 42, 0.42)', padding: '4px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.12)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+                                    <button className="btn-icon" style={toolbarIconButtonStyle}><ChevronLeft size={14} /></button>
+                                    <button className="btn-icon" style={toolbarIconButtonStyle}><ChevronRight size={14} /></button>
+                                    <div style={{ width: '1px', height: '18px', background: 'rgba(255,255,255,0.16)', margin: '0 4px' }} />
+                                    <button
+                                        className="btn-pro-tab"
+                                        onClick={() => handleBulletAdd('step')}
+                                        title="Add Step Bullet"
+                                        style={{
+                                            width: '30px',
+                                            height: '28px',
+                                            minWidth: '30px',
+                                            padding: '0',
+                                            fontSize: '0.7rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            backgroundColor: 'rgba(59, 130, 246, 0.24)',
+                                            border: '1px solid rgba(59, 130, 246, 0.52)',
+                                            color: '#bfdbfe',
+                                            borderRadius: '8px'
+                                        }}
+                                    >
+                                        <Plus size={14} />
+                                    </button>
+                                    <button className="btn-pro-tab" style={{ padding: '4px 8px', fontSize: '0.7rem', borderRadius: '8px' }} onClick={() => handleBulletAdd('note')} title="Add Note"><Info size={14} /></button>
+                                    <button className="btn-pro-tab" style={{ padding: '4px 8px', fontSize: '0.7rem', borderRadius: '8px' }} onClick={() => handleBulletAdd('caution')} title="Add Caution"><AlertCircle size={14} /></button>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', fontWeight: '600' }}>
+                                    <div style={{ color: 'rgba(255,255,255,0.58)', fontSize: '0.72rem', fontWeight: '700', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '999px', padding: '4px 10px', background: 'rgba(255,255,255,0.03)' }}>
                                         {(step.instructions || '').replace(/<[^>]*>/g, '').length}/350
                                     </div>
                                     <button
                                         className="btn-pro"
                                         onClick={onSave}
-                                        style={{ padding: '6px 16px', fontSize: '0.8rem', backgroundColor: '#2563eb' }}
+                                        style={{
+                                            padding: '7px 18px',
+                                            fontSize: '0.8rem',
+                                            background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                                            border: '1px solid rgba(147, 197, 253, 0.45)',
+                                            color: '#fff',
+                                            fontWeight: 700,
+                                            borderRadius: '10px',
+                                            boxShadow: '0 8px 20px rgba(37, 99, 235, 0.35)'
+                                        }}
                                     >
                                         {tt('common.save', 'Save')}
                                     </button>
@@ -297,9 +455,20 @@ const StepEditor = ({
                             </div>
 
                             {/* Additional Bullets */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 {(step.bullets || []).map((bullet, idx) => (
-                                    <div key={idx} style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                    <div
+                                        key={idx}
+                                        style={{
+                                            display: 'flex',
+                                            gap: '12px',
+                                            alignItems: 'center',
+                                            padding: '8px 10px',
+                                            borderRadius: '10px',
+                                            border: '1px solid rgba(255,255,255,0.08)',
+                                            background: 'rgba(15, 23, 42, 0.28)'
+                                        }}
+                                    >
                                         <button
                                             onClick={(e) => {
                                                 if (e.shiftKey) {
@@ -310,31 +479,24 @@ const StepEditor = ({
                                             }}
                                             title="Click: change type | Shift+Click: change shape"
                                             style={{
-                                                width: '24px',
-                                                height: '24px',
-                                                borderRadius: '4px',
+                                                width: '26px',
+                                                height: '26px',
+                                                borderRadius: '7px',
                                                 backgroundColor: getBulletColor(bullet),
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
                                                 color: '#fff',
-                                                border: 'none',
-                                                cursor: 'pointer'
+                                                border: '1px solid rgba(255,255,255,0.25)',
+                                                cursor: 'pointer',
+                                                boxShadow: '0 4px 10px rgba(0,0,0,0.22)'
                                             }}>
                                             {renderBulletIcon(bullet)}
                                         </button>
                                         <input
                                             value={bullet.text}
                                             onChange={(e) => handleBulletChange(idx, e.target.value)}
-                                            style={{
-                                                flex: 1,
-                                                border: 'none',
-                                                borderBottom: '1px dashed #ddd',
-                                                background: 'transparent',
-                                                padding: '4px 0',
-                                                fontSize: '1rem',
-                                                color: '#333'
-                                            }}
+                                            style={bulletInputStyle}
                                             placeholder="Enter text..."
                                         />
                                         <input
@@ -342,9 +504,25 @@ const StepEditor = ({
                                             value={getBulletColor(bullet)}
                                             onChange={(e) => handleBulletColorChange(idx, e.target.value)}
                                             title="Bullet color"
-                                            style={{ width: '28px', height: '24px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+                                            style={{ width: '28px', height: '24px', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', background: 'transparent', cursor: 'pointer' }}
                                         />
-                                        <button onClick={() => handleBulletDelete(idx)} style={{ color: '#ef4444', border: 'none', background: 'none' }}><Trash2 size={16} /></button>
+                                        <button
+                                            onClick={() => handleBulletDelete(idx)}
+                                            style={{
+                                                color: '#f87171',
+                                                border: '1px solid rgba(248, 113, 113, 0.3)',
+                                                background: 'rgba(248, 113, 113, 0.08)',
+                                                borderRadius: '8px',
+                                                width: '28px',
+                                                height: '28px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <Trash2 size={15} />
+                                        </button>
                                     </div>
                                 ))}
                             </div>
@@ -490,17 +668,39 @@ const StepEditor = ({
                                         <button
                                             onClick={startRecording}
                                             className="btn-pro"
-                                            style={{ padding: '6px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                            title="Record Voice Instruction"
+                                            style={{
+                                                padding: '7px 12px',
+                                                fontSize: '0.75rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '7px',
+                                                backgroundColor: 'rgba(59, 130, 246, 0.16)',
+                                                color: '#93c5fd',
+                                                borderColor: 'rgba(59, 130, 246, 0.4)',
+                                                fontWeight: 700
+                                            }}
                                         >
-                                            <Mic size={14} /> Record Audio
+                                            <Mic size={15} /> Record Audio
                                         </button>
                                     ) : (
                                         <button
                                             onClick={stopRecording}
                                             className="btn-pro"
-                                            style={{ padding: '6px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.4)' }}
+                                            title="Stop Voice Recording"
+                                            style={{
+                                                padding: '7px 12px',
+                                                fontSize: '0.75rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '7px',
+                                                backgroundColor: 'rgba(239, 68, 68, 0.24)',
+                                                color: '#fca5a5',
+                                                borderColor: 'rgba(239, 68, 68, 0.5)',
+                                                fontWeight: 700
+                                            }}
                                         >
-                                            <Square size={14} /> Stop Recording
+                                            <Square size={15} /> Stop Recording
                                         </button>
                                     )}
 

@@ -41,6 +41,123 @@ fn save_project_to_documents(file_name: String, data: Vec<u8>) -> Result<String,
     Ok(file_path.to_string_lossy().to_string())
 }
 
+#[derive(serde::Serialize)]
+struct LocalManualFile {
+    name: String,
+    path: String,
+    size: u64,
+    #[serde(rename = "createdAt")]
+    created_at: String,
+    #[serde(rename = "updatedAt")]
+    updated_at: String,
+    #[serde(rename = "type")]
+    file_type: String,
+}
+
+#[tauri::command]
+fn list_local_manuals(app: tauri::AppHandle) -> Result<Vec<LocalManualFile>, String> {
+    use std::fs;
+    use std::path::PathBuf;
+
+    let mut manuals_dir = PathBuf::from(app.path().app_data_dir().map_err(|e| format!("App data dir error: {}", e))?);
+    manuals_dir.push("local_manuals");
+
+    // Backward compatible: if app-local dir is empty/missing, fallback to project local_manuals
+    if !manuals_dir.exists() {
+        manuals_dir = PathBuf::from("..");
+        manuals_dir.push("local_manuals");
+    }
+
+    if !manuals_dir.exists() {
+        return Ok(vec![]);
+    }
+
+    let mut result = Vec::new();
+    let entries = fs::read_dir(&manuals_dir).map_err(|e| format!("Failed to read local_manuals: {}", e))?;
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Directory entry error: {}", e))?;
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+
+        let meta = fs::metadata(&path).map_err(|e| format!("Metadata read error: {}", e))?;
+        let name = path.file_name()
+            .and_then(|n| n.to_str())
+            .ok_or("Invalid UTF-8 filename")?
+            .to_string();
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_string();
+        let created = meta.created().ok().and_then(|t| t.elapsed().ok()).map(|_| "".to_string()).unwrap_or_default();
+        let modified = meta.modified().ok().and_then(|t| t.elapsed().ok()).map(|_| "".to_string()).unwrap_or_default();
+
+        // Best effort RFC3339-ish replacement if filesystem time conversion is unavailable.
+        let created_at = if created.is_empty() { "".to_string() } else { created };
+        let updated_at = if modified.is_empty() { "".to_string() } else { modified };
+
+        result.push(LocalManualFile {
+            name,
+            path: path.to_string_lossy().to_string(),
+            size: meta.len(),
+            created_at,
+            updated_at,
+            file_type: ext,
+        });
+    }
+
+    Ok(result)
+}
+
+#[tauri::command]
+fn read_local_manual_file(app: tauri::AppHandle, file_name: String) -> Result<Vec<u8>, String> {
+    use std::fs;
+    use std::path::PathBuf;
+
+    let safe_file_name: String = file_name.chars().filter(|c| *c != '/' && *c != '\\').collect();
+    if safe_file_name.trim().is_empty() {
+        return Err("Invalid file name".to_string());
+    }
+
+    let mut manuals_dir = PathBuf::from(app.path().app_data_dir().map_err(|e| format!("App data dir error: {}", e))?);
+    manuals_dir.push("local_manuals");
+
+    if !manuals_dir.exists() {
+        manuals_dir = PathBuf::from("..");
+        manuals_dir.push("local_manuals");
+    }
+
+    let file_path = manuals_dir.join(safe_file_name);
+    if !file_path.exists() || !file_path.is_file() {
+        return Err("File not found in local_manuals".to_string());
+    }
+
+    fs::read(file_path).map_err(|e| format!("Failed to read file: {}", e))
+}
+
+#[tauri::command]
+fn delete_local_manual(app: tauri::AppHandle, file_name: String) -> Result<(), String> {
+    use std::fs;
+    use std::path::PathBuf;
+
+    let safe_file_name: String = file_name.chars().filter(|c| *c != '/' && *c != '\\').collect();
+    if safe_file_name.trim().is_empty() {
+        return Err("Invalid file name".to_string());
+    }
+
+    let mut manuals_dir = PathBuf::from(app.path().app_data_dir().map_err(|e| format!("App data dir error: {}", e))?);
+    manuals_dir.push("local_manuals");
+
+    if !manuals_dir.exists() {
+        manuals_dir = PathBuf::from("..");
+        manuals_dir.push("local_manuals");
+    }
+
+    let file_path = manuals_dir.join(safe_file_name);
+    if file_path.exists() && file_path.is_file() {
+        fs::remove_file(file_path).map_err(|e| format!("Failed to delete file: {}", e))?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 async fn run_playwright_tests(handle: tauri::AppHandle, tags: Option<String>) -> Result<String, String> {
     use std::process::Command;
@@ -82,7 +199,14 @@ async fn run_playwright_tests(handle: tauri::AppHandle, tags: Option<String>) ->
 fn main() {
   tauri::Builder::default()
     .plugin(tauri_plugin_sql::Builder::default().build())
-    .invoke_handler(tauri::generate_handler![get_machine_id, run_playwright_tests, save_project_to_documents])
+    .invoke_handler(tauri::generate_handler![
+      get_machine_id,
+      run_playwright_tests,
+      save_project_to_documents,
+      list_local_manuals,
+      read_local_manual_file,
+      delete_local_manual
+    ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

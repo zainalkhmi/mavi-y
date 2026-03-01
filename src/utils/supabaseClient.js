@@ -10,6 +10,40 @@ const DEFAULT_SETTINGS = {
 
 const normalizeBaseUrl = (value = '') => String(value || '').trim().replace(/\/+$/, '');
 
+const validateSupabaseUrl = (rawUrl = '') => {
+    const normalized = normalizeBaseUrl(rawUrl);
+    if (!normalized) {
+        throw new Error('Supabase URL is required');
+    }
+
+    let parsed;
+    try {
+        parsed = new URL(normalized);
+    } catch {
+        throw new Error('Supabase URL is invalid. Example: https://your-project-ref.supabase.co');
+    }
+
+    if (!['https:', 'http:'].includes(parsed.protocol)) {
+        throw new Error('Supabase URL must start with http:// or https:// (not libsql://).');
+    }
+
+    if (!parsed.hostname.toLowerCase().includes('supabase.co')) {
+        throw new Error('Supabase URL should be your Supabase project domain (…supabase.co).');
+    }
+
+    return normalizeBaseUrl(parsed.toString());
+};
+
+const fetchWithTimeout = async (url, options = {}, timeoutMs = 10000) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+        clearTimeout(timeoutId);
+    }
+};
+
 export const getSupabaseSettings = () => {
     try {
         const raw = localStorage.getItem(SUPABASE_STORAGE_KEY);
@@ -64,10 +98,11 @@ export const uploadDataUrlToSupabase = async (path, dataUrl, overrideSettings = 
     if (!cfg.url || !cfg.anonKey || !cfg.bucket) {
         throw new Error('Supabase settings incomplete');
     }
+    const validBaseUrl = validateSupabaseUrl(cfg.url);
 
     const cleanPath = buildStoragePath(path);
     const { mimeType, bytes } = parseDataUrl(dataUrl);
-    const endpoint = `${cfg.url}/storage/v1/object/${encodeURIComponent(cfg.bucket)}/${cleanPath}`;
+    const endpoint = `${validBaseUrl}/storage/v1/object/${encodeURIComponent(cfg.bucket)}/${cleanPath}`;
 
     const response = await fetch(endpoint, {
         method: 'POST',
@@ -85,7 +120,7 @@ export const uploadDataUrlToSupabase = async (path, dataUrl, overrideSettings = 
         throw new Error(errText || `Supabase upload failed (${response.status})`);
     }
 
-    return `${cfg.url}/storage/v1/object/public/${encodeURIComponent(cfg.bucket)}/${cleanPath}`;
+    return `${validBaseUrl}/storage/v1/object/public/${encodeURIComponent(cfg.bucket)}/${cleanPath}`;
 };
 
 export const uploadBlobToSupabase = async (path, blob, contentType = null, overrideSettings = null) => {
@@ -93,9 +128,10 @@ export const uploadBlobToSupabase = async (path, blob, contentType = null, overr
     if (!cfg.url || !cfg.anonKey || !cfg.bucket) {
         throw new Error('Supabase settings incomplete');
     }
+    const validBaseUrl = validateSupabaseUrl(cfg.url);
 
     const cleanPath = buildStoragePath(path);
-    const endpoint = `${cfg.url}/storage/v1/object/${encodeURIComponent(cfg.bucket)}/${cleanPath}`;
+    const endpoint = `${validBaseUrl}/storage/v1/object/${encodeURIComponent(cfg.bucket)}/${cleanPath}`;
     const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -112,19 +148,28 @@ export const uploadBlobToSupabase = async (path, blob, contentType = null, overr
         throw new Error(errText || `Supabase upload failed (${response.status})`);
     }
 
-    return `${cfg.url}/storage/v1/object/public/${encodeURIComponent(cfg.bucket)}/${cleanPath}`;
+    return `${validBaseUrl}/storage/v1/object/public/${encodeURIComponent(cfg.bucket)}/${cleanPath}`;
 };
 
 export const testSupabaseConnection = async (overrideSettings = null) => {
     const cfg = overrideSettings || getSupabaseSettings();
     if (!cfg.url || !cfg.anonKey) throw new Error('Supabase URL / Anon Key is required');
+    const validBaseUrl = validateSupabaseUrl(cfg.url);
 
-    const response = await fetch(`${cfg.url}/storage/v1/bucket`, {
-        headers: {
-            apikey: cfg.anonKey,
-            Authorization: `Bearer ${cfg.anonKey}`
+    let response;
+    try {
+        response = await fetchWithTimeout(`${validBaseUrl}/storage/v1/bucket`, {
+            headers: {
+                apikey: cfg.anonKey,
+                Authorization: `Bearer ${cfg.anonKey}`
+            }
+        }, 12000);
+    } catch (error) {
+        if (error?.name === 'AbortError') {
+            throw new Error('Supabase connection timed out. Check internet access, project URL, and firewall/proxy settings.');
         }
-    });
+        throw new Error(`Failed to reach Supabase endpoint (${validBaseUrl}). ${error?.message || 'Network error.'}`);
+    }
 
     if (!response.ok) {
         const errText = await response.text();

@@ -6,7 +6,7 @@ import CertificateModal from './features/CertificateModal';
 import { getStoredApiKey } from '../utils/aiGenerator';
 import { useLanguage } from '../contexts/LanguageContext';
 import { modules as staticModules } from '../data/maviClassData';
-import { getAllYouTubeLinks } from '../utils/tursoAPI';
+import { getAllYouTubeLinks } from '../utils/supabaseYouTubeDB.js';
 import { useTour } from '../hooks/useTour'; // NEW: Interactive Tours
 
 

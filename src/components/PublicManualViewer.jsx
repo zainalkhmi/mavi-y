@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getKnowledgeBaseItem, getItemByCloudId, updateKnowledgeBaseItem } from '../utils/knowledgeBaseDB';
-import { getManualByCloudId, appendManualAcknowledgement, appendManualDataCapture } from '../utils/tursoAPI';
+import { getManualByCloudId, appendManualAcknowledgement, appendManualDataCapture } from '../utils/supabaseManualDB';
 
 const normalizeReferenceUrl = (value = '') => {
     const raw = String(value || '').trim();

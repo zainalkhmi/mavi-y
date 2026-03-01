@@ -1,5 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getProjectByName, saveProject as saveProjectToDb, updateProject } from '../utils/database';
+import {
+    getProjectByName,
+    saveProject as saveProjectToDb,
+    updateProject,
+    uploadVideo
+} from '../utils/supabaseProjectDB';
 import { useNavigate } from 'react-router-dom';
 import { useDialog } from './DialogContext';
 
@@ -55,9 +60,9 @@ export const ProjectProvider = ({ children }) => {
             }
 
             setCurrentProject(project);
-            setVideoSrc(URL.createObjectURL(project.videoBlob));
-            setVideoName(project.videoName);
-            setVideoFile(project.videoBlob); // Store the blob for AI processing
+            setVideoSrc(project.video_url); // Use remote URL
+            setVideoName(project.video_name);
+            setVideoFile(null); // We don't have the File object locally anymore
             setMeasurements(project.measurements || []);
 
             if (navigateTo) {
@@ -76,19 +81,22 @@ export const ProjectProvider = ({ children }) => {
     const newProject = async (name, videoFile, initialMeasurements = [], folderId = null) => {
         setIsLoading(true);
         try {
-            const videoBlob = new Blob([await videoFile.arrayBuffer()], { type: videoFile.type });
-            const projectId = await saveProjectToDb(
-                name,
-                videoBlob,
-                videoFile.name,
-                initialMeasurements,
-                null,
-                null,
-                folderId
-            );
+            // 1. Upload video to Supabase Storage
+            const videoUrl = await uploadVideo(videoFile, videoFile.name);
 
-            setCurrentProject({ id: projectId, projectName: name, folderId: folderId });
-            setVideoSrc(URL.createObjectURL(videoBlob));
+            // 2. Save project metadata to Supabase DB
+            const projectData = {
+                projectName: name,
+                videoName: videoFile.name,
+                videoUrl: videoUrl,
+                measurements: initialMeasurements,
+                folderId: folderId
+            };
+
+            const savedProject = await saveProjectToDb(projectData);
+
+            setCurrentProject(savedProject);
+            setVideoSrc(videoUrl);
             setVideoName(videoFile.name);
             setVideoFile(videoFile);
             setMeasurements(initialMeasurements);
@@ -154,22 +162,22 @@ export const ProjectProvider = ({ children }) => {
                 return false;
             }
 
-            // Get current video blob
-            const videoBlob = currentProject.videoBlob || new Blob([await fetch(videoSrc).then(r => r.arrayBuffer())], { type: 'video/mp4' });
+            // 1. Reuse video URL
+            const videoUrl = currentProject.video_url;
 
-            // Save as new project
-            const projectId = await saveProjectToDb(
-                newName.trim(),
-                videoBlob,
-                videoName,
-                measurements,
-                null,
-                null,
-                currentProject.folderId
-            );
+            // 2. Save as new project
+            const projectData = {
+                projectName: newName.trim(),
+                videoName: videoName,
+                videoUrl: videoUrl,
+                measurements: measurements,
+                folderId: currentProject.folderId
+            };
+
+            const savedProject = await saveProjectToDb(projectData);
 
             // Switch to the new project
-            setCurrentProject({ id: projectId, projectName: newName.trim(), folderId: currentProject.folderId });
+            setCurrentProject(savedProject);
             await showAlert('Success', 'Project saved as "' + newName + '" successfully!');
             return true;
         } catch (error) {

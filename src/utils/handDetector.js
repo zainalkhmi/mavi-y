@@ -1,6 +1,7 @@
 import { Hands } from '@mediapipe/hands';
 
 let handDetector = null;
+let isHandInitializing = false;
 
 /**
  * Initialize MediaPipe Hands detector
@@ -8,6 +9,14 @@ let handDetector = null;
  */
 export const initializeHandDetector = async () => {
     if (handDetector) return handDetector;
+    if (isHandInitializing) {
+        while (isHandInitializing) {
+            await new Promise(r => setTimeout(r, 100));
+        }
+        return handDetector;
+    }
+
+    isHandInitializing = true;
 
     try {
         handDetector = new Hands({
@@ -23,11 +32,12 @@ export const initializeHandDetector = async () => {
             minTrackingConfidence: 0.5
         });
 
-        console.log('✅ Hand detector initialized');
         return handDetector;
     } catch (error) {
         console.error('❌ Failed to initialize hand detector:', error);
         throw error;
+    } finally {
+        isHandInitializing = false;
     }
 };
 

@@ -6,16 +6,84 @@ import {
     getRatingsForItem,
     addRating,
     incrementUsageCount,
-    deleteKnowledgeBaseItem
+    deleteKnowledgeBaseItem,
+    addKnowledgeBaseItem,
+    updateKnowledgeBaseItem,
+    getAllKnowledgeBaseItems
 } from '../../utils/knowledgeBaseDB';
+import { importManualPackageZip, getManualPackageLocal } from '../../utils/manualPackage';
+import { useDialog } from '../../contexts/DialogContext';
 
 function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
+    const { showAlert, showConfirm } = useDialog();
     const [tags, setTags] = useState([]);
     const [ratings, setRatings] = useState([]);
     const [userRating, setUserRating] = useState(0);
     const [userFeedback, setUserFeedback] = useState('');
     const [showRatingForm, setShowRatingForm] = useState(false);
     const [videoUrl, setVideoUrl] = useState(item.contentUrl || null);
+
+    const getTauriInvoke = () => {
+        const internalInvoke = window.__TAURI_INTERNALS__?.invoke;
+        return typeof internalInvoke === 'function' ? internalInvoke : null;
+    };
+
+    const getLocalFileName = () => item?.content?.fileName || item?.title || '';
+
+    const readLocalFileBytes = async (fileName) => {
+        const safeName = String(fileName || '').trim();
+        if (!safeName) throw new Error('Invalid local file name.');
+
+        try {
+            const res = await fetch(`/local_manuals/${encodeURIComponent(safeName)}`);
+            if (res.ok) return new Uint8Array(await res.arrayBuffer());
+        } catch {
+            // ignore and fallback to Tauri
+        }
+
+        const invoke = getTauriInvoke();
+        if (!invoke) throw new Error('Local manual service is unavailable.');
+        const bytes = await invoke('read_local_manual_file', { fileName: safeName });
+        return new Uint8Array(Array.isArray(bytes) ? bytes : []);
+    };
+
+    const upsertManualToKnowledgeBase = async (manual, localManualId, fallbackTitle) => {
+        const existingItems = await getAllKnowledgeBaseItems();
+        const existing = existingItems.find((kbItem) => {
+            const kbContent = kbItem?.content && typeof kbItem.content === 'object' ? kbItem.content : null;
+            return String(kbItem?.cloudId || '') === String(localManualId)
+                || String(kbItem?.localManualId || '') === String(localManualId)
+                || String(kbContent?.localManualId || '') === String(localManualId)
+                || String(kbContent?.cloudId || '') === String(localManualId);
+        });
+
+        const now = new Date().toISOString();
+        const manualData = {
+            title: manual?.title || fallbackTitle || 'Untitled Manual',
+            description: manual?.summary || manual?.description || '',
+            content: { ...(manual || {}), localManualId },
+            type: 'manual',
+            category: 'Work Instruction',
+            industry: manual?.category || '',
+            cloudId: localManualId,
+            localManualId,
+            version: manual?.version || '1.0',
+            status: manual?.workflow?.status || manual?.status || 'Draft',
+            author: manual?.author || '',
+            documentNumber: manual?.documentNumber || '',
+            createdAt: manual?.createdAt || now,
+            updatedAt: now,
+            syncStatus: 'local'
+        };
+
+        if (existing?.id) {
+            await updateKnowledgeBaseItem(existing.id, manualData);
+            return existing.id;
+        }
+
+        const inserted = await addKnowledgeBaseItem(manualData);
+        return inserted?.id;
+    };
 
     useEffect(() => {
         loadDetails();
@@ -58,15 +126,118 @@ function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
     };
 
     const handleDelete = async () => {
-        if (confirm(`Are you sure you want to delete "${item.title}"? This action cannot be undone.`)) {
-            try {
+        try {
+            if (item.syncStatus === 'local-file') {
+                let deleted = false;
+                const fileName = getLocalFileName();
+
+                // Try Vite dev middleware first
+                try {
+                    const res = await fetch('/api/delete-local-manual', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ fileName })
+                    });
+                    deleted = res.ok;
+                } catch {
+                    // ignore and fallback to Tauri command
+                }
+
+                // Fallback for desktop runtime
+                if (!deleted) {
+                    const invoke = getTauriInvoke();
+                    if (!invoke) throw new Error('Local delete service is unavailable.');
+                    await invoke('delete_local_manual', { fileName });
+                }
+            } else {
                 await deleteKnowledgeBaseItem(item.id);
-                alert('Item deleted successfully!');
-                onClose(); // This will trigger parent to reload items
-            } catch (error) {
-                console.error('Error deleting item:', error);
-                alert('Error deleting item. Please try again.');
             }
+            onClose(); // This will trigger parent to reload items silently
+        } catch (error) {
+            console.error('Error deleting item:', error);
+            await showAlert('Delete Failed', error?.message || 'Error deleting item. Please try again.');
+        }
+    };
+
+    const handleOpenManualCreation = async () => {
+        if (item.syncStatus === 'local-file') {
+            try {
+                const fileName = getLocalFileName();
+                const lowerFileName = fileName.toLowerCase();
+                const bytes = await readLocalFileBytes(fileName);
+
+                let manual = null;
+                let localManualId = null;
+
+                if (lowerFileName.endsWith('.zip')) {
+                    const zipFile = new File([bytes], fileName, { type: 'application/zip' });
+                    const imported = await importManualPackageZip(zipFile);
+                    localManualId = imported?.id || `zip_${Date.now()}`;
+                    const localPkg = await getManualPackageLocal(localManualId);
+                    manual = localPkg?.manual;
+                } else {
+                    const text = new TextDecoder('utf-8').decode(bytes);
+                    const parsed = JSON.parse(text || '{}');
+                    manual = parsed?.content && typeof parsed.content === 'object' ? parsed.content : parsed;
+                    localManualId = parsed?.localManualId || parsed?.cloudId || parsed?.id || `json_${Date.now()}`;
+                }
+
+                if (!manual || typeof manual !== 'object') {
+                    throw new Error('Manual content is invalid or empty.');
+                }
+
+                const kbId = await upsertManualToKnowledgeBase(
+                    manual,
+                    localManualId,
+                    item?.content?.manualTitle || item.title
+                );
+
+                if (!kbId) throw new Error('Failed to prepare manual for opening.');
+
+                window.location.hash = `/manual-creation?manual=${encodeURIComponent(String(kbId))}`;
+                onClose();
+                return;
+            } catch (error) {
+                console.error('Failed to open local manual file:', error);
+                await showAlert('Open Local File Failed', error?.message || 'Failed to open local manual file.');
+                return;
+            }
+        }
+
+        const contentObj = item?.content && typeof item.content === 'object' ? item.content : null;
+        const manualId =
+            item?.cloudId
+            || item?.localManualId
+            || contentObj?.localManualId
+            || contentObj?.cloudId
+            || contentObj?.kbId
+            || item?.id;
+
+        if (!manualId) {
+            await showAlert('Manual Not Found', 'Manual ID is not available for this item.');
+            return;
+        }
+
+        window.location.hash = `/manual-creation?manual=${encodeURIComponent(String(manualId))}`;
+        onClose();
+    };
+
+    const handleDownloadLocalFile = async () => {
+        try {
+            const fileName = getLocalFileName();
+            const bytes = await readLocalFileBytes(fileName);
+            const blob = new Blob([bytes]);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName || 'manual-file';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Failed to download local file:', error);
+            await showAlert('Download Failed', error?.message || 'Failed to download local file.');
         }
     };
 
@@ -387,6 +558,46 @@ function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
                             }}
                         >
                             Use This Template
+                        </button>
+                    )}
+                    {item.type === 'manual' && (
+                        <button
+                            onClick={handleOpenManualCreation}
+                            style={{
+                                padding: '12px 24px',
+                                backgroundColor: '#2563eb',
+                                border: 'none',
+                                borderRadius: '6px',
+                                color: '#fff',
+                                cursor: 'pointer',
+                                fontWeight: 'bold',
+                                fontSize: '1rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}
+                        >
+                            <ExternalLink size={18} /> Open in Manual Creation
+                        </button>
+                    )}
+                    {item.syncStatus === 'local-file' && (
+                        <button
+                            onClick={handleDownloadLocalFile}
+                            style={{
+                                padding: '12px 24px',
+                                backgroundColor: '#0f766e',
+                                border: 'none',
+                                borderRadius: '6px',
+                                color: '#fff',
+                                cursor: 'pointer',
+                                fontWeight: 'bold',
+                                fontSize: '1rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}
+                        >
+                            <Download size={18} /> Download File
                         </button>
                     )}
                     <button

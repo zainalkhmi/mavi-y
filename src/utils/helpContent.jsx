@@ -123,7 +123,7 @@ export const helpContent = {
                     <li><strong>Confidence Interval</strong>: 90%, 95%, 99%</li>
                     <li><strong>Process Capability</strong>: Cp, Cpk, Capable/Not Capable</li>
                     <li><strong>Control Chart</strong>: I-Chart dengan UCL/LCL</li>
-                    <li><strong>Histogram</strong>: Distribusi data & Outlier detection</li>
+                    <li><strong>Histogram</strong>: Distribusi data &amp; Outlier detection</li>
                 </ul>
 
                 <h3 style={{ color: '#ffd700', marginTop: '20px' }}>💡 Tips</h3>
@@ -177,52 +177,79 @@ export const helpContent = {
         content: (
             <>
                 <h3 style={{ color: '#ffd700', marginTop: '20px' }}>📌 Fungsi</h3>
-                <p>Membuat dokumen Instruksi Kerja (Work Instruction/SOP) visual dengan AI, dan multiple export formats.</p>
+                <p>Membuat, mengelola, dan mendistribusikan dokumen <strong>SOP / Work Instruction (WI)</strong> secara digital — dilengkapi AI, QR Code, Operator Mode, dan approval workflow.</p>
 
                 <h3 style={{ color: '#ffd700', marginTop: '20px' }}>🚀 Cara Pakai</h3>
                 <ol>
-                    <li>Pilih proyek dengan video dari dropdown</li>
-                    <li>Klik <strong>+ Add Step</strong> untuk menambah langkah</li>
+                    <li>Pilih proyek dari dropdown <strong>Select Project</strong>, atau klik <strong>New Manual</strong> untuk mulai dari awal</li>
+                    <li>Isi metadata di tab <strong>Details</strong>: Doc Number, Version, Author, Status, Effective Date</li>
+                    <li>Tambah langkah via tombol <strong>+ Add Step</strong> di panel kiri</li>
                     <li>Untuk setiap langkah:
                         <ul>
-                            <li>Isi <strong>Step Title</strong></li>
-                            <li>Klik <strong>⚡ Generate</strong> untuk AI auto-generate instructions</li>
-                            <li>Atau tulis manual, lalu klik <strong>✨ AI Improve</strong> untuk perbaikan grammar</li>
-                            <li>Klik <strong>Capture from Video</strong> untuk ambil screenshot</li>
-                            <li>Klik <strong>✏️ Markup</strong> pada gambar untuk annotasi (arrow, box, circle)</li>
-                            <li>Tambahkan Notes/Warnings/Cautions jika perlu</li>
+                            <li>Isi <strong>Step Title</strong> dan instruksi</li>
+                            <li>Klik <strong>⚡ Generate</strong> untuk AI auto-generate instruksi dari judul</li>
+                            <li>Klik <strong>✨ AI Improve</strong> untuk perbaiki teks yang sudah ditulis</li>
+                            <li>Klik <strong>Capture from Video</strong> untuk ambil screenshot dari video</li>
+                            <li>Upload <strong>banyak gambar</strong> — ditampilkan sebagai galeri thumbnail</li>
+                            <li>Klik <strong>✏️ Markup</strong> pada gambar untuk anotasi (arrow, box, circle)</li>
+                            <li>Tambahkan <strong>Notes / Warnings / Cautions</strong> jika perlu</li>
+                            <li>Aktifkan <strong>🎙️ Voice Instruction</strong> untuk rekam instruksi suara per langkah</li>
                         </ul>
                     </li>
-                    <li>Pilih <strong>Layout Template</strong>:
-                        <ul>
-                            <li><strong>📐 Standard</strong>: Side-by-side (gambar kiri, text kanan)</li>
-                            <li><strong>📋 Compact Table</strong>: Semua steps dalam tabel</li>
-                            <li><strong>📄 One Per Page</strong>: 1 step per halaman</li>
-                        </ul>
-                    </li>
-                    <li><strong>📥 Import Data</strong>:
-                        <ul>
-                            <li><strong>📊 Import Excel</strong>: Import steps dari Excel (Columns: Title, Instructions, Warning, Note)</li>
-                            <li><strong>📝 Import Word</strong>: Import steps dari Word (Headings = Titles, Text = Instructions)</li>
-                        </ul>
-                    </li>
-                    <li>Klik <strong>👁️ Preview Mode</strong> untuk melihat hasil</li>
-                    <li>Export via <strong>📥 Export As...</strong>:
-                        <ul>
-                            <li><strong>📄 PDF</strong>: Dokumen siap print</li>
-                            <li><strong>📝 Word (.docx)</strong>: Editable document</li>
-                            <li><strong>📊 PowerPoint (.pptx)</strong>: Presentation slides</li>
-                        </ul>
-                    </li>
+                    <li>Klik <strong>💾 Save</strong> untuk menyimpan ke database cloud</li>
+                    <li>Klik <strong>👁️ Preview</strong> untuk melihat tampilan dokumen akhir</li>
                 </ol>
+
+                <h3 style={{ color: '#ffd700', marginTop: '20px' }}>👷 Operator Mode</h3>
+                <ul>
+                    <li>Aktifkan tombol <strong>Operator</strong> di toolbar untuk tampilan eksekusi step-by-step</li>
+                    <li>Operator bisa checklist setiap langkah dan mengisi data capture form</li>
+                    <li>Instruksi <strong>suara diputar otomatis</strong> di setiap langkah (jika sudah direkam)</li>
+                    <li>Di akhir sesi tampil <strong>Session Summary</strong> berisi semua data yang diisi operator</li>
+                </ul>
+
+                <h3 style={{ color: '#ffd700', marginTop: '20px' }}>📱 QR Code &amp; Share</h3>
+                <ul>
+                    <li>Klik ikon <strong>QR (pink)</strong> di toolbar untuk membuka Quick Access QR</li>
+                    <li>QR code mengarah langsung ke SOP ini — scan dari HP langsung membuka dokumen yang tepat</li>
+                    <li><strong>Save QR Image</strong>: Unduh QR sebagai PNG untuk ditempel di mesin / area kerja</li>
+                    <li><strong>Copy Link</strong>: Salin link langsung SOP ini untuk dibagikan ke tim</li>
+                    <li>Klik ikon <strong>&lt;/&gt; Embed</strong> untuk mendapatkan kode iframe embed ke website / portal internal</li>
+                </ul>
+
+                <h3 style={{ color: '#ffd700', marginTop: '20px' }}>✅ Approval Workflow</h3>
+                <ul>
+                    <li>Status dokumen: <strong>Draft → In Review → Approved → Released</strong></li>
+                    <li>Atur <strong>Approval Matrix</strong> (Level, Role, Approver) di tab <strong>Management</strong></li>
+                    <li>Kirim request approval dan pantau statusnya</li>
+                    <li>Hanya role tertentu yang bisa mengubah status (Author, Reviewer, Approver)</li>
+                </ul>
+
+                <h3 style={{ color: '#ffd700', marginTop: '20px' }}>🕐 Version History</h3>
+                <ul>
+                    <li>Klik ikon <strong>Clock / Timeline</strong> di toolbar untuk membuka sidebar riwayat versi</li>
+                    <li>Klik <strong>New Snapshot</strong> untuk menyimpan snapshot kondisi dokumen saat ini</li>
+                    <li>Klik <strong>RESTORE</strong> pada snapshot lama untuk mengembalikan ke versi tersebut</li>
+                </ul>
+
+                <h3 style={{ color: '#ffd700', marginTop: '20px' }}>📥 Import &amp; Export</h3>
+                <ul>
+                    <li><strong>📊 Excel</strong>: Import steps dari file Excel (kolom: Title, Instructions, Warning, Note)</li>
+                    <li><strong>📝 Word</strong>: Import dari .docx (Heading = Judul Step, Paragraf = Instruksi)</li>
+                    <li><strong>📄 PDF</strong>: Export dokumen siap cetak dengan layout pilihan</li>
+                    <li><strong>📝 Word (.docx)</strong>: Export editable document</li>
+                    <li><strong>📊 PowerPoint (.pptx)</strong>: Export presentation (1 slide per step)</li>
+                    <li><strong>Layout PDF</strong>: Pilih Standard (gambar kiri, teks kanan), Compact Table, atau One Per Page</li>
+                </ul>
 
                 <h3 style={{ color: '#ffd700', marginTop: '20px' }}>🤖 AI Features</h3>
                 <ul>
-                    <li><strong>⚡ Generate</strong>: Auto-generate instructions dari step title</li>
-                    <li><strong>✨ AI Improve</strong>: Perbaiki grammar & clarity tanpa ubah meaning</li>
-                    <li>Butuh API Key di Settings (Gemini/OpenAI/Custom)</li>
+                    <li><strong>⚡ Generate</strong>: Auto-generate instruksi dari judul step</li>
+                    <li><strong>✨ AI Improve</strong>: Perbaiki grammar &amp; clarity teks yang sudah ditulis</li>
+                    <li><strong>🎥 AI Analyze Video</strong>: Analisis video penuh dan generate semua steps sekaligus</li>
+                    <li><strong>💬 Mavi AI Chat</strong>: Tanya AI tentang konten manual yang sedang dibuat</li>
+                    <li>Butuh <strong>API Key</strong> di Settings (Gemini / OpenAI / Custom)</li>
                 </ul>
-
 
                 <h3 style={{ color: '#ffd700', marginTop: '20px' }}>✏️ Image Markup</h3>
                 <ul>
@@ -230,16 +257,17 @@ export const helpContent = {
                     <li><strong>⬜ Box</strong>: Highlight area</li>
                     <li><strong>⭕ Circle</strong>: Tandai objek</li>
                     <li>3 warna: Merah, Hijau, Kuning</li>
-                    <li><strong>↩ Undo</strong> untuk batalkan markup terakhir</li>
+                    <li><strong>↩ Undo</strong>: Batalkan markup terakhir</li>
                 </ul>
 
                 <h3 style={{ color: '#ffd700', marginTop: '20px' }}>💡 Tips</h3>
                 <ul>
-                    <li>Gunakan <strong>AI Generate</strong> untuk draft cepat, lalu edit manual</li>
-                    <li>Compact Table layout cocok untuk quick reference</li>
-                    <li>One Per Page layout cocok untuk training slides</li>
-                    <li>PowerPoint export otomatis 1 slide per step</li>
-                    <li>Simpan metadata (Doc Number, Version, Author) untuk tracking</li>
+                    <li>Gunakan <strong>AI Analyze Video</strong> untuk draft lengkap semua steps dalam sekali klik</li>
+                    <li>QR Code cocok ditempel di mesin/area kerja agar operator bisa scan langsung dari HP</li>
+                    <li>Gunakan <strong>Operator Mode</strong> untuk uji coba sebelum di-release ke lantai produksi</li>
+                    <li>Buat <strong>Snapshot</strong> sebelum melakukan perubahan besar sebagai backup</li>
+                    <li>Simpan metadata lengkap (Doc Number, Version, Author) untuk memudahkan document control</li>
+                    <li>Compact Table layout cocok untuk quick reference, One Per Page untuk training slides</li>
                 </ul>
             </>
         )
@@ -251,7 +279,7 @@ export const helpContent = {
                 <h3 style={{ color: '#ffd700', marginTop: '20px' }}>📌 Fungsi</h3>
                 <p>Pusat pengelolaan model AI kustom dan pembuatan data latihan untuk Google Teachable Machine.</p>
 
-                <h3 style={{ color: '#ffd700', marginTop: '20px' }}>✂️ Video Slicer & Image Extraction</h3>
+                <h3 style={{ color: '#ffd700', marginTop: '20px' }}>✂️ Video Slicer &amp; Image Extraction</h3>
                 <ol>
                     <li>Upload video proses kerja</li>
                     <li>Gunakan slider <strong>Start</strong> dan <strong>End</strong> untuk menandai gerakan spesifik</li>
@@ -265,7 +293,7 @@ export const helpContent = {
                     <li><strong>CVAT.ai (Professional)</strong>: Standar industri untuk anotasi dataset besar. Gunakan file ZIP dari Video Slicer untuk diupload ke CVAT untuk anotasi profesional.</li>
                 </ul>
 
-                <h3 style={{ color: '#ffd700', marginTop: '20px' }}>🧪 Load & Test Model</h3>
+                <h3 style={{ color: '#ffd700', marginTop: '20px' }}>🧪 Load &amp; Test Model</h3>
                 <ol>
                     <li>Setelah model siap, copy URL model (untuk TM) atau endpoint model kustom Anda.</li>
                     <li>Pilih tipe (Pose/Image) dan paste URL tersebut di MAVi.</li>

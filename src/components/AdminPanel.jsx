@@ -29,16 +29,15 @@ import {
 } from 'lucide-react';
 import { generateLicenseKey } from '../utils/licenseUtils';
 import {
-    saveTursoCredentials,
-    clearTursoCredentials,
-    getTursoStatus,
-    isTursoConfigured,
-    getDefaultCredentials
-} from '../utils/tursoClient';
+    isSupabaseReady
+} from '../utils/supabaseManualDB';
 import {
+    getAllLicenses,
     createLicense,
     getAllLicenseRequests,
-    updateLicenseRequestStatus,
+    updateLicenseRequestStatus
+} from '../utils/supabaseLicenseDB';
+import {
     saveCloudInstaller,
     getAllCloudInstallers,
     deleteCloudInstaller,
@@ -46,7 +45,7 @@ import {
     upsertMenuVisibility,
     bulkUpsertMenuVisibility,
     resetMenuVisibilityToDefault
-} from '../utils/tursoAPI';
+} from '../utils/supabaseSettingsDB';
 import AdminLicenseManager from './AdminLicenseManager';
 import AdminYouTubeManager from './AdminYouTubeManager';
 import AdminLanguageControl from './AdminLanguageControl';
@@ -188,9 +187,12 @@ function AdminPanel() {
     }, []);
 
     const checkDbStatus = async () => {
-        setCheckingDb(true);
-        const status = await getTursoStatus();
-        setDbStatus(status);
+        const ready = isSupabaseReady();
+        setDbStatus({
+            configured: ready,
+            connected: ready,
+            mode: 'Supabase'
+        });
         setCheckingDb(false);
     };
 
@@ -252,6 +254,15 @@ function AdminPanel() {
             loadUsers();
         }
     }, [activeTab]);
+
+    const loadAllLicenses = async () => {
+        try {
+            const data = await getAllLicenses();
+            setAllLicenses(data || []);
+        } catch (error) {
+            console.error('Failed to load all licenses:', error);
+        }
+    };
 
     const loadInstallers = async () => {
         try {
@@ -472,95 +483,38 @@ function AdminPanel() {
 
     const loadLicenseRequests = async () => {
         try {
-            // Try fetching from Turso first
             const requests = await getAllLicenseRequests();
-            if (requests && requests.length > 0) {
-                setLicenseRequests(requests);
-            } else {
-                // Fallback to localStorage if Turso empty (migration phase)
-                const saved = localStorage.getItem('mavi_license_requests');
-                if (saved) {
-                    setLicenseRequests(JSON.parse(saved));
-                } else {
-                    setLicenseRequests([]);
-                }
-            }
+            setLicenseRequests(requests || []);
         } catch (error) {
             console.error("Failed to load requests:", error);
         }
     };
 
-    const loadAllLicenses = async () => {
-        console.log("Loading licenses from storage...");
-        try {
-            const saved = localStorage.getItem('mavi_generated_licenses');
-            console.log("Raw saved licenses:", saved);
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed)) {
-                    setAllLicenses(parsed);
-                    console.log("Licenses loaded:", parsed.length);
-                } else {
-                    console.error("Saved licenses is not an array:", parsed);
-                    setAllLicenses([]);
-                }
-            } else {
-                console.log("No saved licenses found, initializing empty.");
-                setAllLicenses([]);
-            }
-        } catch (error) {
-            console.error("Failed to load licenses:", error);
-            setAllLicenses([]);
-        }
-    };
+    // loadAllLicenses is already defined near line 255. 
+    // Removing the duplicated/localStorage-only version here.
 
     const [manualMachineId, setManualMachineId] = useState('');
 
     const handleUpdateRequestStatus = async (requestId, newStatus) => {
-        // Optimistic UI update
-        const updatedRequests = licenseRequests.map(req =>
-            req.id === requestId ? { ...req, status: newStatus } : req
-        );
-        setLicenseRequests(updatedRequests);
-
-        // Update to Turso
         try {
             await updateLicenseRequestStatus(requestId, newStatus);
-            // Also update localStorage for backup
-            localStorage.setItem('mavi_license_requests', JSON.stringify(updatedRequests));
-        } catch (error) {
-            console.error("Failed to update status in Turso:", error);
-        }
 
-        if (newStatus === 'approved') {
-            const req = updatedRequests.find(r => r.id === requestId);
-            const key = generateLicenseKey(req.machineId); // Pass machineId for hardware lock
+            // Refresh list
+            loadLicenseRequests();
 
-            // Save to Persistent License History
-            const newLicense = {
-                id: Date.now(),
-                key_string: key,
-                email: req.email,
-                machineId: req.machineId,
-                status: 'active',
-                created_at: new Date().toISOString()
-            };
+            if (newStatus === 'approved') {
+                const req = licenseRequests.find(r => r.id === requestId);
+                const key = generateLicenseKey(req.machineId);
 
-            const currentLicenses = [...allLicenses, newLicense];
-            setAllLicenses(currentLicenses);
-            localStorage.setItem('mavi_generated_licenses', JSON.stringify(currentLicenses));
+                // Create license in Supabase
+                await createLicense(key, req.email, req.machineId);
 
-            await showAlert('Success', `Request Approved for ${req.email}!\n\nGenerated Key: ${key}\n\nTarget Device: ${req.machineId || 'UNIVERSAL'}\n\nPlease send this key to the user.`);
-
-            // NEW: Sync to Turso Database
-            try {
-                console.log("Syncing new license to Turso:", req.email);
-                createLicense(key, req.email, req.machineId)
-                    .then(() => console.log("✅ Check: License synced to Turso"))
-                    .catch(err => console.error("❌ Failed to sync to Turso:", err));
-            } catch (err) {
-                console.error("Error initiating Turso sync:", err);
+                await showAlert('Success', `Request Approved for ${req.email}!\n\nGenerated Key: ${key}\n\nPlease send this key to the user.`);
+                loadAllLicenses();
             }
+        } catch (error) {
+            console.error("Failed to update status:", error);
+            await showAlert('Error', 'Failed to update request status.');
         }
     };
 
@@ -571,41 +525,9 @@ function AdminPanel() {
         }
         setIsGeneratingManual(true);
         try {
-            console.log("Generating manual key for:", manualEmail);
             const newKey = generateLicenseKey(manualMachineId);
             setGeneratedKey(newKey);
 
-            // Save to Persistent License History
-            const newLicense = {
-                id: Date.now(),
-                key_string: newKey,
-                email: manualEmail,
-                machineId: manualMachineId,
-                status: 'active',
-                created_at: new Date().toISOString()
-            };
-
-            // Get fresh state from storage to avoid easy race conditions
-            const saved = localStorage.getItem('mavi_generated_licenses');
-            let currentList = [];
-            try {
-                if (saved) currentList = JSON.parse(saved);
-                if (!Array.isArray(currentList)) currentList = [];
-            } catch (e) { console.error("Error parsing current licenses during save:", e); }
-
-            const updatedLicenses = [...currentList, newLicense];
-
-            console.log("Saving new license list:", updatedLicenses);
-            setAllLicenses(updatedLicenses);
-            localStorage.setItem('mavi_generated_licenses', JSON.stringify(updatedLicenses));
-
-            // In offline mode, we just give the key to the admin to give to the user
-            await showAlert('Success', `Key generated successfully!\n\nEmail: ${manualEmail}\nDevice Lock: ${manualMachineId || 'NO (Universal)'}\nKey: ${newKey}\n\nPlease provide this key to the user.`);
-
-            // NEW: Sync to Turso Database
-            createLicense(newKey, manualEmail, manualMachineId)
-                .then(() => console.log("✅ Manual key synced to Turso"))
-                .catch(err => console.error("❌ Failed to sync manual key to Turso:", err));
         } catch (error) {
             console.error('Error generating key:', error);
             await showAlert('Error', 'Failed to generate key.');

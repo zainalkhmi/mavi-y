@@ -40,7 +40,7 @@ import {
     ChevronDown, Trash2, Plus, Info, Video, CheckCircle,
     Activity, Shield, Play, VideoOff, X, BookOpen, Sun, Moon, Palette,
     Code, Copy, ExternalLink, Printer, Box, AlertTriangle, AlertOctagon,
-    Clock, Edit3,
+    Clock, Edit3, Send, XCircle,
     QrCode, Download
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -80,35 +80,56 @@ const readBlobAsDataUrl = (blob) => new Promise((resolve, reject) => {
     reader.readAsDataURL(blob);
 });
 
-const toPersistableSteps = (steps = [], fallbackVideoUrl = null) => {
-    return (Array.isArray(steps) ? steps : []).map((step) => {
-        const media = step?.media;
-        if (!media || typeof media !== 'object') return step;
+const toPersistableSteps = async (manualId, steps = [], fallbackVideoUrl = null) => {
+    const persistableSteps = [];
 
-        if (media.type === 'video') {
-            const url = media.url;
-            const normalizedUrl = isBlobUrl(url) ? (fallbackVideoUrl || null) : url;
-            return {
-                ...step,
-                media: {
-                    ...media,
-                    url: normalizedUrl
+    for (const step of steps) {
+        let media = step?.media;
+        let images = step.images || [];
+
+        // 1. Handle primary media (video/image)
+        if (media && typeof media === 'object') {
+            if (media.type === 'video') {
+                const url = media.url;
+                const normalizedUrl = isBlobUrl(url) ? (fallbackVideoUrl || null) : url;
+                media = { ...media, url: normalizedUrl };
+            } else if (media.type === 'image' && isBlobUrl(media.url)) {
+                try {
+                    const storagePath = `manuals/${manualId}/steps/${step.id}/main.jpg`;
+                    const publicUrl = await uploadDataUrlToSupabase(storagePath, media.url);
+                    media = { ...media, url: publicUrl };
+                } catch (err) {
+                    console.error('Failed to upload step main image:', err);
+                    media = { ...media, url: null };
                 }
-            };
+            }
         }
 
-        if (isBlobUrl(media.url)) {
-            return {
-                ...step,
-                media: {
-                    ...media,
-                    url: null
+        // 2. Handle multiple images gallery
+        const uploadedImages = [];
+        for (let i = 0; i < images.length; i++) {
+            const imgUrl = images[i];
+            if (isBlobUrl(imgUrl)) {
+                try {
+                    const storagePath = `manuals/${manualId}/steps/${step.id}/gallery_${i}.jpg`;
+                    const publicUrl = await uploadDataUrlToSupabase(storagePath, imgUrl);
+                    uploadedImages.push(publicUrl);
+                } catch (err) {
+                    console.error(`Failed to upload gallery image ${i}:`, err);
                 }
-            };
+            } else {
+                uploadedImages.push(imgUrl);
+            }
         }
 
-        return step;
-    });
+        persistableSteps.push({
+            ...step,
+            media,
+            images: uploadedImages
+        });
+    }
+
+    return persistableSteps;
 };
 
 const sanitizePathPart = (value) => String(value || '')
@@ -459,6 +480,7 @@ function ManualCreation() {
     const [operatorStepIndex, setOperatorStepIndex] = useState(0);
     const [operatorChecks, setOperatorChecks] = useState({});
     const [operatorDataCaptureAnswers, setOperatorDataCaptureAnswers] = useState({});
+    const [previewImageIndices, setPreviewImageIndices] = useState({});
 
     // Advanced AI State
     const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
@@ -512,8 +534,8 @@ function ManualCreation() {
     }, []);
 
     const manualPublicLink = `${window.location.origin}/#/manual/${guide.cloudId || guide.kbId || guide.id}?v=${encodeURIComponent(guide.version || '1.0')}`;
-    // Deep-link QR: menggunakan route yang benar (/manual-creation?manual=<id>) agar QR code bisa langsung membuka SOP
-    const manualQRLink = `${window.location.origin}/#/manual-creation?manual=${guide.cloudId || guide.kbId || guide.id}`;
+    // Deep-link QR: Points to the public viewer (/manual/ID) for instant mobile access
+    const manualQRLink = `${window.location.origin}/#/manual/${guide.cloudId || guide.kbId || guide.id}`;
     const buildStepPublicLink = (step, stepIndex) => {
         const stationName = step?.title || `Step ${stepIndex + 1}`;
         return `${manualPublicLink}&stepId=${encodeURIComponent(step?.id || '')}&step=${stepIndex + 1}&station=${encodeURIComponent(stationName)}`;
@@ -559,12 +581,21 @@ function ManualCreation() {
 
     // Deep link: jika URL mengandung ?manual=<id>, otomatis buka manual tersebut
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const manualIdFromUrl = params.get('manual');
+        // In HashRouter with react-router-dom, parameters after the path are often in location.search
+        // e.g. #/manual-creation?manual=123 -> location.search is "?manual=123"
+        let manualIdFromUrl = new URLSearchParams(location.search).get('manual');
+
+        // Fallback for cases where search is part of the hash string itself
+        if (!manualIdFromUrl && location.hash.includes('?')) {
+            const searchPart = location.hash.split('?')[1];
+            manualIdFromUrl = new URLSearchParams(searchPart).get('manual');
+        }
+
         if (manualIdFromUrl) {
+            console.log('Deep link detected, loading manual:', manualIdFromUrl);
             loadManualById(manualIdFromUrl);
         }
-    }, []);
+    }, [location.search, location.hash]);
 
     useEffect(() => {
         if (selectedProjectId && projects.length > 0) {
@@ -600,11 +631,17 @@ function ManualCreation() {
                 }
             }
         } else {
-            setSelectedProject(null);
-            setVideoSrc(null);
-            setPersistentVideoSrc(null);
-            setGuide(createDefaultGuide());
-            setActiveStepId(null);
+            // Only reset if we are NOT on a deep-link path and NOT already loading/loaded a manual.
+            const searchParams = new URLSearchParams(location.search);
+            const manualIdInUrl = searchParams.get('manual') || (location.hash.includes('?manual=') ? location.hash.split('?manual=')[1].split('&')[0] : null);
+
+            if (!manualIdInUrl) {
+                setSelectedProject(null);
+                setVideoSrc(null);
+                setPersistentVideoSrc(null);
+                setGuide(createDefaultGuide());
+                setActiveStepId(null);
+            }
         }
     }, [selectedProjectId, projects]);
 
@@ -631,34 +668,40 @@ function ManualCreation() {
         return `${major}.${minor + 1}`;
     };
 
-    const buildGuideSnapshot = (currentGuide = guide) => ({
-        title: currentGuide.title,
-        summary: currentGuide.summary,
-        difficulty: currentGuide.difficulty,
-        timeRequired: currentGuide.timeRequired,
-        documentNumber: currentGuide.documentNumber,
-        version: currentGuide.version,
-        status: currentGuide.status,
-        author: currentGuide.author,
-        revisionDate: currentGuide.revisionDate,
-        effectiveDate: currentGuide.effectiveDate,
-        headerOrder: currentGuide.headerOrder,
-        workflow: currentGuide.workflow,
-        templateFields: currentGuide.templateFields,
-        approvalMatrix: currentGuide.approvalMatrix,
-        approvalRequests: currentGuide.approvalRequests,
-        assignments: currentGuide.assignments,
-        auditTrail: currentGuide.auditTrail,
-        stepComments: currentGuide.stepComments,
-        issueReports: currentGuide.issueReports,
-        notifications: currentGuide.notifications,
-        eSignatures: currentGuide.eSignatures,
-        readAcks: currentGuide.readAcks,
-        stepStatusMap: currentGuide.stepStatusMap,
-        stepChangeLog: currentGuide.stepChangeLog,
-        sourceVideoUrl: currentGuide.sourceVideoUrl || persistentVideoSrc || null,
-        steps: toPersistableSteps(currentGuide.steps, currentGuide.sourceVideoUrl || persistentVideoSrc || null)
-    });
+    const buildGuideSnapshot = async (currentGuide = guide) => {
+        const manualId = currentGuide.id || generateId();
+        const finalSteps = await toPersistableSteps(manualId, currentGuide.steps, currentGuide.sourceVideoUrl || persistentVideoSrc || null);
+
+        return {
+            id: manualId,
+            title: currentGuide.title,
+            summary: currentGuide.summary,
+            difficulty: currentGuide.difficulty,
+            timeRequired: currentGuide.timeRequired,
+            documentNumber: currentGuide.documentNumber,
+            version: currentGuide.version,
+            status: currentGuide.status,
+            author: currentGuide.author,
+            revisionDate: currentGuide.revisionDate,
+            effectiveDate: currentGuide.effectiveDate,
+            headerOrder: currentGuide.headerOrder,
+            workflow: currentGuide.workflow,
+            templateFields: currentGuide.templateFields,
+            approvalMatrix: currentGuide.approvalMatrix,
+            approvalRequests: currentGuide.approvalRequests,
+            assignments: currentGuide.assignments,
+            auditTrail: currentGuide.auditTrail,
+            stepComments: currentGuide.stepComments,
+            issueReports: currentGuide.issueReports,
+            notifications: currentGuide.notifications,
+            eSignatures: currentGuide.eSignatures,
+            readAcks: currentGuide.readAcks,
+            stepStatusMap: currentGuide.stepStatusMap,
+            stepChangeLog: currentGuide.stepChangeLog,
+            sourceVideoUrl: currentGuide.sourceVideoUrl || persistentVideoSrc || null,
+            steps: finalSteps
+        };
+    };
 
     const appendStepAuditEvent = (prevGuide, stepId, action, details = '') => {
         const entry = {
@@ -1262,8 +1305,9 @@ function ManualCreation() {
         const isUpdate = Boolean(guide.id && String(guide.id).includes('-'));
 
         try {
+            const snapshot = await buildGuideSnapshot(guide);
             const result = await upsertManual({
-                id: isUpdate ? guide.id : undefined,
+                id: isUpdate ? guide.id : snapshot.id,
                 title: guide.title,
                 summary: guide.summary || '',
                 description: guide.summary || '',
@@ -1277,7 +1321,7 @@ function ManualCreation() {
                 industry: guide.category || '',
                 createdAt: guide.createdAt || new Date().toISOString(),
                 content: {
-                    ...buildGuideSnapshot(guide),
+                    ...snapshot,
                     status: guide.workflow?.status || guide.status || 'Draft'
                 }
             });
@@ -1699,8 +1743,12 @@ function ManualCreation() {
     };
 
 
-    const handleCaptureFrame = () => {
-        if (!videoRef.current || !activeStepId) return;
+    const handleCaptureFrame = async () => {
+        if (!videoRef.current) {
+            await showAlert('Video Required', 'Please upload a source video first to capture frames and create your manual.');
+            return;
+        }
+        if (!activeStepId) return;
 
         const canvas = document.createElement('canvas');
         canvas.width = videoRef.current.videoWidth;
@@ -3543,18 +3591,43 @@ function ManualCreation() {
                                             return (
                                                 <div key={step.id || idx} className="dozuki-step-card">
                                                     {/* Media Side */}
-                                                    <div style={{ position: 'relative' }}>
-                                                        {step.media && step.media.url ? (
-                                                            <div style={{ width: '100%', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.1)', background: '#000' }}>
-                                                                {step.media.type === 'video' ? (
-                                                                    <video src={step.media.url} style={{ width: '100%', display: 'block' }} controls />
-                                                                ) : (
-                                                                    <img src={step.media.url} alt={step.title} style={{ width: '100%', display: 'block' }} />
-                                                                )}
-                                                            </div>
-                                                        ) : (
-                                                            <div style={{ width: '100%', aspectRatio: '4/3', borderRadius: '20px', border: '2px dashed #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1' }}>
-                                                                <VideoOff size={32} />
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                                        <div style={{ position: 'relative', width: '100%', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.1)', background: '#000', aspectRatio: '4/3' }}>
+                                                            {step.media?.type === 'video' ? (
+                                                                <video src={step.media.url} style={{ width: '100%', height: '100%', objectFit: 'contain' }} controls />
+                                                            ) : (step.images?.length > 0 || step.media?.url) ? (
+                                                                <img
+                                                                    src={step.images?.[previewImageIndices[step.id] || 0] || step.media?.url}
+                                                                    alt={step.title}
+                                                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                                                />
+                                                            ) : (
+                                                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1' }}>
+                                                                    <VideoOff size={32} />
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Thumbnails if multiple images */}
+                                                        {step.images?.length > 1 && (
+                                                            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
+                                                                {step.images.map((img, imgIdx) => (
+                                                                    <img
+                                                                        key={imgIdx}
+                                                                        src={img}
+                                                                        onClick={() => setPreviewImageIndices(prev => ({ ...prev, [step.id]: imgIdx }))}
+                                                                        style={{
+                                                                            width: '80px',
+                                                                            height: '60px',
+                                                                            objectFit: 'cover',
+                                                                            borderRadius: '8px',
+                                                                            border: (previewImageIndices[step.id] || 0) === imgIdx ? '2px solid #3b82f6' : '1px solid rgba(0,0,0,0.1)',
+                                                                            cursor: 'pointer',
+                                                                            transition: 'all 0.2s'
+                                                                        }}
+                                                                        alt={`Thumbnail ${imgIdx + 1}`}
+                                                                    />
+                                                                ))}
                                                             </div>
                                                         )}
                                                     </div>
@@ -3856,6 +3929,7 @@ function ManualCreation() {
                                                 activeImageIndex={activeImageIndex}
                                                 setActiveImageIndex={setActiveImageIndex}
                                                 tt={tt}
+                                                globalVideoSrc={videoSrc}
                                             />
                                         </div>
                                     </div>
@@ -3944,41 +4018,240 @@ function ManualCreation() {
                                 )}
 
                                 {activeTab === 'management' && (
-                                    <div style={{ display: 'grid', gap: '16px', animation: 'fadeIn 0.3s' }}>
-                                        <div className="glass-panel" style={{ padding: '16px' }}>
-                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '12px' }}>Approval Matrix</div>
-                                            {/* Summary list instead of full table to save space */}
-                                            <div style={{ display: 'grid', gap: '8px' }}>
-                                                {(guide.approvalMatrix || []).map(level => (
-                                                    <div key={level.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                                        <span>L{level.level} {level.role}</span>
-                                                        <span style={{ opacity: 0.6 }}>{level.approverName}</span>
+                                    <div style={{ display: 'grid', gap: '20px', animation: 'fadeIn 0.3s' }}>
+                                        {/* Workflow Status Summary */}
+                                        <div className="glass-panel" style={{ padding: '20px', borderLeft: `6px solid ${guide.status === 'Released' ? '#10b981' : guide.status === 'Approved' ? '#3b82f6' : guide.status === 'In Review' ? '#f59e0b' : '#94a3b8'}` }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                                <div>
+                                                    <div style={{ fontSize: '0.75rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '700' }}>Current Workflow Status</div>
+                                                    <div style={{ fontSize: '1.5rem', fontWeight: '900', color: guide.status === 'Released' ? '#10b981' : guide.status === 'Approved' ? '#3b82f6' : guide.status === 'In Review' ? '#f59e0b' : '#fff' }}>
+                                                        {guide.status}
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '12px' }}>
+                                                    {guide.status === 'Draft' && (
+                                                        <button
+                                                            onClick={handleSubmitForApproval}
+                                                            className="btn-pro"
+                                                            style={{ background: 'var(--mc-accent-gradient)', border: 'none', color: 'white', padding: '10px 24px', borderRadius: '12px', fontWeight: '700', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)' }}
+                                                        >
+                                                            <Send size={18} /> Submit for Approval
+                                                        </button>
+                                                    )}
+                                                    {guide.status === 'Approved' && (
+                                                        <button
+                                                            onClick={() => handleWorkflowStatusChange('Released')}
+                                                            className="btn-pro"
+                                                            style={{ background: 'linear-gradient(135deg, #059669, #10b981)', border: 'none', color: 'white', padding: '10px 24px', borderRadius: '12px', fontWeight: '700', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)' }}
+                                                        >
+                                                            <CheckCircle size={18} /> Release Manual
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div style={{ fontSize: '0.88rem', opacity: 0.7, lineHeight: '1.5' }}>
+                                                {guide.status === 'Draft' && "The manual is currently in Draft mode. You can edit content and setup the approval matrix before submitting for review."}
+                                                {guide.status === 'In Review' && "The manual is under review. Pending approval from designated reviewers in the matrix below."}
+                                                {guide.status === 'Approved' && "All required approvals have been obtained. The manual can now be officially Released for production use."}
+                                                {guide.status === 'Released' && "This manual has been released and is active. Scanning the QR code will show this version to operators."}
+                                            </div>
+                                        </div>
+
+                                        {/* Approval Matrix Configuration */}
+                                        <div className="glass-panel" style={{ padding: '24px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
+                                                        <Shield size={18} />
+                                                    </div>
+                                                    <div style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Approval Matrix Configuration</div>
+                                                </div>
+                                                {guide.status === 'Draft' && (
+                                                    <button
+                                                        onClick={handleAddApprovalLevel}
+                                                        className="btn-pro"
+                                                        style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}
+                                                    >
+                                                        <Plus size={14} /> Add Review Level
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                {(guide.approvalMatrix || []).map((level, idx) => (
+                                                    <div key={level.id} style={{
+                                                        display: 'grid',
+                                                        gridTemplateColumns: '50px 1.5fr 2fr 40px',
+                                                        gap: '16px',
+                                                        alignItems: 'center',
+                                                        background: 'rgba(255,255,255,0.02)',
+                                                        padding: '14px 20px',
+                                                        borderRadius: '16px',
+                                                        border: '1px solid rgba(255,255,255,0.06)',
+                                                        transition: 'all 0.2s'
+                                                    }}>
+                                                        <div style={{
+                                                            width: '32px', height: '32px', borderRadius: '50%',
+                                                            background: 'rgba(255,255,255,0.05)',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            fontSize: '0.8rem', fontWeight: '900', color: 'rgba(255,255,255,0.5)'
+                                                        }}>
+                                                            {idx + 1}
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                            <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.4, fontWeight: '800' }}>Reviewer Role</div>
+                                                            <input
+                                                                placeholder="e.g. Quality Manager"
+                                                                value={level.role || ''}
+                                                                onChange={(e) => handleUpdateApprovalLevel(level.id, 'role', e.target.value)}
+                                                                disabled={guide.status !== 'Draft'}
+                                                                style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '8px 12px', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
+                                                            />
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                            <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.4, fontWeight: '800' }}>Approver Name (Optional)</div>
+                                                            <input
+                                                                placeholder="Exact Name"
+                                                                value={level.approverName || ''}
+                                                                onChange={(e) => handleUpdateApprovalLevel(level.id, 'approverName', e.target.value)}
+                                                                disabled={guide.status !== 'Draft'}
+                                                                style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '8px 12px', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
+                                                            />
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                                            {guide.status === 'Draft' && (
+                                                                <button
+                                                                    onClick={() => handleRemoveApprovalLevel(level.id)}
+                                                                    title="Remove level"
+                                                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', opacity: 0.6, transition: '0.2s', padding: '4px', borderRadius: '4px' }}
+                                                                    onMouseOver={(e) => e.currentTarget.style.opacity = '1'}
+                                                                    onMouseOut={(e) => e.currentTarget.style.opacity = '0.6'}
+                                                                >
+                                                                    <Trash2 size={18} />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 ))}
-                                                <button onClick={handleAddApprovalLevel} className="btn-pro" style={{ marginTop: '8px', fontSize: '0.75rem' }}><Plus size={12} /> Add Level</button>
+                                                {(!guide.approvalMatrix || guide.approvalMatrix.length === 0) && (
+                                                    <div style={{ textAlign: 'center', padding: '40px', background: 'rgba(255,255,255,0.01)', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                                                        <Shield size={32} style={{ opacity: 0.1, marginBottom: '12px' }} />
+                                                        <div style={{ opacity: 0.4, fontSize: '0.9rem' }}>No approval levels defined. Click "Add Review Level" to start.</div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
-                                        <div className="glass-panel" style={{ padding: '16px' }}>
-                                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '12px' }}>Compliance</div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                                <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                                                    <div style={{ fontSize: '0.7rem', opacity: 0.5 }}>Completion</div>
-                                                    <div style={{ fontSize: '1.1rem', fontWeight: '700' }}>{completionRate}%</div>
+                                        {/* Approval Requests Tracking */}
+                                        {(guide.status === 'In Review' || (guide.approvalRequests || []).length > 0) && (
+                                            <div className="glass-panel" style={{ padding: '24px', borderTop: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
+                                                        <Clock size={18} />
+                                                    </div>
+                                                    <div style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Approval Workflow Tracking</div>
                                                 </div>
-                                                <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                                                    <div style={{ fontSize: '0.7rem', opacity: 0.5 }}>Compliance</div>
-                                                    <div style={{ fontSize: '1.1rem', fontWeight: '700' }}>{firstPassCompliance}%</div>
-                                                </div>
-                                            </div>
-                                        </div>
 
-                                        <div className="glass-panel" style={{ padding: '16px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '700' }}>Assignments</div>
-                                                <button onClick={handleAddAssignment} className="btn-pro" style={{ fontSize: '0.75rem' }}><Plus size={12} /></button>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                                    {(guide.approvalRequests || []).map((req, idx) => (
+                                                        <div key={req.id} style={{
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: 'center',
+                                                            background: 'rgba(255,255,255,0.02)',
+                                                            padding: '20px',
+                                                            borderRadius: '16px',
+                                                            border: '1px solid rgba(255,255,255,0.06)',
+                                                            borderLeft: `4px solid ${req.status === 'Approved' ? '#10b981' : req.status === 'Rejected' ? '#ef4444' : '#f59e0b'}`
+                                                        }}>
+                                                            <div style={{ flex: 1 }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                                                                    <div style={{ fontSize: '0.65rem', background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)', padding: '3px 8px', borderRadius: '6px', fontWeight: '900' }}>LEVEL {req.level}</div>
+                                                                    <div style={{ fontWeight: '800', fontSize: '1.1rem' }}>{req.role}</div>
+                                                                </div>
+                                                                <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>Approver: <span style={{ color: '#fff', fontWeight: '600' }}>{req.approverName || (idx === 0 ? guide.author : 'Any Reviewer')}</span></div>
+                                                                {req.actedAt && (
+                                                                    <div style={{ fontSize: '0.75rem', opacity: 0.4, marginTop: '4px' }}>
+                                                                        Last Action: {new Date(req.actedAt).toLocaleString()}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
+                                                                <div style={{
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: '900',
+                                                                    textTransform: 'uppercase',
+                                                                    padding: '4px 12px',
+                                                                    borderRadius: '99px',
+                                                                    background: req.status === 'Approved' ? 'rgba(16, 185, 129, 0.1)' : req.status === 'Rejected' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                                                                    color: req.status === 'Approved' ? '#10b981' : req.status === 'Rejected' ? '#ef4444' : '#f59e0b',
+                                                                    border: `1px solid ${req.status === 'Approved' ? 'rgba(16, 185, 129, 0.2)' : req.status === 'Rejected' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`
+                                                                }}>
+                                                                    {req.status}
+                                                                </div>
+
+                                                                {req.status === 'Pending' && guide.status === 'In Review' && (
+                                                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                                                        <button
+                                                                            onClick={() => handleApprovalAction(req.id, 'Rejected')}
+                                                                            className="btn-pro"
+                                                                            style={{ fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                                                                        >
+                                                                            Reject Request
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleApprovalAction(req.id, 'Approved')}
+                                                                            className="btn-pro"
+                                                                            style={{ fontSize: '0.8rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.2)' }}
+                                                                        >
+                                                                            Approve Level
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
-                                            <span style={{ fontSize: '0.85rem', opacity: 0.6 }}>{assignments.length} assignments active.</span>
+                                        )}
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                            <div className="glass-panel" style={{ padding: '24px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '800', marginBottom: '20px' }}>
+                                                    <Activity size={16} /> Compliance Metrics
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                                    <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                        <div style={{ fontSize: '0.7rem', opacity: 0.5, marginBottom: '8px' }}>Global Completion</div>
+                                                        <div style={{ fontSize: '1.5rem', fontWeight: '900' }}>{completionRate}%</div>
+                                                    </div>
+                                                    <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                        <div style={{ fontSize: '0.7rem', opacity: 0.5, marginBottom: '8px' }}>First-Pass Compliance</div>
+                                                        <div style={{ fontSize: '1.5rem', fontWeight: '900' }}>{firstPassCompliance}%</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="glass-panel" style={{ padding: '24px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontWeight: '800' }}>
+                                                        <BookOpen size={16} /> Personnel Assignments
+                                                    </div>
+                                                    <button onClick={handleAddAssignment} className="btn-pro" style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.05)' }}>
+                                                        <Plus size={14} /> New Assignment
+                                                    </button>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+                                                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
+                                                        <BarChart3 size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontSize: '1rem', fontWeight: '800' }}>{assignments.length} Total</div>
+                                                        <div style={{ fontSize: '0.75rem', opacity: 0.5 }}>Currently active assignments</div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 )}

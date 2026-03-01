@@ -10,7 +10,7 @@
  *
  * For Manual Creation storage, use supabaseManualDB.js.
  */
-import { getSupabaseClient, isSupabaseReady, listManuals, getManualById } from './supabaseManualDB.js';
+import { getSupabaseClient, isSupabaseReady, listManuals, getManualById, upsertManual, deleteManual } from './supabaseManualDB.js';
 
 // ── Fallback localStorage key (kept for backwards compat) ───────────
 const KB_FALLBACK_KEY = 'mavi_kb_fallback_v1';
@@ -26,8 +26,19 @@ const readFallbackItems = () => {
 // ── CRUD operations (now delegated to Supabase) ─────────────────────
 
 export const addKnowledgeBaseItem = async (item) => {
-    console.warn('[knowledgeBaseDB] Use supabaseManualDB.upsertManual instead.');
-    return { id: null, source: 'stub' };
+    if (isSupabaseReady()) {
+        try {
+            return await upsertManual(item);
+        } catch (e) {
+            console.error('[knowledgeBaseDB] addKnowledgeBaseItem failed:', e);
+        }
+    }
+    console.warn('[knowledgeBaseDB] Supabase not ready, using local fallback.');
+    const items = readFallbackItems();
+    const newItem = { ...item, id: `local_${Date.now()}` };
+    items.push(newItem);
+    window.localStorage.setItem(KB_FALLBACK_KEY, JSON.stringify(items));
+    return newItem;
 };
 
 export const getAllKnowledgeBaseItems = async () => {
@@ -53,8 +64,36 @@ export const getKnowledgeBaseItem = async (id) => {
     return readFallbackItems().find(i => String(i.id) === String(id)) || null;
 };
 
-export const updateKnowledgeBaseItem = async () => null;
-export const deleteKnowledgeBaseItem = async () => null;
+export const updateKnowledgeBaseItem = async (id, item) => {
+    if (isSupabaseReady()) {
+        try {
+            return await upsertManual({ ...item, id });
+        } catch (e) {
+            console.error('[knowledgeBaseDB] updateKnowledgeBaseItem failed:', e);
+        }
+    }
+    const items = readFallbackItems();
+    const idx = items.findIndex(i => String(i.id) === String(id));
+    if (idx !== -1) {
+        items[idx] = { ...items[idx], ...item };
+        window.localStorage.setItem(KB_FALLBACK_KEY, JSON.stringify(items));
+    }
+    return null;
+};
+
+export const deleteKnowledgeBaseItem = async (id) => {
+    if (isSupabaseReady()) {
+        try {
+            return await deleteManual(id);
+        } catch (e) {
+            console.error('[knowledgeBaseDB] deleteKnowledgeBaseItem failed:', e);
+        }
+    }
+    const items = readFallbackItems();
+    const filtered = items.filter(i => String(i.id) !== String(id));
+    window.localStorage.setItem(KB_FALLBACK_KEY, JSON.stringify(filtered));
+    return true;
+};
 
 // ── Tags ────────────────────────────────────────────────────────────
 export const addTagsToItem = async () => { };

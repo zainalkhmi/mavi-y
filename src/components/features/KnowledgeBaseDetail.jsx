@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Star, ThumbsUp, Download, Play, ExternalLink, TrendingUp, Eye, Calendar, Tag, Trash } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
     getKnowledgeBaseItem,
     getTagsForItem,
@@ -15,6 +16,7 @@ import { importManualPackageZip, getManualPackageLocal } from '../../utils/manua
 import { useDialog } from '../../contexts/DialogContext';
 
 function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
+    const navigate = useNavigate();
     const { showAlert, showConfirm } = useDialog();
     const [tags, setTags] = useState([]);
     const [ratings, setRatings] = useState([]);
@@ -194,7 +196,7 @@ function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
 
                 if (!kbId) throw new Error('Failed to prepare manual for opening.');
 
-                window.location.hash = `/manual-creation?manual=${encodeURIComponent(String(kbId))}`;
+                navigate(`/manual-creation?manual=${encodeURIComponent(String(kbId))}`);
                 onClose();
                 return;
             } catch (error) {
@@ -218,7 +220,7 @@ function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
             return;
         }
 
-        window.location.hash = `/manual-creation?manual=${encodeURIComponent(String(manualId))}`;
+        navigate(`/manual-creation?manual=${encodeURIComponent(String(manualId))}`);
         onClose();
     };
 

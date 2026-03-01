@@ -14,7 +14,8 @@ const StepMediaControls = ({
     handleStepUpdate,
     activeImageIndex,
     setActiveImageIndex,
-    tt
+    tt,
+    globalVideoSrc
 }) => {
     if (!step) return null;
 
@@ -54,6 +55,7 @@ const StepMediaControls = ({
                 <button
                     onClick={onCaptureImage}
                     className="btn-pro"
+                    disabled={!globalVideoSrc}
                     style={{
                         flex: '1 1 45%',
                         padding: '8px',
@@ -62,10 +64,12 @@ const StepMediaControls = ({
                         justifyContent: 'center',
                         gap: '6px',
                         fontSize: '0.75rem',
-                        backgroundColor: 'rgba(37, 99, 235, 0.15)',
-                        color: '#93c5fd',
-                        border: '1px solid rgba(59, 130, 246, 0.3)',
-                        borderRadius: '8px'
+                        backgroundColor: globalVideoSrc ? 'rgba(37, 99, 235, 0.15)' : 'rgba(255,255,255,0.05)',
+                        color: globalVideoSrc ? '#93c5fd' : 'rgba(255,255,255,0.3)',
+                        border: `1px solid ${globalVideoSrc ? 'rgba(59, 130, 246, 0.3)' : 'rgba(255,255,255,0.1)'}`,
+                        borderRadius: '8px',
+                        cursor: globalVideoSrc ? 'pointer' : 'not-allowed',
+                        opacity: globalVideoSrc ? 1 : 0.6
                     }}
                 >
                     <Camera size={14} />
@@ -214,7 +218,7 @@ const StepMediaControls = ({
             }}>
                 Drag to rearrange
             </div>
-        </div>
+        </div >
     );
 };
 

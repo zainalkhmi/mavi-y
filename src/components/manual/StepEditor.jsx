@@ -280,37 +280,84 @@ const StepEditor = ({
                         ) : mainImage ? (
                             <img src={mainImage} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Step Main" />
                         ) : (
-                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.1)' }}>
+                            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.1)', gap: '16px' }}>
                                 <Image size={64} />
+                                {globalVideoSrc && (
+                                    <button
+                                        onClick={onCaptureImage}
+                                        style={{
+                                            padding: '10px 20px',
+                                            background: '#2563eb',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '10px',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            fontSize: '0.9rem',
+                                            fontWeight: '600',
+                                            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)'
+                                        }}
+                                    >
+                                        <Camera size={18} /> {tt('manual.captureFrame', 'Capture from Video')}
+                                    </button>
+                                )}
                             </div>
                         )}
                         {mainImage && (
-                            <button
-                                onClick={() => setShowMarkup(true)}
-                                title="Edit Image / Markup"
-                                style={{
-                                    position: 'absolute',
-                                    bottom: 16,
-                                    right: 16,
-                                    background: 'rgba(15, 23, 42, 0.8)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    color: '#fff',
-                                    borderRadius: '8px',
-                                    padding: '8px',
-                                    cursor: 'pointer',
-                                    backdropFilter: 'blur(4px)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    fontSize: '0.8rem',
-                                    transition: 'all 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(37, 99, 235, 0.8)'}
-                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(15, 23, 42, 0.8)'}
-                            >
-                                <Sparkles size={14} style={{ color: '#60a5fa' }} />
-                                Markup
-                            </button>
+                            <div style={{ position: 'absolute', bottom: 16, right: 16, left: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                {globalVideoSrc && (
+                                    <button
+                                        onClick={onCaptureImage}
+                                        title="Capture New Image"
+                                        style={{
+                                            background: 'rgba(37, 99, 235, 0.85)',
+                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            color: '#fff',
+                                            borderRadius: '8px',
+                                            padding: '8px 12px',
+                                            cursor: 'pointer',
+                                            backdropFilter: 'blur(4px)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            fontSize: '0.78rem',
+                                            fontWeight: '600',
+                                            transition: 'all 0.2s',
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                                        }}
+                                    >
+                                        <Camera size={14} />
+                                        Capture
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => setShowMarkup(true)}
+                                    title="Edit Image / Markup"
+                                    style={{
+                                        background: 'rgba(15, 23, 42, 0.8)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        color: '#fff',
+                                        borderRadius: '8px',
+                                        padding: '8px 12px',
+                                        cursor: 'pointer',
+                                        backdropFilter: 'blur(4px)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        fontSize: '0.78rem',
+                                        fontWeight: '600',
+                                        transition: 'all 0.2s',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(37, 99, 235, 0.8)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(15, 23, 42, 0.8)'}
+                                >
+                                    <Sparkles size={14} style={{ color: '#60a5fa' }} />
+                                    Markup
+                                </button>
+                            </div>
                         )}
                     </div>
 

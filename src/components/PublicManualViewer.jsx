@@ -600,30 +600,29 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                 <div className="dozuki-body">
                     <div className="dozuki-left">
                         <div className="dozuki-media-main">
-                            {currentStep?.media && (
-                                <div style={{ width: '100%', height: '100%' }}>
-                                    {(!currentStep.media.type || currentStep.media.type === 'image') && currentStep.media.url && (
-                                        <img src={currentStep.media.url} alt={currentStep.title || 'Step media'} />
-                                    )}
-                                    {currentStep.media.type === 'video' && currentStep.media.url && (
+                            {currentStep?.media?.url || (currentStep?.images && currentStep.images.length > 0) ? (
+                                <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                                    {currentStep.media?.type === 'video' ? (
                                         <video
                                             src={`${currentStep.media.url}#t=${currentStep.startTime || 0}${currentStep.duration ? ',' + (Math.round(((currentStep.startTime || 0) + currentStep.duration) * 10) / 10) : ''}`}
                                             controls
+                                            style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
+                                        />
+                                    ) : currentStep.media?.type === 'youtube' && currentStep.media.youtubeUrl ? (
+                                        <iframe
+                                            src={currentStep.media.youtubeUrl.replace('watch?v=', 'embed/').split('&')[0]}
+                                            style={{ width: '100%', height: '100%', border: 'none' }}
+                                            allowFullScreen
+                                        />
+                                    ) : (
+                                        <img
+                                            src={currentStep.media?.url || currentStep.images[0]}
+                                            alt={currentStep.title || 'Step images'}
                                             style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                                         />
                                     )}
-                                    {currentStep.media.type === 'youtube' && currentStep.media.youtubeUrl && (
-                                        <div style={{ position: 'relative', width: '100%', height: '100%', background: '#000' }}>
-                                            <iframe
-                                                src={currentStep.media.youtubeUrl.replace('watch?v=', 'embed/').split('&')[0]}
-                                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-                                                allowFullScreen
-                                            />
-                                        </div>
-                                    )}
                                 </div>
-                            )}
-                            {!currentStep?.media && (
+                            ) : (
                                 <div style={{ color: '#5f6f83', fontWeight: 700 }}>No media for this step</div>
                             )}
                         </div>
@@ -635,8 +634,8 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                                     className={`dozuki-thumb ${idx === currentStepIndex ? 'active' : ''}`}
                                     onClick={() => setCurrentStepIndex(idx)}
                                 >
-                                    {step?.media?.url ? (
-                                        <img src={step.media.url} alt={step.title || `Step ${idx + 1}`} />
+                                    {(step?.media?.url || (step?.images && step.images.length > 0)) ? (
+                                        <img src={step.media?.url || step.images[0]} alt={step.title || `Step ${idx + 1}`} />
                                     ) : (
                                         <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: '#617489', fontWeight: 700, fontSize: 12 }}>
                                             Step {idx + 1}
@@ -671,7 +670,36 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                             <div className="dozuki-step-title">{currentStep?.title || 'Untitled Step'}</div>
                         </div>
 
-                        <div className="dozuki-instructions" dangerouslySetInnerHTML={{ __html: currentStep?.instructions || '<p>No instruction available.</p>' }} />
+                        <div className="dozuki-instructions">
+                            <div dangerouslySetInnerHTML={{ __html: currentStep?.instructions || '<p>No instruction available.</p>' }} />
+
+                            {/* Bullets & Structured Info */}
+                            {Array.isArray(currentStep?.bullets) && currentStep.bullets.length > 0 && (
+                                <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {currentStep.bullets.map((bullet, bIdx) => {
+                                        const bColor = bullet.type === 'warning' ? '#f59e0b' : bullet.type === 'caution' ? '#ef4444' : bullet.type === 'note' ? '#3b82f6' : '#475569';
+                                        return (
+                                            <div key={bIdx} style={{
+                                                display: 'flex',
+                                                gap: '10px',
+                                                padding: '10px',
+                                                borderRadius: '8px',
+                                                background: '#fff',
+                                                borderLeft: `4px solid ${bColor}`,
+                                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                                            }}>
+                                                <div style={{ fontWeight: '800', fontSize: '11px', textTransform: 'uppercase', color: bColor, minWidth: '60px' }}>
+                                                    {bullet.type || 'step'}
+                                                </div>
+                                                <div style={{ fontSize: '13px', color: '#1e293b' }}>
+                                                    {bullet.text}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
 
                         {currentQuestions.length > 0 && (
                             <div className="dozuki-q-panel">

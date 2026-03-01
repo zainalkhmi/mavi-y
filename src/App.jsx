@@ -209,7 +209,13 @@ function AppContent() {
       const [manualId] = manualPath.split('?');
       if (manualId) {
         setQrManualId(manualId);
-        navigate('/knowledge-base');
+      }
+    } else if (hash.includes('manual=')) {
+      // Support for #/manual-creation?manual=... or similar
+      const urlPart = hash.split('?')[1] || '';
+      const manualId = new URLSearchParams(urlPart).get('manual');
+      if (manualId) {
+        setQrManualId(manualId);
       }
     }
   }, [navigate]);

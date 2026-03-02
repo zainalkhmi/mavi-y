@@ -197,11 +197,9 @@ function ManualCreation() {
             'manual.uploadingToAI': 'Uploading to AI...',
             'manual.openMaviChat': 'Open Mavi Chat',
             'manual.hideMaviChat': 'Hide Mavi Chat',
-            'manual.statuses.draft': 'Draft',
-            'manual.statuses.proposed': 'Proposed',
-            'manual.statuses.review': 'In Review',
-            'manual.statuses.approved': 'Approved',
-            'manual.statuses.released': 'Released',
+            'manual.statuses.draft': 'DRAFT',
+            'manual.statuses.review': 'REVIEW',
+            'manual.statuses.published': 'PUBLISHED',
             'manual.alerts.enterTitle': 'Please enter manual title first.',
             'manual.alerts.saveSuccess': 'Manual saved successfully!',
             'manual.alerts.updateSuccess': 'Manual updated successfully!',
@@ -258,11 +256,9 @@ function ManualCreation() {
             'manual.uploadingToAI': 'Mengunggah ke AI...',
             'manual.openMaviChat': 'Buka Mavi Chat',
             'manual.hideMaviChat': 'Sembunyikan Mavi Chat',
-            'manual.statuses.draft': 'Draft',
-            'manual.statuses.proposed': 'Usulan',
-            'manual.statuses.review': 'Dalam Review',
-            'manual.statuses.approved': 'Disetujui',
-            'manual.statuses.released': 'Dirilis',
+            'manual.statuses.draft': 'DRAFT',
+            'manual.statuses.review': 'REVIEW',
+            'manual.statuses.published': 'PUBLISHED',
             'manual.embedGuide': 'Sematkan Panduan',
             'manual.embedCode': 'Kode Semat',
             'manual.copyCode': 'Salin Kode',
@@ -292,11 +288,9 @@ function ManualCreation() {
             'manual.uploadingToAI': 'AIへアップロード中...',
             'manual.openMaviChat': 'Maviチャットを開く',
             'manual.hideMaviChat': 'Maviチャットを閉じる',
-            'manual.statuses.draft': '下書き',
-            'manual.statuses.proposed': '提案済み',
-            'manual.statuses.review': 'レビュー中',
-            'manual.statuses.approved': '承認済み',
-            'manual.statuses.released': '公開済み',
+            'manual.statuses.draft': 'DRAFT',
+            'manual.statuses.review': 'REVIEW',
+            'manual.statuses.published': 'PUBLISHED',
             'manual.embedGuide': 'ガイドを埋め込む',
             'manual.embedCode': '埋め込みコード',
             'manual.copyCode': 'コードをコピー',
@@ -332,6 +326,9 @@ function ManualCreation() {
     const [showSessionSummary, setShowSessionSummary] = useState(false);
     const [syncStatus, setSyncStatus] = useState('idle'); // idle, syncing, saved, error
     const [isHistorySidebarOpen, setIsHistorySidebarOpen] = useState(false);
+    const [isManualOpening, setIsManualOpening] = useState(false);
+    const [manualOpeningProgress, setManualOpeningProgress] = useState(0);
+    const [manualOpeningMessage, setManualOpeningMessage] = useState('');
     const videoRef = useRef(null);
 
     const DEFAULT_HEADER_ORDER = [
@@ -345,12 +342,21 @@ function ManualCreation() {
         { id: 'timeRequired', label: 'Time Required' }
     ];
 
-    const WORKFLOW_STATUSES = ['Draft', 'In Review', 'Approved', 'Released'];
+    const normalizeWorkflowStatus = (status) => {
+        const value = String(status || '').trim();
+        if (!value) return 'DRAFT';
+        const upper = value.toUpperCase();
+        if (upper === 'DRAFT' || upper === 'REVIEW' || upper === 'PUBLISHED') return upper;
+        if (['PROPOSED', 'IN REVIEW', 'IN_REVIEW'].includes(upper)) return 'REVIEW';
+        if (['APPROVED', 'RELEASED'].includes(upper)) return 'PUBLISHED';
+        return 'DRAFT';
+    };
+
+    const WORKFLOW_STATUSES = ['DRAFT', 'REVIEW', 'PUBLISHED'];
     const WORKFLOW_TRANSITIONS = {
-        Draft: ['Draft', 'In Review'],
-        'In Review': ['Draft', 'In Review', 'Approved'],
-        Approved: ['In Review', 'Approved', 'Released'],
-        Released: ['Approved', 'Released']
+        DRAFT: ['DRAFT', 'REVIEW'],
+        REVIEW: ['DRAFT', 'REVIEW', 'PUBLISHED'],
+        PUBLISHED: ['REVIEW', 'PUBLISHED']
     };
 
     const getAllowedWorkflowTransitions = (status) => WORKFLOW_TRANSITIONS[status] || [status];
@@ -363,13 +369,13 @@ function ManualCreation() {
         timeRequired: '',
         documentNumber: '',
         version: '1.0',
-        status: 'Draft',
+        status: 'DRAFT',
         author: '',
         revisionDate: new Date().toISOString().split('T')[0],
         effectiveDate: '',
         headerOrder: DEFAULT_HEADER_ORDER,
         workflow: {
-            status: 'Draft',
+            status: 'DRAFT',
             updatedBy: 'System',
             updatedAt: new Date().toISOString()
         },
@@ -411,7 +417,9 @@ function ManualCreation() {
             : {};
 
         const templateFields = contentObj.templateFields || manual?.templateFields || {};
-        const fallbackStatus = manual?.status || contentObj?.workflow?.status || 'Draft';
+        const fallbackStatus = normalizeWorkflowStatus(
+            manual?.status || contentObj?.status || contentObj?.workflow?.status || 'DRAFT'
+        );
 
         return {
             ...createDefaultGuide(),
@@ -493,7 +501,7 @@ function ManualCreation() {
     const currentUserName = user?.email || 'User 1';
 
     // Map internal role logic to the new roles
-    const currentUserRole = useMemo(() => {
+    const mappedAuthUserRole = useMemo(() => {
         if (!rawUserRole) return 'Author'; // Default fallback
         const roleMap = {
             'admin': 'Admin',
@@ -503,6 +511,8 @@ function ManualCreation() {
         };
         return roleMap[rawUserRole] || 'Author';
     }, [rawUserRole]);
+    const [manualRoleOverride, setManualRoleOverride] = useState('');
+    const currentUserRole = manualRoleOverride || mappedAuthUserRole;
 
     const [activeTab, setActiveTab] = useState('edit'); // edit, info, management, history
     const [uiTheme, setUiTheme] = useState('dark'); // dark | light | colorful
@@ -569,13 +579,33 @@ function ManualCreation() {
     }, [location.state]);
 
     const loadManualById = async (id) => {
+        setIsManualOpening(true);
+        setManualOpeningProgress(10);
+        setManualOpeningMessage('Mengakses data manual creation dari database...');
+
         try {
+            setManualOpeningProgress(45);
+            setManualOpeningMessage('Mengambil detail manual...');
             const manual = await getManualById(id);
+
             if (manual) {
+                setManualOpeningProgress(80);
+                setManualOpeningMessage('Menyiapkan tampilan Manual Creation...');
                 handleOpenManual(manual);
+                setManualOpeningProgress(100);
+                setManualOpeningMessage('Manual berhasil dibuka.');
+            } else {
+                await showAlert('Manual Not Found', 'Manual tidak ditemukan atau sudah dihapus.');
             }
         } catch (error) {
             console.error('Error loading manual by ID:', error);
+            await showAlert('Error', error?.message || 'Gagal membuka manual dari database.');
+        } finally {
+            setTimeout(() => {
+                setIsManualOpening(false);
+                setManualOpeningProgress(0);
+                setManualOpeningMessage('');
+            }, 250);
         }
     };
 
@@ -719,13 +749,12 @@ function ManualCreation() {
 
     const getWorkflowStatusLabel = (status) => {
         const map = {
-            Draft: tt('manual.statuses.draft', 'Draft'),
-            Proposed: tt('manual.statuses.proposed', 'Proposed'),
-            'In Review': tt('manual.statuses.review', 'In Review'),
-            Approved: tt('manual.statuses.approved', 'Approved'),
-            Released: tt('manual.statuses.released', 'Released')
+            DRAFT: tt('manual.statuses.draft', 'DRAFT'),
+            REVIEW: tt('manual.statuses.review', 'REVIEW'),
+            PUBLISHED: tt('manual.statuses.published', 'PUBLISHED')
         };
-        return map[status] || status;
+        const normalized = normalizeWorkflowStatus(status);
+        return map[normalized] || normalized;
     };
     const canEditManual = hasAnyRole('Author');
     const canSubmitApproval = hasAnyRole('Author');
@@ -765,41 +794,42 @@ function ManualCreation() {
     });
 
     const handleWorkflowStatusChange = async (nextStatus) => {
-        if (!(await guardPermission(nextStatus === 'Released' ? canRelease : canEditManual, `status change to ${nextStatus}`))) return;
-        const currentStatus = guide.workflow?.status || guide.status || 'Draft';
+        const normalizedNextStatus = normalizeWorkflowStatus(nextStatus);
+        if (!(await guardPermission(normalizedNextStatus === 'PUBLISHED' ? canRelease : canEditManual, `status change to ${normalizedNextStatus}`))) return;
+        const currentStatus = normalizeWorkflowStatus(guide.workflow?.status || guide.status || 'DRAFT');
         const allowed = getAllowedWorkflowTransitions(currentStatus);
 
-        if (!allowed.includes(nextStatus)) {
+        if (!allowed.includes(normalizedNextStatus)) {
             await showAlert(
                 'Invalid Transition',
-                `Status transition from "${currentStatus}" to "${nextStatus}" is not allowed. Use step-by-step approval flow.`
+                `Status transition from "${currentStatus}" to "${normalizedNextStatus}" is not allowed. Use step-by-step approval flow.`
             );
             return;
         }
 
-        if (nextStatus === 'Released') {
+        if (normalizedNextStatus === 'PUBLISHED') {
             const allApproved = (guide.approvalRequests || []).length > 0 && (guide.approvalRequests || []).every(r => r.status === 'Approved');
             if (!allApproved) {
-                await showAlert('Approval Required', 'All approval levels must be approved before status can be Released.');
+                await showAlert('Approval Required', 'All approval levels must be approved before status can be PUBLISHED.');
                 return;
             }
         }
 
         setGuide(prev => {
-            const nextReadAcks = nextStatus === 'Released'
+            const nextReadAcks = normalizedNextStatus === 'PUBLISHED'
                 ? (prev.readAcks || []).filter(a => a.version !== (prev.version || '1.0'))
                 : (prev.readAcks || []);
             return {
                 ...prev,
-                status: nextStatus,
+                status: normalizedNextStatus,
                 workflow: {
                     ...(prev.workflow || {}),
-                    status: nextStatus,
+                    status: normalizedNextStatus,
                     updatedBy: `${currentUserName} (${currentUserRole})`,
                     updatedAt: new Date().toISOString()
                 },
                 readAcks: nextReadAcks,
-                auditTrail: appendAuditEvent(prev, 'Workflow Status Changed', `${prev.workflow?.status || prev.status || 'Draft'} -> ${nextStatus}`)
+                auditTrail: appendAuditEvent(prev, 'Workflow Status Changed', `${normalizeWorkflowStatus(prev.workflow?.status || prev.status || 'DRAFT')} -> ${normalizedNextStatus}`)
             };
         });
     };
@@ -816,7 +846,7 @@ function ManualCreation() {
                 versionHistory: [snapshot, ...(prev.versionHistory || [])].slice(0, 25),
                 workflow: {
                     ...(prev.workflow || {}),
-                    status: prev.workflow?.status || prev.status || 'Draft',
+                    status: normalizeWorkflowStatus(prev.workflow?.status || prev.status || 'DRAFT'),
                     updatedAt: new Date().toISOString(),
                     updatedBy: prev.author || 'System'
                 },
@@ -879,9 +909,9 @@ function ManualCreation() {
 
     const handleSubmitForApproval = async () => {
         if (!(await guardPermission(canSubmitApproval, 'submit for approval'))) return;
-        const workflowStatus = guide.workflow?.status || guide.status || 'Draft';
-        if (workflowStatus !== 'Draft') {
-            await showAlert('Invalid Status', 'Manual can only be submitted for approval from Draft status.');
+        const workflowStatus = normalizeWorkflowStatus(guide.workflow?.status || guide.status || 'DRAFT');
+        if (workflowStatus !== 'DRAFT') {
+            await showAlert('Invalid Status', 'Manual can only be submitted for approval from DRAFT status.');
             return;
         }
         if (!(guide.approvalMatrix || []).length) {
@@ -902,15 +932,15 @@ function ManualCreation() {
 
             return {
                 ...prev,
-                status: 'In Review',
+                status: 'REVIEW',
                 workflow: {
                     ...(prev.workflow || {}),
-                    status: 'In Review',
-                    updatedBy: prev.author || 'System',
+                    status: 'REVIEW',
+                    updatedBy: `${currentUserName} (${currentUserRole})`,
                     updatedAt: new Date().toISOString()
                 },
                 approvalRequests: requests,
-                auditTrail: appendAuditEvent(prev, 'Submitted for Approval', `Submitted ${requests.length} approval levels`)
+                auditTrail: appendAuditEvent(prev, 'Submitted for Approval', `${currentUserName} submitted ${requests.length} approval levels`)
             };
         });
     };
@@ -938,9 +968,9 @@ function ManualCreation() {
             const allApproved = updatedRequests.length > 0 && updatedRequests.every(r => r.status === 'Approved');
             const hasRejected = updatedRequests.some(r => r.status === 'Rejected');
 
-            let nextStatus = prev.status;
-            if (allApproved) nextStatus = 'Approved';
-            if (hasRejected) nextStatus = 'Draft';
+            let nextStatus = normalizeWorkflowStatus(prev.status);
+            if (allApproved) nextStatus = 'PUBLISHED';
+            if (hasRejected) nextStatus = 'DRAFT';
 
             return {
                 ...prev,
@@ -948,11 +978,11 @@ function ManualCreation() {
                 workflow: {
                     ...(prev.workflow || {}),
                     status: nextStatus,
-                    updatedBy: prev.author || 'System',
+                    updatedBy: `${currentUserName} (${currentUserRole})`,
                     updatedAt: new Date().toISOString()
                 },
                 approvalRequests: updatedRequests,
-                auditTrail: appendAuditEvent(prev, 'Approval Action', `${decision} by level request`)
+                auditTrail: appendAuditEvent(prev, 'Approval Action', `${currentUserName} ${decision} level ${targetRequest.level}${note ? ` (${note})` : ''}`)
             };
         });
     };
@@ -1313,7 +1343,7 @@ function ManualCreation() {
                 description: guide.summary || '',
                 documentNumber: guide.documentNumber || '',
                 version: guide.version || '1.0',
-                status: guide.workflow?.status || guide.status || 'Draft',
+                status: normalizeWorkflowStatus(guide.workflow?.status || guide.status || 'DRAFT'),
                 author: guide.author || '',
                 difficulty: guide.difficulty || 'Moderate',
                 timeRequired: guide.timeRequired || '',
@@ -1322,7 +1352,7 @@ function ManualCreation() {
                 createdAt: guide.createdAt || new Date().toISOString(),
                 content: {
                     ...snapshot,
-                    status: guide.workflow?.status || guide.status || 'Draft'
+                    status: normalizeWorkflowStatus(guide.workflow?.status || guide.status || 'DRAFT')
                 }
             });
 
@@ -1852,7 +1882,7 @@ function ManualCreation() {
                 doc.setFont(undefined, 'normal');
                 doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
                 doc.text(`ID: ${guide.documentNumber || 'WI-TEMP-001'}`, margin + 55, 28);
-                doc.text(`Status: ${guide.workflow?.status || guide.status || 'Draft'}`, margin + 55, 31);
+                doc.text(`Status: ${normalizeWorkflowStatus(guide.workflow?.status || guide.status || 'DRAFT')}`, margin + 55, 31);
 
                 // Meta Area (Right)
                 doc.setFontSize(7);
@@ -2013,7 +2043,7 @@ function ManualCreation() {
             // Metadata table (simplified as paragraphs)
             children.push(new Paragraph({ text: `Document Number: ${guide.documentNumber || '-'}` }));
             children.push(new Paragraph({ text: `Version: ${guide.version || '1.0'}` }));
-            children.push(new Paragraph({ text: `Status: ${guide.status || 'Draft'}` }));
+            children.push(new Paragraph({ text: `Status: ${normalizeWorkflowStatus(guide.status || 'DRAFT')}` }));
             children.push(new Paragraph({ text: `Author: ${guide.author || '-'}` }));
             children.push(new Paragraph({ text: `Description: ${guide.summary || '-'}` }));
             children.push(new Paragraph({ text: '' })); // Spacing
@@ -2471,6 +2501,10 @@ function ManualCreation() {
             <style>{`
                 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
                 @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
                 @keyframes pulseSync {
                     0% { transform: scale(1); opacity: 0.8; }
                     50% { transform: scale(1.2); opacity: 1; }
@@ -2935,7 +2969,7 @@ function ManualCreation() {
                     display: 'flex', background: 'rgba(0,0,0,0.2)',
                     borderRadius: '10px', padding: '2px', border: '1px solid rgba(255,255,255,0.05)'
                 }}>
-                    {['Draft', 'Released'].map(status => (
+                    {['DRAFT', 'REVIEW', 'PUBLISHED'].map(status => (
                         <button
                             key={status}
                             onClick={() => handleWorkflowStatusChange(status)}
@@ -2943,16 +2977,16 @@ function ManualCreation() {
                                 padding: '4px 14px', borderRadius: '8px',
                                 border: 'none', fontSize: '0.7rem', fontWeight: 800,
                                 cursor: 'pointer',
-                                background: (guide.workflow?.status || guide.status) === status
-                                    ? (status === 'Released' ? '#10b981' : '#3b82f6')
+                                background: normalizeWorkflowStatus(guide.workflow?.status || guide.status) === status
+                                    ? (status === 'PUBLISHED' ? '#10b981' : status === 'REVIEW' ? '#f59e0b' : '#3b82f6')
                                     : 'transparent',
-                                color: (guide.workflow?.status || guide.status) === status ? '#fff' : 'rgba(255,255,255,0.4)',
+                                color: normalizeWorkflowStatus(guide.workflow?.status || guide.status) === status ? '#fff' : 'rgba(255,255,255,0.4)',
                                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.05em'
                             }}
                         >
-                            {status === 'Released' ? 'Published' : status}
+                            {status}
                         </button>
                     ))}
                 </div>
@@ -3031,7 +3065,7 @@ function ManualCreation() {
 
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                         <select
-                            value={guide.workflow?.status || guide.status || 'Draft'}
+                            value={normalizeWorkflowStatus(guide.workflow?.status || guide.status || 'DRAFT')}
                             onChange={(e) => handleWorkflowStatusChange(e.target.value)}
                             className="pro-select"
                             style={{
@@ -3106,7 +3140,7 @@ function ManualCreation() {
                         </div>
                         <select
                             value={currentUserRole}
-                            onChange={(e) => setCurrentUserRole(e.target.value)}
+                            onChange={(e) => setManualRoleOverride(e.target.value)}
                             style={{ background: 'transparent', border: 'none', color: 'var(--mc-text)', fontSize: '0.7rem', outline: 'none', cursor: 'pointer' }}
                         >
                             {USER_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
@@ -4020,16 +4054,16 @@ function ManualCreation() {
                                 {activeTab === 'management' && (
                                     <div style={{ display: 'grid', gap: '20px', animation: 'fadeIn 0.3s' }}>
                                         {/* Workflow Status Summary */}
-                                        <div className="glass-panel" style={{ padding: '20px', borderLeft: `6px solid ${guide.status === 'Released' ? '#10b981' : guide.status === 'Approved' ? '#3b82f6' : guide.status === 'In Review' ? '#f59e0b' : '#94a3b8'}` }}>
+                                        <div className="glass-panel" style={{ padding: '20px', borderLeft: `6px solid ${normalizeWorkflowStatus(guide.status) === 'PUBLISHED' ? '#10b981' : normalizeWorkflowStatus(guide.status) === 'REVIEW' ? '#f59e0b' : '#94a3b8'}` }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                                                 <div>
                                                     <div style={{ fontSize: '0.75rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '700' }}>Current Workflow Status</div>
-                                                    <div style={{ fontSize: '1.5rem', fontWeight: '900', color: guide.status === 'Released' ? '#10b981' : guide.status === 'Approved' ? '#3b82f6' : guide.status === 'In Review' ? '#f59e0b' : '#fff' }}>
-                                                        {guide.status}
+                                                    <div style={{ fontSize: '1.5rem', fontWeight: '900', color: normalizeWorkflowStatus(guide.status) === 'PUBLISHED' ? '#10b981' : normalizeWorkflowStatus(guide.status) === 'REVIEW' ? '#f59e0b' : '#fff' }}>
+                                                        {normalizeWorkflowStatus(guide.status)}
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '12px' }}>
-                                                    {guide.status === 'Draft' && (
+                                                    {normalizeWorkflowStatus(guide.status) === 'DRAFT' && canSubmitApproval && (
                                                         <button
                                                             onClick={handleSubmitForApproval}
                                                             className="btn-pro"
@@ -4038,22 +4072,21 @@ function ManualCreation() {
                                                             <Send size={18} /> Submit for Approval
                                                         </button>
                                                     )}
-                                                    {guide.status === 'Approved' && (
+                                                    {normalizeWorkflowStatus(guide.status) === 'REVIEW' && canRelease && (
                                                         <button
-                                                            onClick={() => handleWorkflowStatusChange('Released')}
+                                                            onClick={() => handleWorkflowStatusChange('PUBLISHED')}
                                                             className="btn-pro"
                                                             style={{ background: 'linear-gradient(135deg, #059669, #10b981)', border: 'none', color: 'white', padding: '10px 24px', borderRadius: '12px', fontWeight: '700', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)' }}
                                                         >
-                                                            <CheckCircle size={18} /> Release Manual
+                                                            <CheckCircle size={18} /> Publish Manual
                                                         </button>
                                                     )}
                                                 </div>
                                             </div>
                                             <div style={{ fontSize: '0.88rem', opacity: 0.7, lineHeight: '1.5' }}>
-                                                {guide.status === 'Draft' && "The manual is currently in Draft mode. You can edit content and setup the approval matrix before submitting for review."}
-                                                {guide.status === 'In Review' && "The manual is under review. Pending approval from designated reviewers in the matrix below."}
-                                                {guide.status === 'Approved' && "All required approvals have been obtained. The manual can now be officially Released for production use."}
-                                                {guide.status === 'Released' && "This manual has been released and is active. Scanning the QR code will show this version to operators."}
+                                                {normalizeWorkflowStatus(guide.status) === 'DRAFT' && "The manual is currently in DRAFT mode. You can edit content and setup the approval matrix before submitting for review."}
+                                                {normalizeWorkflowStatus(guide.status) === 'REVIEW' && "The manual is under REVIEW. You can publish once all required approvals are completed."}
+                                                {normalizeWorkflowStatus(guide.status) === 'PUBLISHED' && "This manual has been PUBLISHED and is active. Scanning the QR code will show this version to operators."}
                                             </div>
                                         </div>
 
@@ -4066,7 +4099,7 @@ function ManualCreation() {
                                                     </div>
                                                     <div style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Approval Matrix Configuration</div>
                                                 </div>
-                                                {guide.status === 'Draft' && (
+                                                {normalizeWorkflowStatus(guide.status) === 'DRAFT' && (
                                                     <button
                                                         onClick={handleAddApprovalLevel}
                                                         className="btn-pro"
@@ -4104,7 +4137,7 @@ function ManualCreation() {
                                                                 placeholder="e.g. Quality Manager"
                                                                 value={level.role || ''}
                                                                 onChange={(e) => handleUpdateApprovalLevel(level.id, 'role', e.target.value)}
-                                                                disabled={guide.status !== 'Draft'}
+                                                                disabled={normalizeWorkflowStatus(guide.status) !== 'DRAFT'}
                                                                 style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '8px 12px', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
                                                             />
                                                         </div>
@@ -4114,12 +4147,12 @@ function ManualCreation() {
                                                                 placeholder="Exact Name"
                                                                 value={level.approverName || ''}
                                                                 onChange={(e) => handleUpdateApprovalLevel(level.id, 'approverName', e.target.value)}
-                                                                disabled={guide.status !== 'Draft'}
+                                                                disabled={normalizeWorkflowStatus(guide.status) !== 'DRAFT'}
                                                                 style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '8px 12px', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
                                                             />
                                                         </div>
                                                         <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                                            {guide.status === 'Draft' && (
+                                                            {normalizeWorkflowStatus(guide.status) === 'DRAFT' && (
                                                                 <button
                                                                     onClick={() => handleRemoveApprovalLevel(level.id)}
                                                                     title="Remove level"
@@ -4143,7 +4176,7 @@ function ManualCreation() {
                                         </div>
 
                                         {/* Approval Requests Tracking */}
-                                        {(guide.status === 'In Review' || (guide.approvalRequests || []).length > 0) && (
+                                        {(normalizeWorkflowStatus(guide.status) === 'REVIEW' || (guide.approvalRequests || []).length > 0) && (
                                             <div className="glass-panel" style={{ padding: '24px', borderTop: '1px solid rgba(245, 158, 11, 0.2)' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
                                                     <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
@@ -4191,7 +4224,7 @@ function ManualCreation() {
                                                                     {req.status}
                                                                 </div>
 
-                                                                {req.status === 'Pending' && guide.status === 'In Review' && (
+                                                                {req.status === 'Pending' && normalizeWorkflowStatus(guide.status) === 'REVIEW' && canApprove && (
                                                                     <div style={{ display: 'flex', gap: '10px' }}>
                                                                         <button
                                                                             onClick={() => handleApprovalAction(req.id, 'Rejected')}
@@ -4535,6 +4568,48 @@ function ManualCreation() {
                     </div>
                 )
             }
+
+            {isManualOpening && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 2500,
+                    backgroundColor: 'rgba(0,0,0,0.75)',
+                    backdropFilter: 'blur(6px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '20px'
+                }}>
+                    <div className="glass-panel" style={{
+                        width: 'min(560px, 92vw)',
+                        padding: '24px',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        textAlign: 'center'
+                    }}>
+                        <Loader2 size={30} style={{ color: '#60a5fa', animation: 'spin 1s linear infinite', marginBottom: '12px' }} />
+                        <div style={{ color: '#fff', fontWeight: 700, marginBottom: '8px' }}>
+                            {manualOpeningMessage || 'Membuka manual...'}
+                        </div>
+                        <div style={{
+                            height: '10px',
+                            borderRadius: '999px',
+                            backgroundColor: 'rgba(255,255,255,0.1)',
+                            overflow: 'hidden'
+                        }}>
+                            <div style={{
+                                height: '100%',
+                                width: `${Math.max(0, Math.min(100, manualOpeningProgress))}%`,
+                                background: 'linear-gradient(90deg, #2563eb 0%, #60a5fa 100%)',
+                                transition: 'width 0.25s ease'
+                            }} />
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '8px' }}>
+                            {Math.round(Math.max(0, Math.min(100, manualOpeningProgress)))}%
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* AIChatOverlay Integration */}
             <AIChatOverlay

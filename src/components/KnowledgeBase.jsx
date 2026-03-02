@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Filter, Grid, List, Plus, Star, Eye, TrendingUp, Calendar, Tag, BookOpen, Cloud, RefreshCw, Download, Upload } from 'lucide-react';
+import { Search, Filter, Grid, List, Plus, Star, Eye, TrendingUp, Calendar, Tag, BookOpen, Cloud, RefreshCw, Download, Upload, Loader2 } from 'lucide-react';
 import {
     getAllKnowledgeBaseItems,
     searchKnowledgeBase,
@@ -22,6 +22,21 @@ import {
 } from '../utils/googleDrive';
 import { importManualPackageZip, getManualPackageLocal } from '../utils/manualPackage';
 
+const normalizeWorkflowStatus = (status) => {
+    const value = String(status || '').trim().toUpperCase();
+    if (!value) return 'DRAFT';
+    if (['DRAFT', 'REVIEW', 'PUBLISHED'].includes(value)) return value;
+    if (['IN REVIEW', 'IN_REVIEW', 'PROPOSED'].includes(value)) return 'REVIEW';
+    if (['APPROVED', 'RELEASED'].includes(value)) return 'PUBLISHED';
+    return 'DRAFT';
+};
+
+const getManualStatusColor = (status) => {
+    if (status === 'PUBLISHED') return 'rgba(16,185,129,0.9)';
+    if (status === 'REVIEW') return 'rgba(245,158,11,0.9)';
+    return 'rgba(59,130,246,0.9)';
+};
+
 function KnowledgeBase({ onLoadVideo }) {
     const { showAlert, showConfirm } = useDialog();
     const [items, setItems] = useState([]);
@@ -39,6 +54,10 @@ function KnowledgeBase({ onLoadVideo }) {
     const [showDrivePanel, setShowDrivePanel] = useState(false);
     const [driveFiles, setDriveFiles] = useState([]);
     const [driveBusy, setDriveBusy] = useState(false);
+    const [isLoadingItems, setIsLoadingItems] = useState(false);
+    const [loadingProgress, setLoadingProgress] = useState(0);
+    const [loadingMessage, setLoadingMessage] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
     const importZipInputRef = useRef(null);
 
     const getTauriInvoke = () => {
@@ -52,20 +71,66 @@ function KnowledgeBase({ onLoadVideo }) {
         loadTags();
     }, []);
 
-    const loadItems = async () => {
-        const allItems = await getAllKnowledgeBaseItems();
-        // Create Blob URLs for video items
-        const itemsWithUrls = allItems.map(item => {
-            if (item.videoBlob && item.videoBlob instanceof Blob) {
+    const loadItems = async ({ showLoader = true } = {}) => {
+        if (showLoader) {
+            setIsLoadingItems(true);
+            setLoadingProgress(10);
+            setLoadingMessage('Mengakses data manual creation dari database...');
+        }
+
+        try {
+            const allItems = await getAllKnowledgeBaseItems();
+            if (showLoader) {
+                setLoadingProgress(60);
+                setLoadingMessage('Menyiapkan data Knowledge Base...');
+            }
+
+            // Create Blob URLs for video items
+            const itemsWithUrls = allItems.map(item => {
+                const manualStatus = normalizeWorkflowStatus(
+                    item?.status || item?.content?.status || item?.content?.workflow?.status || 'DRAFT'
+                );
+                if (item.videoBlob && item.videoBlob instanceof Blob) {
+                    return {
+                        ...item,
+                        status: item?.type === 'manual' ? manualStatus : item?.status,
+                        contentUrl: URL.createObjectURL(item.videoBlob)
+                    };
+                }
                 return {
                     ...item,
-                    contentUrl: URL.createObjectURL(item.videoBlob)
+                    status: item?.type === 'manual' ? manualStatus : item?.status
                 };
+            });
+
+            if (showLoader) {
+                setLoadingProgress(85);
+                setLoadingMessage('Menyelesaikan tampilan data...');
             }
-            return item;
-        });
-        setItems(itemsWithUrls);
-        setFilteredItems(sortKnowledgeBase(itemsWithUrls, sortBy));
+
+            setItems(itemsWithUrls);
+            setFilteredItems(sortKnowledgeBase(itemsWithUrls, sortBy));
+
+            if (showLoader) {
+                setLoadingProgress(100);
+                setLoadingMessage('Data berhasil dimuat.');
+            }
+        } catch (error) {
+            console.error('Failed to load Knowledge Base items:', error);
+            setItems([]);
+            setFilteredItems([]);
+            if (showLoader) {
+                setLoadingMessage('Gagal memuat data dari database.');
+            }
+        } finally {
+            if (showLoader) {
+                setTimeout(() => {
+                    setIsLoadingItems(false);
+                    setLoadingProgress(0);
+                    setLoadingMessage('');
+                }, 250);
+            }
+        }
     };
 
     const loadTags = async () => {
@@ -76,12 +141,17 @@ function KnowledgeBase({ onLoadVideo }) {
     // Search and filter
     useEffect(() => {
         const performSearch = async () => {
-            const results = await searchKnowledgeBase(searchQuery, {
-                type: selectedType,
-                category: selectedCategory,
-                industry: selectedIndustry
-            });
-            setFilteredItems(sortKnowledgeBase(results, sortBy));
+            setIsSearching(true);
+            try {
+                const results = await searchKnowledgeBase(searchQuery, {
+                    type: selectedType,
+                    category: selectedCategory,
+                    industry: selectedIndustry
+                });
+                setFilteredItems(sortKnowledgeBase(results, sortBy));
+            } finally {
+                setIsSearching(false);
+            }
         };
         performSearch();
     }, [searchQuery, selectedType, selectedCategory, selectedIndustry, sortBy, items]);
@@ -89,7 +159,7 @@ function KnowledgeBase({ onLoadVideo }) {
     const handleItemClick = async (item) => {
         await incrementViewCount(item.id);
         setSelectedItem(item);
-        loadItems(); // Refresh to update view count
+        loadItems({ showLoader: false }); // Refresh to update view count
     };
 
     const handleUploadComplete = () => {
@@ -231,7 +301,7 @@ function KnowledgeBase({ onLoadVideo }) {
                 industry: manual.category || '',
                 cloudId: localManualId,
                 version: manual.version || imported?.manifest?.version || '1.0',
-                status: manual.workflow?.status || manual.status || 'Draft',
+                status: normalizeWorkflowStatus(manual.workflow?.status || manual.status || 'DRAFT'),
                 author: manual.author || '',
                 documentNumber: manual.documentNumber || '',
                 localManualId,
@@ -294,6 +364,16 @@ function KnowledgeBase({ onLoadVideo }) {
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }} className="glass-panel">
+            <style>{`
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+                @keyframes kb-search-bar {
+                    0% { transform: translateX(-120%); }
+                    100% { transform: translateX(360%); }
+                }
+            `}</style>
             {/* Header */}
             <div style={{
                 padding: '24px',
@@ -634,7 +714,62 @@ function KnowledgeBase({ onLoadVideo }) {
 
             {/* Content Area */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-                {filteredItems.length === 0 ? (
+                {isSearching && !isLoadingItems && (
+                    <div style={{ marginBottom: '12px' }}>
+                        <div style={{
+                            height: '4px',
+                            width: '100%',
+                            borderRadius: '999px',
+                            backgroundColor: 'rgba(255,255,255,0.08)',
+                            overflow: 'hidden'
+                        }}>
+                            <div style={{
+                                height: '100%',
+                                width: '35%',
+                                background: 'linear-gradient(90deg, #0078d4 0%, #00b4d8 100%)',
+                                animation: 'kb-search-bar 1s ease-in-out infinite'
+                            }} />
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: '#8fa8bf', marginTop: '6px' }}>
+                            Memperbarui hasil pencarian...
+                        </div>
+                    </div>
+                )}
+
+                {isLoadingItems ? (
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: '60%',
+                        color: '#9fb3c8',
+                        textAlign: 'center'
+                    }}>
+                        <Loader2 size={34} style={{ color: '#4db2ff', marginBottom: '14px', animation: 'spin 1s linear infinite' }} />
+                        <div style={{ fontWeight: 600, color: 'white', marginBottom: '10px' }}>
+                            {loadingMessage || 'Memuat data...'}
+                        </div>
+                        <div style={{ width: 'min(440px, 85%)' }}>
+                            <div style={{
+                                height: '10px',
+                                borderRadius: '999px',
+                                backgroundColor: 'rgba(255,255,255,0.08)',
+                                overflow: 'hidden'
+                            }}>
+                                <div style={{
+                                    height: '100%',
+                                    width: `${Math.max(0, Math.min(100, loadingProgress))}%`,
+                                    background: 'linear-gradient(90deg, #0078d4 0%, #00b4d8 100%)',
+                                    transition: 'width 0.25s ease'
+                                }} />
+                            </div>
+                            <div style={{ fontSize: '0.78rem', color: '#8fa8bf', marginTop: '8px' }}>
+                                {Math.max(0, Math.min(100, Math.round(loadingProgress)))}%
+                            </div>
+                        </div>
+                    </div>
+                ) : filteredItems.length === 0 ? (
                     <div style={{
                         display: 'flex',
                         flexDirection: 'column',
@@ -729,6 +864,26 @@ function KnowledgeBase({ onLoadVideo }) {
                                 }}>
                                     {item.type === 'best_practice' ? 'Best Practice' : item.type.charAt(0).toUpperCase() + item.type.slice(1)}
                                 </div>
+
+                                {item.type === 'manual' && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: item.syncStatus === 'local-file' ? '42px' : '12px',
+                                        left: '12px',
+                                        padding: '4px 10px',
+                                        borderRadius: '20px',
+                                        backgroundColor: getManualStatusColor(normalizeWorkflowStatus(item.status)),
+                                        backdropFilter: 'blur(4px)',
+                                        fontSize: '0.70rem',
+                                        fontWeight: '800',
+                                        letterSpacing: '0.04em',
+                                        color: 'white',
+                                        zIndex: 2,
+                                        border: '1px solid rgba(255,255,255,0.25)'
+                                    }}>
+                                        {normalizeWorkflowStatus(item.status)}
+                                    </div>
+                                )}
 
                                 {item.syncStatus === 'local-file' && (
                                     <div style={{

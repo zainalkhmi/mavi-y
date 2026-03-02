@@ -205,15 +205,13 @@ const GuideHeader = ({ headerInfo, onChange }) => {
                     <div>
                         {!isEditingLayout && <label style={labelStyle}>{label}</label>}
                         <select
-                            value={headerInfo.status || 'Draft'}
+                            value={headerInfo.status || 'DRAFT'}
                             onChange={(e) => handleChange('status', e.target.value)}
                             style={inputStyle}
                         >
-                            <option value="Draft">{t('manual.statuses.draft') || 'Draft'}</option>
-                            <option value="Proposed">{t('manual.statuses.proposed') || 'Proposed'}</option>
-                            <option value="In Review">{t('manual.statuses.review') || 'In Review'}</option>
-                            <option value="Approved">{t('manual.statuses.approved') || 'Approved'}</option>
-                            <option value="Released">{t('manual.statuses.released') || 'Released'}</option>
+                            <option value="DRAFT">{t('manual.statuses.draft') || 'DRAFT'}</option>
+                            <option value="REVIEW">{t('manual.statuses.review') || 'REVIEW'}</option>
+                            <option value="PUBLISHED">{t('manual.statuses.published') || 'PUBLISHED'}</option>
                         </select>
                     </div>
                 );
@@ -333,7 +331,7 @@ const GuideHeader = ({ headerInfo, onChange }) => {
                         </span>
                         {!isExpanded && (
                             <span style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.75rem' }}>
-                                {headerInfo.documentNumber || (t('manual.noDocNumber') || 'No Doc Number')} • {headerInfo.status || 'Draft'}
+                                {headerInfo.documentNumber || (t('manual.noDocNumber') || 'No Doc Number')} • {headerInfo.status || 'DRAFT'}
                             </span>
                         )}
                     </div>

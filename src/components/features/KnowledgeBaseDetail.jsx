@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Star, ThumbsUp, Download, Play, ExternalLink, TrendingUp, Eye, Calendar, Tag, Trash } from 'lucide-react';
+import { X, Star, ThumbsUp, Download, Play, ExternalLink, TrendingUp, Eye, Calendar, Tag, Trash, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
     getKnowledgeBaseItem,
@@ -15,6 +15,15 @@ import {
 import { importManualPackageZip, getManualPackageLocal } from '../../utils/manualPackage';
 import { useDialog } from '../../contexts/DialogContext';
 
+const normalizeWorkflowStatus = (status) => {
+    const value = String(status || '').trim().toUpperCase();
+    if (!value) return 'DRAFT';
+    if (['DRAFT', 'REVIEW', 'PUBLISHED'].includes(value)) return value;
+    if (['IN REVIEW', 'IN_REVIEW', 'PROPOSED'].includes(value)) return 'REVIEW';
+    if (['APPROVED', 'RELEASED'].includes(value)) return 'PUBLISHED';
+    return 'DRAFT';
+};
+
 function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
     const navigate = useNavigate();
     const { showAlert, showConfirm } = useDialog();
@@ -24,6 +33,9 @@ function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
     const [userFeedback, setUserFeedback] = useState('');
     const [showRatingForm, setShowRatingForm] = useState(false);
     const [videoUrl, setVideoUrl] = useState(item.contentUrl || null);
+    const [isOpeningManual, setIsOpeningManual] = useState(false);
+    const [openingProgress, setOpeningProgress] = useState(0);
+    const [openingMessage, setOpeningMessage] = useState('');
 
     const getTauriInvoke = () => {
         const internalInvoke = window.__TAURI_INTERNALS__?.invoke;
@@ -70,7 +82,7 @@ function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
             cloudId: localManualId,
             localManualId,
             version: manual?.version || '1.0',
-            status: manual?.workflow?.status || manual?.status || 'Draft',
+            status: normalizeWorkflowStatus(manual?.workflow?.status || manual?.status || 'DRAFT'),
             author: manual?.author || '',
             documentNumber: manual?.documentNumber || '',
             createdAt: manual?.createdAt || now,
@@ -162,22 +174,32 @@ function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
     };
 
     const handleOpenManualCreation = async () => {
+        setIsOpeningManual(true);
+        setOpeningProgress(10);
+        setOpeningMessage('Menyiapkan manual untuk dibuka...');
+
         if (item.syncStatus === 'local-file') {
             try {
                 const fileName = getLocalFileName();
                 const lowerFileName = fileName.toLowerCase();
+                setOpeningProgress(25);
+                setOpeningMessage('Membaca file manual lokal...');
                 const bytes = await readLocalFileBytes(fileName);
 
                 let manual = null;
                 let localManualId = null;
 
                 if (lowerFileName.endsWith('.zip')) {
+                    setOpeningProgress(45);
+                    setOpeningMessage('Mengekstrak paket ZIP manual...');
                     const zipFile = new File([bytes], fileName, { type: 'application/zip' });
                     const imported = await importManualPackageZip(zipFile);
                     localManualId = imported?.id || `zip_${Date.now()}`;
                     const localPkg = await getManualPackageLocal(localManualId);
                     manual = localPkg?.manual;
                 } else {
+                    setOpeningProgress(45);
+                    setOpeningMessage('Memproses konten manual...');
                     const text = new TextDecoder('utf-8').decode(bytes);
                     const parsed = JSON.parse(text || '{}');
                     manual = parsed?.content && typeof parsed.content === 'object' ? parsed.content : parsed;
@@ -188,6 +210,8 @@ function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
                     throw new Error('Manual content is invalid or empty.');
                 }
 
+                setOpeningProgress(70);
+                setOpeningMessage('Sinkronisasi data manual ke Knowledge Base...');
                 const kbId = await upsertManualToKnowledgeBase(
                     manual,
                     localManualId,
@@ -196,6 +220,8 @@ function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
 
                 if (!kbId) throw new Error('Failed to prepare manual for opening.');
 
+                setOpeningProgress(100);
+                setOpeningMessage('Membuka halaman Manual Creation...');
                 navigate(`/manual-creation?manual=${encodeURIComponent(String(kbId))}`);
                 onClose();
                 return;
@@ -203,25 +229,44 @@ function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
                 console.error('Failed to open local manual file:', error);
                 await showAlert('Open Local File Failed', error?.message || 'Failed to open local manual file.');
                 return;
+            } finally {
+                setTimeout(() => {
+                    setIsOpeningManual(false);
+                    setOpeningProgress(0);
+                    setOpeningMessage('');
+                }, 250);
             }
         }
 
-        const contentObj = item?.content && typeof item.content === 'object' ? item.content : null;
-        const manualId =
-            item?.cloudId
-            || item?.localManualId
-            || contentObj?.localManualId
-            || contentObj?.cloudId
-            || contentObj?.kbId
-            || item?.id;
+        try {
+            const contentObj = item?.content && typeof item.content === 'object' ? item.content : null;
+            setOpeningProgress(55);
+            setOpeningMessage('Mengambil referensi manual...');
 
-        if (!manualId) {
-            await showAlert('Manual Not Found', 'Manual ID is not available for this item.');
-            return;
+            const manualId =
+                item?.cloudId
+                || item?.localManualId
+                || contentObj?.localManualId
+                || contentObj?.cloudId
+                || contentObj?.kbId
+                || item?.id;
+
+            if (!manualId) {
+                await showAlert('Manual Not Found', 'Manual ID is not available for this item.');
+                return;
+            }
+
+            setOpeningProgress(100);
+            setOpeningMessage('Membuka halaman Manual Creation...');
+            navigate(`/manual-creation?manual=${encodeURIComponent(String(manualId))}`);
+            onClose();
+        } finally {
+            setTimeout(() => {
+                setIsOpeningManual(false);
+                setOpeningProgress(0);
+                setOpeningMessage('');
+            }, 250);
         }
-
-        navigate(`/manual-creation?manual=${encodeURIComponent(String(manualId))}`);
-        onClose();
     };
 
     const handleDownloadLocalFile = async () => {
@@ -515,8 +560,25 @@ function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
                     borderTop: '1px solid #333',
                     display: 'flex',
                     gap: '10px',
-                    justifyContent: 'flex-end'
+                    justifyContent: 'flex-end',
+                    flexWrap: 'wrap'
                 }}>
+                    {isOpeningManual && (
+                        <div style={{ width: '100%', marginBottom: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#93c5fd', fontSize: '0.8rem', marginBottom: '6px' }}>
+                                <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                                {openingMessage || 'Membuka Manual Creation...'}
+                            </div>
+                            <div style={{ height: '6px', borderRadius: '999px', backgroundColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                                <div style={{
+                                    width: `${Math.max(0, Math.min(100, openingProgress))}%`,
+                                    height: '100%',
+                                    background: 'linear-gradient(90deg, #2563eb 0%, #60a5fa 100%)',
+                                    transition: 'width 0.2s ease'
+                                }} />
+                            </div>
+                        </div>
+                    )}
                     {item.type === 'video' && onLoadVideo && (
                         <button
                             onClick={() => {
@@ -565,13 +627,14 @@ function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
                     {item.type === 'manual' && (
                         <button
                             onClick={handleOpenManualCreation}
+                            disabled={isOpeningManual}
                             style={{
                                 padding: '12px 24px',
-                                backgroundColor: '#2563eb',
+                                backgroundColor: isOpeningManual ? '#1e3a8a' : '#2563eb',
                                 border: 'none',
                                 borderRadius: '6px',
                                 color: '#fff',
-                                cursor: 'pointer',
+                                cursor: isOpeningManual ? 'not-allowed' : 'pointer',
                                 fontWeight: 'bold',
                                 fontSize: '1rem',
                                 display: 'flex',
@@ -579,7 +642,7 @@ function KnowledgeBaseDetail({ item, onClose, onLoadVideo }) {
                                 gap: '8px'
                             }}
                         >
-                            <ExternalLink size={18} /> Open in Manual Creation
+                            {isOpeningManual ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <ExternalLink size={18} />} {isOpeningManual ? 'Opening Manual Creation...' : 'Open in Manual Creation'}
                         </button>
                     )}
                     {item.syncStatus === 'local-file' && (

@@ -35,6 +35,15 @@ import {
     ArrowRight
 } from 'lucide-react';
 
+const normalizeWorkflowStatus = (status) => {
+    const value = String(status || '').trim().toUpperCase();
+    if (!value) return 'DRAFT';
+    if (['DRAFT', 'REVIEW', 'PUBLISHED'].includes(value)) return value;
+    if (['IN REVIEW', 'IN_REVIEW', 'PROPOSED'].includes(value)) return 'REVIEW';
+    if (['APPROVED', 'RELEASED'].includes(value)) return 'PUBLISHED';
+    return 'DRAFT';
+};
+
 const MENU_CATEGORIES = {
     CORE: {
         icon: <LayoutGrid size={24} />,
@@ -263,8 +272,8 @@ function MainMenu() {
     const [menuVisibilityMap, setMenuVisibilityMap] = useState({});
     const [sopOverview, setSopOverview] = useState({
         total: 0,
-        released: 0,
-        inReview: 0,
+        published: 0,
+        review: 0,
         draft: 0,
         latestManual: null,
         loading: true
@@ -306,10 +315,12 @@ function MainMenu() {
 
                 const merged = Array.from(mergedMap.values());
                 const getStatus = (manual) => {
-                    return manual?.status
+                    return normalizeWorkflowStatus(
+                        manual?.status
                         || manual?.content?.status
                         || manual?.content?.workflow?.status
-                        || 'Draft';
+                        || 'DRAFT'
+                    );
                 };
 
                 const sorted = [...merged].sort((a, b) => {
@@ -318,14 +329,14 @@ function MainMenu() {
                     return db - da;
                 });
 
-                const released = merged.filter((m) => getStatus(m) === 'Released').length;
-                const inReview = merged.filter((m) => getStatus(m) === 'In Review').length;
-                const draft = merged.filter((m) => getStatus(m) === 'Draft').length;
+                const published = merged.filter((m) => getStatus(m) === 'PUBLISHED').length;
+                const review = merged.filter((m) => getStatus(m) === 'REVIEW').length;
+                const draft = merged.filter((m) => getStatus(m) === 'DRAFT').length;
 
                 setSopOverview({
                     total: merged.length,
-                    released,
-                    inReview,
+                    published,
+                    review,
                     draft,
                     latestManual: sorted[0] || null,
                     loading: false
@@ -491,9 +502,9 @@ function MainMenu() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(92px, 1fr))', gap: '10px', minWidth: '380px' }}>
                         {[
                             { label: isId ? 'Total' : 'Total', value: sopOverview.total, color: '#e2e8f0' },
-                            { label: isId ? 'Released' : 'Released', value: sopOverview.released, color: '#6ee7b7' },
-                            { label: isId ? 'Review' : 'Review', value: sopOverview.inReview, color: '#fde68a' },
-                            { label: isId ? 'Draft' : 'Draft', value: sopOverview.draft, color: '#93c5fd' }
+                            { label: 'PUBLISHED', value: sopOverview.published, color: '#6ee7b7' },
+                            { label: 'REVIEW', value: sopOverview.review, color: '#fde68a' },
+                            { label: 'DRAFT', value: sopOverview.draft, color: '#93c5fd' }
                         ].map((stat) => (
                             <div key={stat.label} style={{
                                 background: 'rgba(2, 6, 23, 0.36)',

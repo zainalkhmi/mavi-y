@@ -7,6 +7,15 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
+const normalizeWorkflowStatus = (status) => {
+    const value = String(status || '').trim().toUpperCase();
+    if (!value) return 'DRAFT';
+    if (['DRAFT', 'REVIEW', 'PUBLISHED'].includes(value)) return value;
+    if (['IN REVIEW', 'IN_REVIEW', 'PROPOSED'].includes(value)) return 'REVIEW';
+    if (['APPROVED', 'RELEASED'].includes(value)) return 'PUBLISHED';
+    return 'DRAFT';
+};
+
 // ── Singleton client ──────────────────────────────────
 let _client = null;
 
@@ -101,7 +110,7 @@ export async function upsertManual(manual) {
         title: String(manual.title || 'Untitled Manual'),
         document_number: String(manual.documentNumber || ''),
         version: String(manual.version || '1.0'),
-        status: String(manual.status || 'Draft'),
+        status: normalizeWorkflowStatus(manual.status || 'DRAFT'),
         author: String(manual.author || ''),
         summary: String(manual.description || manual.summary || ''),
         difficulty: String(manual.difficulty || 'Moderate'),
@@ -310,7 +319,7 @@ function normalizeRow(row) {
         title: row.title || '',
         documentNumber: row.document_number || '',
         version: row.version || '1.0',
-        status: row.status || 'Draft',
+        status: normalizeWorkflowStatus(row.status || 'DRAFT'),
         author: row.author || '',
         description: row.summary || '',
         summary: row.summary || '',

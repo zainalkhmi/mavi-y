@@ -28,6 +28,19 @@ const extractReferenceLinks = (rawValue = '') => {
         .filter((item) => !!item.url);
 };
 
+const normalizeWorkflowStatus = (status) => {
+    const value = String(status || '').trim();
+    if (!value) return 'DRAFT';
+
+    const upper = value.toUpperCase();
+    if (upper === 'DRAFT' || upper === 'REVIEW' || upper === 'PUBLISHED') return upper;
+
+    if (['PROPOSED', 'IN REVIEW', 'IN_REVIEW'].includes(upper)) return 'REVIEW';
+    if (['APPROVED', 'RELEASED'].includes(upper)) return 'PUBLISHED';
+
+    return 'DRAFT';
+};
+
 const PublicManualViewer = ({ manualId, onClose }) => {
     const [manual, setManual] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -83,7 +96,7 @@ const PublicManualViewer = ({ manualId, onClose }) => {
         ? manual.content
         : null;
     const steps = manual?.steps || contentObj?.steps || manual?.content || [];
-    const manualStatus = manual?.status || contentObj?.status || contentObj?.workflow?.status || 'Draft';
+    const manualStatus = normalizeWorkflowStatus(manual?.status || contentObj?.status || contentObj?.workflow?.status || 'DRAFT');
     const manualVersion = manual?.version || contentObj?.version || '1.0';
     const documentReferenceRaw = manual?.documentNumber || contentObj?.documentNumber || '';
     const referenceLinks = useMemo(() => extractReferenceLinks(documentReferenceRaw), [documentReferenceRaw]);
@@ -167,14 +180,14 @@ const PublicManualViewer = ({ manualId, onClose }) => {
     };
 
     const allRequiredAnswered = currentQuestions.every((q) => !q.required || isQuestionAnswered(q));
-    const isReleased = manualStatus === 'Released';
+    const isPublished = manualStatus === 'PUBLISHED';
     const isVersionMatch = !requestedVersion || requestedVersion === manualVersion;
-    const ackBlockedReason = !isReleased
-        ? `SOP status saat ini ${manualStatus}. Acknowledge hanya aktif saat Released.`
+    const ackBlockedReason = !isPublished
+        ? `SOP status saat ini ${manualStatus}. Acknowledge hanya aktif saat PUBLISHED.`
         : !isVersionMatch
             ? `Versi yang dipindai (${requestedVersion}) berbeda dari versi terbaru (${manualVersion}).`
             : '';
-    const captureBlockedReason = !isReleased
+    const captureBlockedReason = !isPublished
         ? `Data capture dibatasi saat status ${manualStatus}. Rilis SOP terlebih dahulu.`
         : !isVersionMatch
             ? `Data capture untuk versi ${requestedVersion} tidak diizinkan. Gunakan versi terbaru ${manualVersion}.`
@@ -217,8 +230,8 @@ const PublicManualViewer = ({ manualId, onClose }) => {
             alert('Invalid role selected for acknowledgement.');
             return;
         }
-        if (!isReleased) {
-            alert('This SOP is not Released yet and cannot be acknowledged.');
+        if (!isPublished) {
+            alert('This SOP is not PUBLISHED yet and cannot be acknowledged.');
             return;
         }
         if (!isVersionMatch) {
@@ -292,8 +305,8 @@ const PublicManualViewer = ({ manualId, onClose }) => {
             alert('Please fill all required data capture fields before submitting.');
             return;
         }
-        if (!isReleased) {
-            alert(`Data capture is only allowed when SOP is Released. Current status: ${manualStatus}.`);
+        if (!isPublished) {
+            alert(`Data capture is only allowed when SOP is PUBLISHED. Current status: ${manualStatus}.`);
             return;
         }
         if (!isVersionMatch) {

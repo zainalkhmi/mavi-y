@@ -1,5 +1,5 @@
-import React from 'react';
-import { Camera, Upload, X, Image, Video } from 'lucide-react';
+import React, { useState } from 'react';
+import { Camera, Upload, X, Image as ImageIcon, Video } from 'lucide-react';
 
 const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -7,6 +7,216 @@ const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
     reader.onerror = () => reject(new Error('Failed to read file'));
     reader.readAsDataURL(file);
 });
+
+const decodeHtmlEntities = (value = '') => String(value || '').replace(/&amp;/g, '&');
+
+const probeImageUrl = (url, timeoutMs = 8000) => new Promise((resolve) => {
+    let done = false;
+    const ImgCtor = typeof window !== 'undefined' ? window.Image : null;
+    if (!ImgCtor) {
+        resolve(false);
+        return;
+    }
+    const img = new ImgCtor();
+
+    const cleanup = (result) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        img.onload = null;
+        img.onerror = null;
+        resolve(result);
+    };
+
+    const timer = setTimeout(() => cleanup(false), timeoutMs);
+    img.onload = () => cleanup(true);
+    img.onerror = () => cleanup(false);
+    img.src = url;
+});
+
+const IMGUR_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+
+const resolveWorkingImgurUrl = async (imgurId) => {
+    const normalizedId = String(imgurId || '').trim();
+    if (!normalizedId) return null;
+
+    for (const ext of IMGUR_EXTENSIONS) {
+        const candidate = `https://i.imgur.com/${normalizedId}.${ext}`;
+        // eslint-disable-next-line no-await-in-loop
+        const ok = await probeImageUrl(candidate);
+        if (ok) return candidate;
+    }
+
+    return null;
+};
+
+const extractYouTubeVideoId = (value = '') => {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+
+    try {
+        const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+        const parsed = new URL(withProtocol);
+        const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+
+        if (host === 'youtu.be') {
+            return parsed.pathname.split('/').filter(Boolean)[0] || null;
+        }
+
+        if (host.includes('youtube.com')) {
+            if (parsed.pathname === '/watch') return parsed.searchParams.get('v') || null;
+            if (parsed.pathname.startsWith('/embed/')) return parsed.pathname.split('/embed/')[1]?.split('/')[0] || null;
+            if (parsed.pathname.startsWith('/shorts/')) return parsed.pathname.split('/shorts/')[1]?.split('/')[0] || null;
+        }
+    } catch {
+        // fallback below
+    }
+
+    return null;
+};
+
+const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'];
+
+const isLikelyImagePath = (pathname = '') => {
+    const ext = pathname.split('.').pop()?.toLowerCase();
+    return IMAGE_EXTENSIONS.includes(ext);
+};
+
+const extractImgurId = (pathname = '') => {
+    const parts = String(pathname || '').split('/').filter(Boolean);
+    if (!parts.length) return null;
+
+    if (parts[0] === 'a' || parts[0] === 'gallery') {
+        return parts[1] || null;
+    }
+    return parts[0] || null;
+};
+
+const resolveMediaLink = async (rawValue) => {
+    const raw = String(rawValue || '').trim();
+    if (!raw) {
+        return { ok: false, error: 'Link kosong. Masukkan URL terlebih dahulu.' };
+    }
+
+    const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+    let parsed;
+    try {
+        parsed = new URL(withProtocol);
+    } catch {
+        return { ok: false, error: 'Format URL tidak valid.' };
+    }
+
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return { ok: false, error: 'URL harus menggunakan http atau https.' };
+    }
+
+    const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+
+    // YouTube URL / Video ID
+    const youtubeId = extractYouTubeVideoId(raw);
+    if (youtubeId) {
+        return {
+            ok: true,
+            mediaType: 'youtube',
+            youtubeUrl: `https://www.youtube.com/watch?v=${youtubeId}`,
+            sourceUrl: withProtocol
+        };
+    }
+
+    // Generic image URL (accept any http/https URL, then verify it can be rendered)
+    if (!host.includes('imgur.com')) {
+        const ok = await probeImageUrl(parsed.href);
+        if (!ok) {
+            return {
+                ok: false,
+                error: 'Link gambar tidak bisa diakses. Pastikan URL mengarah langsung ke file image yang masih aktif.'
+            };
+        }
+        return { ok: true, mediaType: 'image', directUrl: parsed.href, sourceUrl: parsed.href };
+    }
+
+    // i.imgur.com direct link
+    if (host === 'i.imgur.com') {
+        if (isLikelyImagePath(parsed.pathname)) {
+            const ok = await probeImageUrl(parsed.href);
+            if (ok) {
+                return { ok: true, mediaType: 'image', directUrl: parsed.href, sourceUrl: parsed.href };
+            }
+        }
+
+        const fallbackId = extractImgurId(parsed.pathname);
+        if (fallbackId) {
+            const workingDirectUrl = await resolveWorkingImgurUrl(fallbackId);
+            if (!workingDirectUrl) {
+                return {
+                    ok: false,
+                    error: 'Link Imgur tidak bisa diakses atau gambar sudah dihapus.'
+                };
+            }
+            return {
+                ok: true,
+                mediaType: 'image',
+                directUrl: workingDirectUrl,
+                sourceUrl: parsed.href
+            };
+        }
+
+        return { ok: false, error: 'Link Imgur tidak dikenali.' };
+    }
+
+    // imgur.com page/album/gallery
+    const imgurId = extractImgurId(parsed.pathname);
+    if (!imgurId) {
+        return { ok: false, error: 'Link Imgur tidak dikenali.' };
+    }
+
+    const isAlbumLikePath = parsed.pathname.startsWith('/a/') || parsed.pathname.startsWith('/gallery/');
+
+    // Try oEmbed first (works for page + album in many cases)
+    if (!isAlbumLikePath) {
+        try {
+            const endpoint = `https://api.imgur.com/oembed.json?url=${encodeURIComponent(parsed.href)}`;
+            const response = await fetch(endpoint);
+            if (response.ok) {
+                const payload = await response.json();
+                const thumbnail = decodeHtmlEntities(payload?.thumbnail_url || '');
+                if (thumbnail) {
+                    return {
+                        ok: true,
+                        mediaType: 'image',
+                        directUrl: thumbnail,
+                        sourceUrl: parsed.href
+                    };
+                }
+            }
+        } catch {
+            // silent fallback below
+        }
+    }
+
+    // Fallback conversion from page id to direct image URL with extension probing
+    const workingDirectUrl = await resolveWorkingImgurUrl(imgurId);
+    if (!workingDirectUrl) {
+        if (isAlbumLikePath) {
+            return {
+                ok: false,
+                error: 'Link Imgur album tidak bisa dipakai langsung. Buka gambar lalu gunakan direct link i.imgur.com/... (jpg/png/webp).'
+            };
+        }
+        return {
+            ok: false,
+            error: 'Link Imgur tidak bisa diakses atau gambar sudah dihapus.'
+        };
+    }
+
+    return {
+        ok: true,
+        mediaType: 'image',
+        directUrl: workingDirectUrl,
+        sourceUrl: parsed.href
+    };
+};
 
 const StepMediaControls = ({
     step,
@@ -20,12 +230,59 @@ const StepMediaControls = ({
     if (!step) return null;
 
     const images = step.images || [];
+    const [imgurLinkInput, setImgurLinkInput] = useState('');
+    const [imgurLinkError, setImgurLinkError] = useState('');
+    const [isResolvingImgur, setIsResolvingImgur] = useState(false);
 
     const handleDeleteImage = (index) => {
         const newImages = images.filter((_, i) => i !== index);
         handleStepUpdate(step.id, { ...step, images: newImages });
         if (activeImageIndex >= newImages.length) {
             setActiveImageIndex(Math.max(0, newImages.length - 1));
+        }
+    };
+
+    const handleAddImgurLink = async () => {
+        setImgurLinkError('');
+        setIsResolvingImgur(true);
+
+        try {
+            const resolved = await resolveMediaLink(imgurLinkInput);
+            if (!resolved.ok) {
+                setImgurLinkError(resolved.error || 'Link tidak dapat diproses.');
+                return;
+            }
+
+            if (resolved.mediaType === 'youtube' && resolved.youtubeUrl) {
+                handleStepUpdate(step.id, {
+                    ...step,
+                    media: {
+                        ...(step.media || {}),
+                        type: 'youtube',
+                        youtubeUrl: resolved.youtubeUrl,
+                        url: resolved.youtubeUrl,
+                        sourceUrl: resolved.sourceUrl || resolved.youtubeUrl
+                    }
+                });
+            } else {
+                const nextImages = [...images, resolved.directUrl];
+                handleStepUpdate(step.id, {
+                    ...step,
+                    images: nextImages,
+                    media: {
+                        ...(step.media || {}),
+                        type: 'image',
+                        url: resolved.directUrl,
+                        sourceUrl: resolved.sourceUrl || resolved.directUrl
+                    }
+                });
+                setActiveImageIndex(Math.max(nextImages.length - 1, 0));
+            }
+
+            setImgurLinkInput('');
+            setImgurLinkError('');
+        } finally {
+            setIsResolvingImgur(false);
         }
     };
 
@@ -90,7 +347,7 @@ const StepMediaControls = ({
                     cursor: 'pointer',
                     backgroundColor: 'rgba(255,255,255,0.05)'
                 }}>
-                    <Image size={14} />
+                    <ImageIcon size={14} />
                     <span>Image</span>
                     <input type="file" hidden accept="image/*" onChange={(e) => {
                         const file = e.target.files[0];
@@ -140,6 +397,53 @@ const StepMediaControls = ({
                     }} />
                 </label>
             </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px', marginBottom: '10px' }}>
+                <input
+                    value={imgurLinkInput}
+                    onChange={(e) => setImgurLinkInput(e.target.value)}
+                    placeholder="Paste image/Imgur/YouTube link..."
+                    style={{
+                        width: '100%',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255,255,255,0.14)',
+                        background: 'rgba(255,255,255,0.04)',
+                        color: '#fff',
+                        padding: '8px 10px',
+                        fontSize: '0.75rem'
+                    }}
+                />
+                <button
+                    onClick={handleAddImgurLink}
+                    disabled={isResolvingImgur || !imgurLinkInput.trim()}
+                    className="btn-pro"
+                    style={{
+                        padding: '8px 10px',
+                        fontSize: '0.75rem',
+                        backgroundColor: 'rgba(16,185,129,0.16)',
+                        color: '#6ee7b7',
+                        borderColor: 'rgba(16,185,129,0.35)',
+                        opacity: (isResolvingImgur || !imgurLinkInput.trim()) ? 0.6 : 1,
+                        cursor: (isResolvingImgur || !imgurLinkInput.trim()) ? 'not-allowed' : 'pointer'
+                    }}
+                >
+                    {isResolvingImgur ? 'Adding...' : 'Add Link'}
+                </button>
+            </div>
+
+            {imgurLinkError && (
+                <div style={{
+                    marginBottom: '10px',
+                    fontSize: '0.7rem',
+                    color: '#fca5a5',
+                    background: 'rgba(239,68,68,0.12)',
+                    border: '1px solid rgba(239,68,68,0.25)',
+                    borderRadius: '8px',
+                    padding: '6px 8px'
+                }}>
+                    {imgurLinkError}
+                </div>
+            )}
 
             {/* Thumbnails */}
             <div style={{

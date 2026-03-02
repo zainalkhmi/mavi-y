@@ -29,6 +29,63 @@ const extractReferenceLinks = (rawValue = '') => {
         .filter((item) => !!item.url);
 };
 
+const extractYouTubeVideoId = (value = '') => {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+
+    try {
+        const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+        const parsed = new URL(withProtocol);
+        const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+
+        if (host === 'youtu.be') {
+            return parsed.pathname.split('/').filter(Boolean)[0] || null;
+        }
+
+        if (host.includes('youtube.com')) {
+            if (parsed.pathname === '/watch') return parsed.searchParams.get('v') || null;
+            if (parsed.pathname.startsWith('/embed/')) return parsed.pathname.split('/embed/')[1]?.split('/')[0] || null;
+            if (parsed.pathname.startsWith('/shorts/')) return parsed.pathname.split('/shorts/')[1]?.split('/')[0] || null;
+        }
+    } catch {
+        // fallback below
+    }
+
+    return /^[a-zA-Z0-9_-]{11}$/.test(raw) ? raw : null;
+};
+
+const getYouTubeEmbedUrl = (value = '') => {
+    const id = extractYouTubeVideoId(value);
+    return id ? `https://www.youtube.com/embed/${id}` : null;
+};
+
+const normalizeQuestionType = (value = 'text') => String(value || 'text').trim().toLowerCase();
+
+const normalizeQuestionOptions = (value) => {
+    if (Array.isArray(value)) {
+        return value.map((item) => String(item || '').trim()).filter(Boolean);
+    }
+    if (typeof value === 'string') {
+        return value
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean);
+    }
+    return [];
+};
+
+const normalizeQuestion = (q = {}, index = 0) => {
+    const nextType = normalizeQuestionType(q?.type || 'text');
+    const normalized = {
+        ...q,
+        id: q?.id || `q_${index}`,
+        type: nextType,
+        label: q?.label || 'Question',
+        options: normalizeQuestionOptions(q?.options)
+    };
+    return normalized;
+};
+
 const normalizeWorkflowStatus = (status) => {
     const value = String(status || '').trim();
     if (!value) return 'DRAFT';
@@ -142,7 +199,9 @@ const PublicManualViewer = ({ manualId, onClose }) => {
 
     const getStepQuestions = (step) => {
         if (step?.hideDataCapture) return [];
-        if (Array.isArray(step?.questions) && step.questions.length > 0) return step.questions;
+        if (Array.isArray(step?.questions) && step.questions.length > 0) {
+            return step.questions.map((q, idx) => normalizeQuestion(q, idx));
+        }
         return [
             {
                 id: 'inspection_result',
@@ -163,7 +222,7 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                 type: 'textarea',
                 label: 'Operator note'
             }
-        ];
+        ].map((q, idx) => normalizeQuestion(q, idx));
     };
 
     const currentQuestions = currentStep ? getStepQuestions(currentStep) : [];
@@ -633,11 +692,13 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                                             controls
                                             style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
                                         />
-                                    ) : currentStep.media?.type === 'youtube' && currentStep.media.youtubeUrl ? (
+                                    ) : currentStep.media?.type === 'youtube' && (currentStep.media.youtubeUrl || currentStep.media.url) ? (
                                         <iframe
-                                            src={currentStep.media.youtubeUrl.replace('watch?v=', 'embed/').split('&')[0]}
+                                            src={getYouTubeEmbedUrl(currentStep.media.youtubeUrl || currentStep.media.url) || ''}
                                             style={{ width: '100%', height: '100%', border: 'none' }}
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                             allowFullScreen
+                                            title={`public-step-youtube-${currentStep?.id || currentStepIndex}`}
                                         />
                                     ) : (
                                         <img

@@ -9,6 +9,51 @@ import {
     ChevronLeft, ChevronRight, EyeOff, Mic, Square, Volume2
 } from 'lucide-react';
 
+const extractYouTubeVideoId = (value = '') => {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+
+    try {
+        const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+        const parsed = new URL(withProtocol);
+        const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+
+        if (host === 'youtu.be') {
+            return parsed.pathname.split('/').filter(Boolean)[0] || null;
+        }
+
+        if (host.includes('youtube.com')) {
+            if (parsed.pathname === '/watch') return parsed.searchParams.get('v') || null;
+            if (parsed.pathname.startsWith('/embed/')) return parsed.pathname.split('/embed/')[1]?.split('/')[0] || null;
+            if (parsed.pathname.startsWith('/shorts/')) return parsed.pathname.split('/shorts/')[1]?.split('/')[0] || null;
+        }
+    } catch {
+        // fallback below
+    }
+
+    return /^[a-zA-Z0-9_-]{11}$/.test(raw) ? raw : null;
+};
+
+const getYouTubeEmbedUrl = (value = '') => {
+    const id = extractYouTubeVideoId(value);
+    return id ? `https://www.youtube.com/embed/${id}` : null;
+};
+
+const normalizeQuestionType = (value = 'text') => String(value || 'text').trim().toLowerCase();
+
+const normalizeQuestionOptions = (value) => {
+    if (Array.isArray(value)) {
+        return value.map((item) => String(item || '').trim()).filter(Boolean);
+    }
+    if (typeof value === 'string') {
+        return value
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean);
+    }
+    return [];
+};
+
 const StepEditor = ({
     step,
     stepListPanel,
@@ -215,10 +260,18 @@ const StepEditor = ({
     };
 
     const handleUpdateDataCaptureField = (index, patch) => {
+        const normalizedPatch = { ...patch };
+        if (Object.prototype.hasOwnProperty.call(normalizedPatch, 'type')) {
+            normalizedPatch.type = normalizeQuestionType(normalizedPatch.type);
+        }
+        if (Object.prototype.hasOwnProperty.call(normalizedPatch, 'options')) {
+            normalizedPatch.options = normalizeQuestionOptions(normalizedPatch.options);
+        }
+
         const next = [...dataCaptureFields];
         next[index] = {
             ...next[index],
-            ...patch
+            ...normalizedPatch
         };
         handleStepUpdate({ questions: next });
     };
@@ -276,6 +329,14 @@ const StepEditor = ({
                                 src={`${step.media.url || globalVideoSrc}#t=${step.startTime || 0}${step.duration ? ',' + (Math.round(((step.startTime || 0) + step.duration) * 10) / 10) : ''}`}
                                 controls
                                 style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }}
+                            />
+                        ) : step.media?.type === 'youtube' ? (
+                            <iframe
+                                src={getYouTubeEmbedUrl(step.media.youtubeUrl || step.media.url) || ''}
+                                style={{ width: '100%', height: '100%', border: 'none', backgroundColor: '#000' }}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowFullScreen
+                                title={`step-youtube-${step.id}`}
                             />
                         ) : mainImage ? (
                             <img src={mainImage} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Step Main" />
@@ -618,8 +679,9 @@ const StepEditor = ({
                                     )}
 
                                     {dataCaptureFields.map((field, idx) => {
-                                        const fieldType = field?.type || 'text';
+                                        const fieldType = normalizeQuestionType(field?.type || 'text');
                                         const supportsOptions = fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox';
+                                        const normalizedOptions = normalizeQuestionOptions(field?.options);
                                         return (
                                             <div key={field.id || idx} style={{ border: '1px solid rgba(255,255,255,0.09)', borderRadius: 8, padding: 10 }}>
                                                 <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.9fr auto auto', gap: 8, alignItems: 'center' }}>
@@ -678,12 +740,9 @@ const StepEditor = ({
 
                                                 {supportsOptions && (
                                                     <input
-                                                        value={Array.isArray(field.options) ? field.options.join(', ') : ''}
+                                                        value={normalizedOptions.join(', ')}
                                                         onChange={(e) => {
-                                                            const options = e.target.value
-                                                                .split(',')
-                                                                .map(opt => opt.trim())
-                                                                .filter(Boolean);
+                                                            const options = normalizeQuestionOptions(e.target.value);
                                                             handleUpdateDataCaptureField(idx, { options });
                                                         }}
                                                         placeholder="Options (comma separated)"

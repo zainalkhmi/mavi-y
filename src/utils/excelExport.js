@@ -471,3 +471,100 @@ export const exportErgoReportToExcel = (reportData, onProgress = null) => {
     // Download file
     saveWorkbook(workbook, filename, onProgress);
 };
+
+// Export manual data capture records to Excel
+export const exportManualDataCapturesToExcel = ({
+    manualTitle = 'Manual',
+    manualVersion = '-',
+    captures = [],
+    steps = []
+} = {}) => {
+    if (!Array.isArray(captures) || captures.length === 0) {
+        alert('Tidak ada data capture untuk di-export!');
+        return;
+    }
+
+    const stepMap = new Map(
+        (Array.isArray(steps) ? steps : []).map((step, index) => [String(step?.id ?? index), step])
+    );
+
+    const questionLabelMap = new Map();
+    (Array.isArray(steps) ? steps : []).forEach((step) => {
+        const questions = Array.isArray(step?.questions) ? step.questions : [];
+        questions.forEach((q) => {
+            const qId = String(q?.id || '').trim();
+            if (!qId) return;
+            questionLabelMap.set(qId, String(q?.label || qId));
+        });
+    });
+
+    captures.forEach((capture) => {
+        const answers = capture?.answers && typeof capture.answers === 'object' ? capture.answers : {};
+        Object.keys(answers).forEach((key) => {
+            const qId = String(key || '').trim();
+            if (!qId) return;
+            if (!questionLabelMap.has(qId)) questionLabelMap.set(qId, qId);
+        });
+    });
+
+    const questionKeys = Array.from(questionLabelMap.keys());
+
+    const formatAnswer = (value) => {
+        if (Array.isArray(value)) return value.join(', ');
+        if (value && typeof value === 'object') return JSON.stringify(value);
+        return String(value ?? '');
+    };
+
+    const rows = captures.map((capture, index) => {
+        const stepId = capture?.stepId;
+        const matchedStep = stepMap.get(String(stepId ?? ''));
+        const capturedDate = capture?.capturedAt ? new Date(capture.capturedAt) : null;
+
+        const row = {
+            'No.': index + 1,
+            'Manual Title': manualTitle,
+            'Manual Version': capture?.manualVersion || manualVersion || '-',
+            'Step Index': Number.isFinite(capture?.stepIndex) ? capture.stepIndex + 1 : '-',
+            'Step ID': stepId ?? '-',
+            'Step Title': capture?.stepTitle || matchedStep?.title || '-',
+            'Operator': capture?.operatorName || '-',
+            'Role': capture?.role || '-',
+            'Captured At': capturedDate && !Number.isNaN(capturedDate.getTime()) ? capturedDate.toLocaleString() : (capture?.capturedAt || '-'),
+            'Source': capture?.source || '-'
+        };
+
+        const answers = capture?.answers && typeof capture.answers === 'object' ? capture.answers : {};
+        questionKeys.forEach((qId) => {
+            const qLabel = questionLabelMap.get(qId) || qId;
+            row[`Q: ${qLabel}`] = formatAnswer(answers[qId]);
+        });
+
+        return row;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Captures');
+
+    const baseCols = [
+        { wch: 6 },
+        { wch: 30 },
+        { wch: 14 },
+        { wch: 10 },
+        { wch: 18 },
+        { wch: 26 },
+        { wch: 22 },
+        { wch: 14 },
+        { wch: 22 },
+        { wch: 20 }
+    ];
+    const questionCols = questionKeys.map(() => ({ wch: 24 }));
+    worksheet['!cols'] = [...baseCols, ...questionCols];
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -10);
+    const sanitizedTitle = String(manualTitle || 'Manual').replace(/[<>:"/\\|?*]/g, '_');
+    const sanitizedVersion = String(manualVersion || '-').replace(/[<>:"/\\|?*]/g, '_');
+    const filename = `DataCapture_${sanitizedTitle}_v${sanitizedVersion}_${timestamp}.xlsx`;
+
+    saveWorkbook(workbook, filename);
+};

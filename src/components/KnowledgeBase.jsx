@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Filter, Grid, List, Plus, Star, Eye, TrendingUp, Calendar, Tag, BookOpen, Cloud, RefreshCw, Download, Upload, Loader2 } from 'lucide-react';
 import {
     getAllKnowledgeBaseItems,
+    getKnowledgeBaseItemSummaries,
     searchKnowledgeBase,
     sortKnowledgeBase,
     getAllTags,
@@ -60,6 +61,12 @@ function KnowledgeBase({ onLoadVideo }) {
     const [isSearching, setIsSearching] = useState(false);
     const importZipInputRef = useRef(null);
 
+    const isStatementTimeoutError = (error) => {
+        const code = String(error?.code || error?.error?.code || '').trim();
+        const message = String(error?.message || error?.error?.message || '').toLowerCase();
+        return code === '57014' || message.includes('statement timeout');
+    };
+
     const getTauriInvoke = () => {
         const internalInvoke = window.__TAURI_INTERNALS__?.invoke;
         return typeof internalInvoke === 'function' ? internalInvoke : null;
@@ -79,7 +86,7 @@ function KnowledgeBase({ onLoadVideo }) {
         }
 
         try {
-            const allItems = await getAllKnowledgeBaseItems();
+            const allItems = await getKnowledgeBaseItemSummaries();
             if (showLoader) {
                 setLoadingProgress(60);
                 setLoadingMessage('Menyiapkan data Knowledge Base...');
@@ -120,7 +127,11 @@ function KnowledgeBase({ onLoadVideo }) {
             setItems([]);
             setFilteredItems([]);
             if (showLoader) {
-                setLoadingMessage('Gagal memuat data dari database.');
+                setLoadingMessage(
+                    isStatementTimeoutError(error)
+                        ? 'Database timeout saat memuat daftar. Coba persempit filter/pencarian lalu refresh.'
+                        : 'Gagal memuat data dari database.'
+                );
             }
         } finally {
             if (showLoader) {
@@ -149,6 +160,11 @@ function KnowledgeBase({ onLoadVideo }) {
                     industry: selectedIndustry
                 });
                 setFilteredItems(sortKnowledgeBase(results, sortBy));
+            } catch (error) {
+                console.error('Knowledge Base search failed:', error);
+                if (isStatementTimeoutError(error)) {
+                    await showAlert('Database Timeout', 'Pencarian terlalu berat dan melebihi batas waktu database. Coba kata kunci yang lebih spesifik.');
+                }
             } finally {
                 setIsSearching(false);
             }

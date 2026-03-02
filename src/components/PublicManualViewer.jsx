@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getKnowledgeBaseItem, getItemByCloudId, updateKnowledgeBaseItem } from '../utils/knowledgeBaseDB';
 import { getManualByCloudId, appendManualAcknowledgement, appendManualDataCapture } from '../utils/supabaseManualDB';
+import { exportManualDataCapturesToExcel } from '../utils/excelExport';
 
 const normalizeReferenceUrl = (value = '') => {
     const raw = String(value || '').trim();
@@ -605,6 +606,17 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                         <div style={{ width: 150, height: 8, borderRadius: 999, background: '#dde2ea' }} />
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                            className="dozuki-btn"
+                            onClick={() => exportManualDataCapturesToExcel({
+                                manualTitle: manual?.title || 'Manual',
+                                manualVersion,
+                                captures: dataCaptures,
+                                steps
+                            })}
+                        >
+                            Export Data Capture
+                        </button>
                         <button className="dozuki-btn" onClick={() => window.print()}>Print</button>
                         {onClose && <button className="dozuki-btn" onClick={onClose}>Close</button>}
                     </div>

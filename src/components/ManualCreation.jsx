@@ -36,7 +36,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import {
     FileSpreadsheet, FileText, Upload, Sparkles, MessageSquare,
     Cpu, Loader2, BarChart3, Settings, Book, Layout, List,
-    Eye, Save, FolderOpen, FileDown, Globe, Layers,
+    Eye, Save, FolderOpen, FileDown, Layers,
     ChevronDown, Trash2, Plus, Info, Video, CheckCircle,
     Activity, Shield, Play, VideoOff, X, BookOpen, Sun, Moon, Palette,
     Code, Copy, ExternalLink, Printer, Box, AlertTriangle, AlertOctagon,
@@ -325,10 +325,14 @@ function ManualCreation() {
     const [operatorAnswers, setOperatorAnswers] = useState({});
     const [showSessionSummary, setShowSessionSummary] = useState(false);
     const [syncStatus, setSyncStatus] = useState('idle'); // idle, syncing, saved, error
+    const [isSavingManual, setIsSavingManual] = useState(false);
+    const [saveProgress, setSaveProgress] = useState(0);
     const [isHistorySidebarOpen, setIsHistorySidebarOpen] = useState(false);
     const [isManualOpening, setIsManualOpening] = useState(false);
     const [manualOpeningProgress, setManualOpeningProgress] = useState(0);
     const [manualOpeningMessage, setManualOpeningMessage] = useState('');
+    const lastRequestedManualIdRef = useRef(null);
+    const loadingManualIdRef = useRef(null);
     const videoRef = useRef(null);
 
     const DEFAULT_HEADER_ORDER = [
@@ -579,6 +583,14 @@ function ManualCreation() {
     }, [location.state]);
 
     const loadManualById = async (id) => {
+        if (!id) return;
+
+        // Prevent duplicate fetches in development StrictMode / repeated route effects.
+        if (loadingManualIdRef.current === id || lastRequestedManualIdRef.current === id) {
+            return;
+        }
+        loadingManualIdRef.current = id;
+
         setIsManualOpening(true);
         setManualOpeningProgress(10);
         setManualOpeningMessage('Mengakses data manual creation dari database...');
@@ -592,6 +604,7 @@ function ManualCreation() {
                 setManualOpeningProgress(80);
                 setManualOpeningMessage('Menyiapkan tampilan Manual Creation...');
                 handleOpenManual(manual);
+                lastRequestedManualIdRef.current = id;
                 setManualOpeningProgress(100);
                 setManualOpeningMessage('Manual berhasil dibuka.');
             } else {
@@ -601,6 +614,7 @@ function ManualCreation() {
             console.error('Error loading manual by ID:', error);
             await showAlert('Error', error?.message || 'Gagal membuka manual dari database.');
         } finally {
+            loadingManualIdRef.current = null;
             setTimeout(() => {
                 setIsManualOpening(false);
                 setManualOpeningProgress(0);
@@ -1301,26 +1315,9 @@ function ManualCreation() {
         setOperatorStepIndex(prev => Math.max(prev - 1, minIndex));
     };
 
-    const isFirstSyncRender = useRef(true);
-
-    // Auto-Sync Effect
-    useEffect(() => {
-        if (isFirstSyncRender.current) {
-            isFirstSyncRender.current = false;
-            return;
-        }
-
-        if (!guide.id || !guide.title || guide.title === tt('manual.newManual', 'New Manual')) return;
-
-        setSyncStatus('syncing');
-        const timer = setTimeout(() => {
-            handleSaveManual(true);
-        }, 5000); // 5s debounce to be conservative
-
-        return () => clearTimeout(timer);
-    }, [guide]);
-
     const handleSaveManual = async (silent = false) => {
+        if (isSavingManual) return;
+
         if (!guide.title) {
             if (!silent) await showAlert('Title Required', t('manual.alerts.enterTitle'));
             return;
@@ -1331,11 +1328,15 @@ function ManualCreation() {
             return;
         }
 
-        if (silent) setSyncStatus('syncing');
+        setIsSavingManual(true);
+        setSyncStatus('syncing');
+        setSaveProgress(10);
         const isUpdate = Boolean(guide.id && String(guide.id).includes('-'));
 
         try {
+            setSaveProgress(35);
             const snapshot = await buildGuideSnapshot(guide);
+            setSaveProgress(70);
             const result = await upsertManual({
                 id: isUpdate ? guide.id : snapshot.id,
                 title: guide.title,
@@ -1365,16 +1366,23 @@ function ManualCreation() {
                 kbId: nextId
             }));
 
+            setSaveProgress(100);
             setSyncStatus('saved');
             if (!silent) {
                 await showAlert('Success', isUpdate ? t('manual.alerts.updateSuccess') : t('manual.alerts.saveSuccess'));
             }
 
             // Revert status to idle after 3 seconds
-            setTimeout(() => setSyncStatus('idle'), 3000);
+            setTimeout(() => {
+                setSyncStatus('idle');
+                setSaveProgress(0);
+                setIsSavingManual(false);
+            }, 1000);
         } catch (error) {
             console.error('Error saving manual:', error);
             setSyncStatus('error');
+            setIsSavingManual(false);
+            setSaveProgress(0);
             if (!silent) {
                 await showAlert('Error', t('manual.alerts.saveFailed', { message: error.message }));
             }
@@ -1387,13 +1395,13 @@ function ManualCreation() {
             if (!isSaveShortcut) return;
 
             event.preventDefault();
-            if (syncStatus === 'syncing') return;
+            if (isSavingManual) return;
             handleSaveManual(false);
         };
 
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [syncStatus, handleSaveManual]);
+    }, [isSavingManual, handleSaveManual]);
 
     const handleLoadManualsList = async () => {
         try {
@@ -2904,28 +2912,60 @@ function ManualCreation() {
                         background: syncStatus === 'syncing' ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
                         transition: 'all 0.3s'
                     }}>
-                        <Globe size={10} className={syncStatus === 'syncing' ? 'pulse-sync' : ''} />
                         {syncStatus === 'syncing' ? 'Syncing' : syncStatus === 'saved' ? 'Saved' : syncStatus === 'error' ? 'Offline' : 'Ready'}
                     </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto' }}>
+                    {isSavingManual && (
+                        <div style={{
+                            minWidth: '160px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            marginRight: '8px'
+                        }}>
+                            <div style={{
+                                height: '5px',
+                                borderRadius: '999px',
+                                backgroundColor: 'rgba(255,255,255,0.14)',
+                                overflow: 'hidden'
+                            }}>
+                                <div style={{
+                                    height: '100%',
+                                    width: `${Math.max(0, Math.min(100, saveProgress))}%`,
+                                    background: 'linear-gradient(90deg, #2563eb, #60a5fa)',
+                                    transition: 'width 0.25s ease'
+                                }} />
+                            </div>
+                            <div style={{
+                                fontSize: '0.64rem',
+                                color: 'rgba(255,255,255,0.65)',
+                                textAlign: 'right',
+                                fontWeight: 700,
+                                letterSpacing: '0.03em'
+                            }}>
+                                {Math.round(saveProgress)}%
+                            </div>
+                        </div>
+                    )}
                     <button
                         onClick={() => handleSaveManual(false)}
                         className="btn-pro"
-                        disabled={syncStatus === 'syncing'}
-                        title={syncStatus === 'syncing' ? 'Saving...' : tt('common.save', 'Save')}
+                        disabled={isSavingManual}
+                        title={isSavingManual ? 'Saving...' : tt('common.save', 'Save')}
                         style={{
                             padding: '7px 12px',
                             background: syncStatus === 'saved' ? 'rgba(16,185,129,0.16)' : 'var(--mc-accent-gradient)',
                             border: 'none',
                             color: '#fff',
-                            opacity: syncStatus === 'syncing' ? 0.7 : 1,
-                            cursor: syncStatus === 'syncing' ? 'not-allowed' : 'pointer'
+                            opacity: isSavingManual ? 0.7 : 1,
+                            cursor: isSavingManual ? 'not-allowed' : 'pointer'
                         }}
                     >
                         <Save size={16} />
-                        {syncStatus === 'syncing' ? 'Saving...' : tt('common.save', 'Save')}
+                        {isSavingManual ? 'Saving...' : tt('common.save', 'Save')}
                     </button>
                     <button onClick={handleRenameGuideTitle} className="btn-icon-label" title="Ubah Nama (Rename)">
                         <Edit3 size={18} />

@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useDialog } from '../contexts/DialogContext';
-import { listManuals } from '../utils/supabaseManualDB';
+import { listManualSummaries } from '../utils/supabaseManualDB';
 import { getMenuVisibilitySettings } from '../utils/supabaseSettingsDB';
-import { getAllKnowledgeBaseItems } from '../utils/knowledgeBaseDB';
+import { getKnowledgeBaseItemSummaries } from '../utils/knowledgeBaseDB';
 import {
     LayoutGrid,
     Cpu,
@@ -301,8 +301,8 @@ function MainMenu() {
         const loadSopOverview = async () => {
             try {
                 const [cloudManuals, kbItems] = await Promise.all([
-                    listManuals().catch(() => []),
-                    getAllKnowledgeBaseItems().catch(() => [])
+                    listManualSummaries().catch(() => []),
+                    getKnowledgeBaseItemSummaries().catch(() => [])
                 ]);
 
                 const localManuals = (kbItems || []).filter((item) => item?.type === 'manual');

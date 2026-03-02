@@ -368,6 +368,8 @@ END $$;
 -- Master indexes
 CREATE INDEX IF NOT EXISTS idx_manuals_document_number ON manuals(document_number);
 CREATE INDEX IF NOT EXISTS idx_manuals_category ON manuals(category);
+CREATE INDEX IF NOT EXISTS idx_manuals_updated_at ON manuals(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_manuals_type_updated_at ON manuals(type, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_youtube_links_category ON youtube_links(category);
 CREATE INDEX IF NOT EXISTS idx_licenses_key ON licenses(key_string);
 CREATE INDEX IF NOT EXISTS idx_licenses_email ON licenses(email);

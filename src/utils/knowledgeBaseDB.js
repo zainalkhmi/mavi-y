@@ -10,7 +10,7 @@
  *
  * For Manual Creation storage, use supabaseManualDB.js.
  */
-import { getSupabaseClient, isSupabaseReady, listManuals, getManualById, upsertManual, deleteManual } from './supabaseManualDB.js';
+import { isSupabaseReady, listManuals, listManualSummaries, getManualById, upsertManual, deleteManual } from './supabaseManualDB.js';
 
 // ── Fallback localStorage key (kept for backwards compat) ───────────
 const KB_FALLBACK_KEY = 'mavi_kb_fallback_v1';
@@ -48,6 +48,22 @@ export const getAllKnowledgeBaseItems = async () => {
             return await listManuals();
         } catch (e) {
             console.warn('[knowledgeBaseDB] Supabase list failed, using localStorage fallback:', e);
+        }
+    }
+    return readFallbackItems();
+};
+
+export const getKnowledgeBaseItemSummaries = async () => {
+    if (isSupabaseReady()) {
+        try {
+            return await listManualSummaries();
+        } catch (e) {
+            console.warn('[knowledgeBaseDB] Supabase summaries failed, using full list fallback:', e);
+            try {
+                return await listManuals();
+            } catch (err) {
+                console.warn('[knowledgeBaseDB] Supabase full list fallback failed:', err);
+            }
         }
     }
     return readFallbackItems();
@@ -115,14 +131,21 @@ export const getItemByCloudId = async (cloudId) => {
 };
 
 // ── Search ──────────────────────────────────────────────────────────
-export const searchKnowledgeBase = async (query) => {
-    const all = await getAllKnowledgeBaseItems();
-    if (!query) return all;
-    const q = query.toLowerCase();
-    return all.filter(i =>
-        String(i.title || '').toLowerCase().includes(q) ||
-        String(i.description || '').toLowerCase().includes(q)
-    );
+export const searchKnowledgeBase = async (query, filters = {}) => {
+    const all = await getKnowledgeBaseItemSummaries();
+    const q = String(query || '').toLowerCase().trim();
+
+    return all.filter((i) => {
+        const matchesQuery = !q
+            || String(i.title || '').toLowerCase().includes(q)
+            || String(i.description || '').toLowerCase().includes(q);
+
+        const matchesType = !filters?.type || String(i.type || '') === String(filters.type);
+        const matchesCategory = !filters?.category || String(i.category || '') === String(filters.category);
+        const matchesIndustry = !filters?.industry || String(i.industry || '') === String(filters.industry);
+
+        return matchesQuery && matchesType && matchesCategory && matchesIndustry;
+    });
 };
 
 export const sortKnowledgeBase = (items, sortBy) => {

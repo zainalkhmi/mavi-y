@@ -146,10 +146,38 @@ const ImageMarkupDialog = ({ isOpen, onClose, imageSrc, onSave }) => {
                 display: 'flex', gap: '20px', marginBottom: '10px', alignItems: 'center'
             }}>
                 <div style={{ display: 'flex', gap: '5px' }}>
-                    <button onClick={() => setTool('arrow')} style={toolStyle(tool === 'arrow')}>↗ {t('manual.arrow')}</button>
-                    <button onClick={() => setTool('line')} style={toolStyle(tool === 'line')}>━ {t('manual.line')}</button>
-                    <button onClick={() => setTool('rect')} style={toolStyle(tool === 'rect')}>⬜ {t('manual.box')}</button>
-                    <button onClick={() => setTool('circle')} style={toolStyle(tool === 'circle')}>⭕ {t('manual.circle')}</button>
+                    <button
+                        onClick={() => setTool('arrow')}
+                        style={toolStyle(tool === 'arrow')}
+                        title={t('manual.arrow')}
+                        aria-label={t('manual.arrow')}
+                    >
+                        ↗
+                    </button>
+                    <button
+                        onClick={() => setTool('line')}
+                        style={toolStyle(tool === 'line')}
+                        title={t('manual.line')}
+                        aria-label={t('manual.line')}
+                    >
+                        ━
+                    </button>
+                    <button
+                        onClick={() => setTool('rect')}
+                        style={toolStyle(tool === 'rect')}
+                        title={t('manual.box')}
+                        aria-label={t('manual.box')}
+                    >
+                        ⬜
+                    </button>
+                    <button
+                        onClick={() => setTool('circle')}
+                        style={toolStyle(tool === 'circle')}
+                        title={t('manual.circle')}
+                        aria-label={t('manual.circle')}
+                    >
+                        ⭕
+                    </button>
                 </div>
 
                 <div style={{ width: '1px', height: '30px', backgroundColor: '#555' }}></div>

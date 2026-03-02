@@ -7,6 +7,23 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
+const MANUAL_SUMMARY_COLUMNS = [
+    'id',
+    'title',
+    'document_number',
+    'version',
+    'status',
+    'author',
+    'summary',
+    'difficulty',
+    'time_required',
+    'category',
+    'industry',
+    'type',
+    'created_at',
+    'updated_at'
+].join(',');
+
 const normalizeWorkflowStatus = (status) => {
     const value = String(status || '').trim().toUpperCase();
     if (!value) return 'DRAFT';
@@ -119,7 +136,6 @@ export async function upsertManual(manual) {
         industry: String(manual.industry || ''),
         type: 'manual',
         content_json: manual.content || {}, // Primary column
-        steps: manual.content || {},        // Fallback/Legacy column
         updated_at: now
     };
 
@@ -146,9 +162,8 @@ export async function upsertManual(manual) {
             // Check if error is "column does not exist" for content_json
             if (error.code === '42703' && error.message?.includes('content_json')) {
                 console.warn('[supabaseManualDB] content_json missing, retrying with steps column');
-                const fallbackRow = { ...row };
+                const fallbackRow = { ...row, steps: manual.content || {} };
                 delete fallbackRow.content_json;
-                // row already has .steps from my previous edit
                 const retry = await performUpsert(fallbackRow);
                 if (retry.error) throw retry.error;
                 return { id: retry.data.id, updatedAt: retry.data.updated_at };
@@ -169,10 +184,30 @@ export async function upsertManual(manual) {
 export async function listManuals() {
     const supabase = getSupabaseClient();
 
-    // Using select('*') instead of named columns to be resilient to schema differences (e.g. content_json vs steps)
+    // IMPORTANT:
+    // Avoid selecting large JSON payload columns (content_json / steps) for list views.
+    // Fetching full rows for many manuals can trigger Postgres statement timeout (57014)
+    // when manuals contain large embedded media/content snapshots.
     const { data, error } = await supabase
         .from('manuals')
-        .select('*')
+        .select(MANUAL_SUMMARY_COLUMNS)
+        .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+    return (data || []).map(normalizeRow);
+}
+
+/**
+ * Fetch lightweight manual rows for list/search views.
+ * Excludes large JSON columns (content_json/steps) to reduce query cost.
+ * @returns {Array}
+ */
+export async function listManualSummaries() {
+    const supabase = getSupabaseClient();
+
+    const { data, error } = await supabase
+        .from('manuals')
+        .select(MANUAL_SUMMARY_COLUMNS)
         .order('updated_at', { ascending: false });
 
     if (error) throw error;

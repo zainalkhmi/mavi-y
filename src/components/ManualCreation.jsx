@@ -174,6 +174,243 @@ const CAPA_TRANSITIONS = {
     Closed: []
 };
 
+const CanvasPreviewLayer = ({ elements = [], isInteractive = false, answers = {}, onAnswerChange, stepId }) => {
+    if (!Array.isArray(elements) || elements.length === 0) return null;
+
+    const sortedElements = [...elements].sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1));
+
+    const shapeClipPath = (shapeVariant) => {
+        if (shapeVariant === 'triangle') return 'polygon(50% 0%, 0% 100%, 100% 100%)';
+        if (shapeVariant === 'hexagon') return 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)';
+        if (shapeVariant === 'star') return 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)';
+        return 'none';
+    };
+
+    return (
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+            {sortedElements.map((el, idx) => {
+                if (!el || typeof el !== 'object') return null;
+
+                if (el.type === 'draw') {
+                    if (!Array.isArray(el.linePoints) || el.linePoints.length < 2) return null;
+                    const d = el.linePoints
+                        .map((point, i) => `${i === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
+                        .join(' ');
+                    return (
+                        <svg
+                            key={el.id || `draw-${idx}`}
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                width: '100%',
+                                height: '100%',
+                                pointerEvents: 'none',
+                                opacity: el.opacity ?? 1,
+                                zIndex: el.zIndex || 1
+                            }}
+                            viewBox="0 0 100 100"
+                            preserveAspectRatio="none"
+                        >
+                            <path
+                                d={d}
+                                fill="none"
+                                stroke={el.color || '#38bdf8'}
+                                strokeWidth={Math.max(0.3, (el.borderWidth || 3) / 8)}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </svg>
+                    );
+                }
+
+                const baseStyle = {
+                    position: 'absolute',
+                    left: `${Number(el.x) || 0}%`,
+                    top: `${Number(el.y) || 0}%`,
+                    width: `${Number(el.w) || 0}%`,
+                    height: el.type === 'line' ? `${Math.max(1, Number(el.borderWidth) || 3)}px` : `${Number(el.h) || 0}%`,
+                    opacity: el.opacity ?? 1,
+                    zIndex: el.zIndex || 1,
+                    transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
+                    transformOrigin: 'center center',
+                    pointerEvents: 'none'
+                };
+
+                if (el.type === 'image' && el.imageUrl) {
+                    return (
+                        <img
+                            key={el.id || `img-${idx}`}
+                            src={el.imageUrl}
+                            alt=""
+                            draggable={false}
+                            style={{ ...baseStyle, objectFit: 'contain', display: 'block' }}
+                        />
+                    );
+                }
+
+                if (el.type === 'shape') {
+                    return (
+                        <div key={el.id || `shape-${idx}`} style={baseStyle}>
+                            <div
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    background: el.background || '#3b82f6',
+                                    border: `${el.borderWidth || 2}px solid ${el.borderColor || '#60a5fa'}`,
+                                    borderRadius: el.shapeVariant === 'circle' ? '50%' : `${el.borderRadius || 0}px`,
+                                    clipPath: shapeClipPath(el.shapeVariant),
+                                    boxSizing: 'border-box'
+                                }}
+                            />
+                        </div>
+                    );
+                }
+
+                if (el.type === 'line') {
+                    return (
+                        <div key={el.id || `line-${idx}`} style={baseStyle}>
+                            <div
+                                style={{
+                                    width: '100%',
+                                    height: `${Math.max(1, Number(el.borderWidth) || 3)}px`,
+                                    background: el.borderColor || '#3b82f6',
+                                    borderRadius: 2
+                                }}
+                            />
+                        </div>
+                    );
+                }
+
+                if (el.type === 'arrow') {
+                    const borderWidth = Math.max(1, Number(el.borderWidth) || 3);
+                    return (
+                        <div key={el.id || `arrow-${idx}`} style={baseStyle}>
+                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}>
+                                <div style={{ flex: 1, height: `${borderWidth}px`, background: el.borderColor || '#3b82f6' }} />
+                                <div
+                                    style={{
+                                        width: 0,
+                                        height: 0,
+                                        borderTop: `${borderWidth * 2.5}px solid transparent`,
+                                        borderBottom: `${borderWidth * 2.5}px solid transparent`,
+                                        borderLeft: `${borderWidth * 4}px solid ${el.borderColor || '#3b82f6'}`
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    );
+                }
+
+                if (el.type === 'datacapture') {
+                    const answer = answers?.[el.id] || '';
+                    return (
+                        <div key={el.id || `dc-${idx}`} style={{ ...baseStyle, pointerEvents: isInteractive ? 'auto' : 'none' }}>
+                            <div style={{
+                                width: '100%', height: '100%', padding: '8px',
+                                background: el.background || '#f8fafc',
+                                border: `${el.borderWidth || 1}px solid ${el.borderColor || '#cbd5e1'}`,
+                                borderRadius: `${el.borderRadius || 6}px`,
+                                boxSizing: 'border-box',
+                                display: 'flex', flexDirection: 'column', gap: 4,
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                overflow: 'hidden'
+                            }}>
+                                <div style={{ fontSize: `${el.fontSize || 12}px`, fontWeight: '600', color: el.color || '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {el.label || 'New Field'} {el.required && <span style={{ color: '#ef4444' }}>*</span>}
+                                </div>
+
+                                <div style={{ flex: 1, display: 'flex' }}>
+                                    {(el.fieldType === 'text' || !el.fieldType) && (
+                                        <input
+                                            type="text"
+                                            value={answer}
+                                            onChange={(e) => onAnswerChange && onAnswerChange(stepId, el.id, e.target.value)}
+                                            style={{ width: '100%', height: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '0 6px', fontSize: '12px' }}
+                                        />
+                                    )}
+                                    {el.fieldType === 'number' && (
+                                        <input
+                                            type="number"
+                                            value={answer}
+                                            onChange={(e) => onAnswerChange && onAnswerChange(stepId, el.id, e.target.value)}
+                                            style={{ width: '100%', height: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '0 6px', fontSize: '12px' }}
+                                        />
+                                    )}
+                                    {el.fieldType === 'textarea' && (
+                                        <textarea
+                                            value={answer}
+                                            onChange={(e) => onAnswerChange && onAnswerChange(stepId, el.id, e.target.value)}
+                                            style={{ width: '100%', height: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 6px', fontSize: '12px', resize: 'none' }}
+                                        />
+                                    )}
+                                    {el.fieldType === 'select' && (
+                                        <select
+                                            value={answer}
+                                            onChange={(e) => onAnswerChange && onAnswerChange(stepId, el.id, e.target.value)}
+                                            style={{ width: '100%', height: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '0 6px', fontSize: '12px' }}
+                                        >
+                                            <option value="">Select option...</option>
+                                            {(el.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                        </select>
+                                    )}
+                                    {el.fieldType === 'radio' && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto', width: '100%' }}>
+                                            {(el.options || []).map((opt, i) => (
+                                                <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#334155', cursor: isInteractive ? 'pointer' : 'default' }}>
+                                                    <input
+                                                        type="radio"
+                                                        name={`radio-${el.id}`}
+                                                        value={opt}
+                                                        checked={answer === opt}
+                                                        onChange={(e) => onAnswerChange && onAnswerChange(stepId, el.id, e.target.value)}
+                                                    />
+                                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                if (el.type === 'text' || el.type === 'sticky') {
+                    return (
+                        <div key={el.id || `text-${idx}`} style={baseStyle}>
+                            <div
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    padding: '6px 8px',
+                                    boxSizing: 'border-box',
+                                    background: el.background || 'transparent',
+                                    borderRadius: el.type === 'sticky' ? '4px' : 0,
+                                    border: el.type === 'sticky' ? '1px solid #fbbf24' : 'none',
+                                    color: el.color || '#ffffff',
+                                    fontSize: `${el.fontSize || 16}px`,
+                                    fontWeight: el.fontWeight || 'normal',
+                                    fontStyle: el.fontStyle || 'normal',
+                                    textDecoration: el.textDecoration || 'none',
+                                    textAlign: el.textAlign || 'left',
+                                    lineHeight: 1.35,
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word',
+                                    overflow: 'hidden'
+                                }}
+                            >
+                                {el.text || ''}
+                            </div>
+                        </div>
+                    );
+                }
+
+                return null;
+            })}
+        </div>
+    );
+};
+
 function ManualCreation() {
     const { t: i18nT, currentLanguage } = useLanguage();
 
@@ -2346,8 +2583,20 @@ function ManualCreation() {
         return [];
     };
 
+    const getStepCanvasElements = (step) => {
+        return Array.isArray(step?.canvasData) ? step.canvasData : [];
+    };
+
     const activeStep = guide.steps.find(s => s.id === activeStepId);
     const operatorCurrentStep = guide.steps[operatorStepIndex] || null;
+    const operatorCanvasElements = getStepCanvasElements(operatorCurrentStep);
+    const operatorHasCanvasVisual = operatorCanvasElements.length > 0;
+    const operatorHasPrimaryVisual = !!(
+        operatorCurrentStep?.media?.type === 'video'
+        || operatorCurrentStep?.media?.type === 'youtube'
+        || (operatorCurrentStep?.images?.length > 0)
+        || operatorCurrentStep?.media?.url
+    );
     const operatorStepDataFields = getStepDataCaptureFields(operatorCurrentStep);
     const guideReferenceLinks = useMemo(() => extractReferenceLinks(guide.documentNumber), [guide.documentNumber]);
     const operatorStepAnswerMap = operatorCurrentStep
@@ -3268,9 +3517,9 @@ function ManualCreation() {
                                             </button>
                                         </div>
 
-                                        <div style={{ display: 'grid', gridTemplateColumns: (operatorCurrentStep.images?.length > 0 || operatorCurrentStep.media?.url) ? '1.2fr 1fr' : '1fr', gap: '32px', marginBottom: '24px' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: operatorHasPrimaryVisual ? '1.2fr 1fr' : '1fr', gap: '32px', marginBottom: '24px' }}>
                                             {/* Left: Images */}
-                                            {(operatorCurrentStep.images?.length > 0 || operatorCurrentStep.media?.url) && (
+                                            {operatorHasPrimaryVisual && (
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                                     <div style={{ position: 'relative', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', background: '#000', aspectRatio: '4/3' }}>
                                                         {(!operatorCurrentStep.media?.type || operatorCurrentStep.media?.type === 'image') && (
@@ -3329,6 +3578,28 @@ function ManualCreation() {
 
                                             {/* Right: Text Content */}
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                                {operatorHasCanvasVisual && (
+                                                    <div style={{
+                                                        borderRadius: '12px',
+                                                        border: '1px solid rgba(255,255,255,0.12)',
+                                                        background: 'rgba(15,23,42,0.4)',
+                                                        padding: '10px'
+                                                    }}>
+                                                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#93c5fd', marginBottom: '8px', textTransform: 'uppercase' }}>
+                                                            PPT Preview
+                                                        </div>
+                                                        <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', borderRadius: '8px', overflow: 'hidden', background: '#0b1220' }}>
+                                                            <CanvasPreviewLayer
+                                                                elements={operatorCanvasElements}
+                                                                isInteractive={true}
+                                                                answers={operatorDataCaptureAnswers?.[operatorCurrentStep.id] || {}}
+                                                                onAnswerChange={setOperatorDataCaptureValue}
+                                                                stepId={operatorCurrentStep.id}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 {operatorCurrentStep.instructions && (
                                                     <div
                                                         style={{ lineHeight: '1.6', color: 'rgba(255,255,255,0.9)', fontSize: '1.1rem' }}
@@ -3662,6 +3933,14 @@ function ManualCreation() {
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                                         {(isOperatorMode ? guide.steps.slice(operatorStepIndex, operatorStepIndex + 1) : guide.steps).map((step, idx) => {
                                             const displayIdx = isOperatorMode ? operatorStepIndex : idx;
+                                            const stepCanvasElements = getStepCanvasElements(step);
+                                            const stepHasCanvasVisual = stepCanvasElements.length > 0;
+                                            const stepHasMediaVisual = !!(
+                                                step.media?.type === 'video'
+                                                || step.media?.type === 'youtube'
+                                                || (step.images?.length > 0)
+                                                || step.media?.url
+                                            );
                                             return (
                                                 <div key={step.id || idx} className="dozuki-step-card">
                                                     {/* Media Side */}
@@ -3716,6 +3995,23 @@ function ManualCreation() {
                                                                 {step.title}
                                                             </h2>
                                                         </div>
+
+                                                        {stepHasCanvasVisual && (
+                                                            <div style={{
+                                                                marginBottom: '24px',
+                                                                borderRadius: '12px',
+                                                                border: '1px solid rgba(148,163,184,0.2)',
+                                                                background: uiTheme === 'light' ? '#f8fafc' : 'rgba(15,23,42,0.4)',
+                                                                padding: '10px'
+                                                            }}>
+                                                                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3b82f6', marginBottom: '8px', textTransform: 'uppercase' }}>
+                                                                    PPT Preview
+                                                                </div>
+                                                                <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', borderRadius: '8px', overflow: 'hidden', background: uiTheme === 'light' ? '#e2e8f0' : '#0b1220' }}>
+                                                                    <CanvasPreviewLayer elements={stepCanvasElements} />
+                                                                </div>
+                                                            </div>
+                                                        )}
 
                                                         <div
                                                             style={{ fontSize: '1.1rem', lineHeight: '1.8', marginBottom: '24px', color: uiTheme === 'light' ? '#475569' : 'rgba(255,255,255,0.8)' }}

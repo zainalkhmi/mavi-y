@@ -25,12 +25,19 @@ import {
     Database,
     CheckCircle,
     XCircle,
-    UserCircle
+    UserCircle,
+    Plus,
+    Trash2
 } from 'lucide-react';
 import { generateLicenseKey } from '../utils/licenseUtils';
 import {
     isSupabaseReady
 } from '../utils/supabaseManualDB';
+import {
+    getSupabaseSettings,
+    saveSupabaseSettings,
+    testSupabaseConnection
+} from '../utils/supabaseClient';
 import {
     getAllLicenses,
     createLicense,
@@ -171,19 +178,9 @@ function AdminPanel() {
 
     useEffect(() => {
         checkDbStatus();
-        // Load saved credentials or defaults into form state
-        const storedUrl = localStorage.getItem('turso_db_url');
-        const storedToken = localStorage.getItem('turso_auth_token');
-
-        if (storedUrl && storedToken) {
-            setDbUrl(storedUrl);
-            setAuthToken(storedToken);
-        } else {
-            // Load defaults from .env
-            const defaults = getDefaultCredentials();
-            setDbUrl(defaults.dbUrl);
-            setAuthToken(defaults.authToken);
-        }
+        const supabase = getSupabaseSettings();
+        setDbUrl(supabase.url || '');
+        setAuthToken(supabase.anonKey || '');
     }, []);
 
     const checkDbStatus = async () => {
@@ -191,7 +188,8 @@ function AdminPanel() {
         setDbStatus({
             configured: ready,
             connected: ready,
-            mode: 'Supabase'
+            mode: 'Supabase',
+            message: ready ? 'Supabase is configured and ready.' : 'Supabase is not configured.'
         });
         setCheckingDb(false);
     };
@@ -202,8 +200,26 @@ function AdminPanel() {
             return;
         }
 
-        saveTursoCredentials(dbUrl, authToken);
-        await showAlert('Success', 'Credentials saved! Testing connection...');
+        saveSupabaseSettings({
+            ...getSupabaseSettings(),
+            enabled: true,
+            url: dbUrl,
+            anonKey: authToken
+        });
+
+        try {
+            await testSupabaseConnection({
+                ...getSupabaseSettings(),
+                enabled: true,
+                url: dbUrl,
+                anonKey: authToken
+            });
+        } catch (error) {
+            await showAlert('Connection Failed', error?.message || 'Failed to connect to Supabase.');
+            return;
+        }
+
+        await showAlert('Success', 'Supabase settings saved and connection test passed.');
         await checkDbStatus();
         setShowSettings(false);
         // Reload page to ensure fresh start for all components
@@ -214,12 +230,16 @@ function AdminPanel() {
 
     const handleClearSettings = async () => {
         if (await showConfirm('Clear Credentials', 'Are you sure? This will remove saved credentials and revert to environment variables (if any).')) {
-            clearTursoCredentials();
+            saveSupabaseSettings({
+                ...getSupabaseSettings(),
+                enabled: false,
+                url: '',
+                anonKey: ''
+            });
 
             // Revert UI state to defaults
-            const defaults = getDefaultCredentials();
-            setDbUrl(defaults.dbUrl);
-            setAuthToken(defaults.authToken);
+            setDbUrl('');
+            setAuthToken('');
 
             await showAlert('Info', 'Credentials cleared. Reverting to default values.');
             checkDbStatus();
@@ -295,7 +315,7 @@ function AdminPanel() {
         const ok = await upsertMenuVisibility(menuPath, nextVisible, actor);
         if (!ok) {
             setMenuVisibility(prev => ({ ...prev, [menuPath]: previous }));
-            await showAlert('Error', 'Failed to update menu visibility in Turso.');
+            await showAlert('Error', 'Failed to update menu visibility in cloud database.');
             return;
         }
 
@@ -313,7 +333,7 @@ function AdminPanel() {
 
             const ok = await bulkUpsertMenuVisibility(payload, actor);
             if (!ok) {
-                await showAlert('Error', 'Failed to update menu visibility in Turso.');
+                await showAlert('Error', 'Failed to update menu visibility in cloud database.');
                 return;
             }
 
@@ -334,7 +354,7 @@ function AdminPanel() {
             const actor = user?.email || user?.id || 'admin';
             const ok = await resetMenuVisibilityToDefault(actor);
             if (!ok) {
-                await showAlert('Error', 'Failed to reset menu visibility in Turso.');
+                await showAlert('Error', 'Failed to reset menu visibility in cloud database.');
                 return;
             }
 
@@ -417,7 +437,7 @@ function AdminPanel() {
             const version = await showPrompt("Software Version", "Enter version number (e.g., 1.0.2):", "1.0.0");
             await saveCloudInstaller(file.name, file, version || '1.0.0');
             await loadInstallers();
-            await showAlert('Success', 'Installer uploaded successfully to Turso Cloud!');
+            await showAlert('Success', 'Installer uploaded successfully to cloud database!');
         } catch (error) {
             console.error('Upload failed:', error);
             await showAlert('Error', 'Failed to upload installer to Cloud.');
@@ -1812,7 +1832,7 @@ function AdminPanel() {
                                 <ul style={{ paddingLeft: '20px' }}>
                                     <li>Landing Page availability</li>
                                     <li>Admin Panel access</li>
-                                    <li>Core database connectivity (Turso)</li>
+                                    <li>Core database connectivity (Supabase)</li>
                                     <li>MaviClass content loading</li>
                                 </ul>
                             </div>
@@ -1992,7 +2012,7 @@ function AdminPanel() {
                         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
                             <h2 style={{ color: 'white', fontSize: '1.8rem', marginBottom: '10px' }}>Menu Visibility Control</h2>
                             <p style={{ color: '#888', marginBottom: '30px' }}>
-                                Hide or unhide app menus from Admin Panel. Settings are stored in Turso Cloud.
+                                Hide or unhide app menus from Admin Panel. Settings are stored in Supabase cloud.
                             </p>
 
                             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
@@ -2159,13 +2179,13 @@ function AdminPanel() {
 
                         <div style={{ marginBottom: '20px' }}>
                             <label style={{ color: '#ccc', display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>
-                                Turso Database URL
+                                Supabase URL
                             </label>
                             <input
                                 type="text"
                                 value={dbUrl}
                                 onChange={(e) => setDbUrl(e.target.value)}
-                                placeholder="libsql://your-db.turso.io"
+                                placeholder="https://your-project-ref.supabase.co"
                                 style={{
                                     width: '100%',
                                     padding: '12px',

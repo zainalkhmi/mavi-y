@@ -165,6 +165,40 @@ const extractReferenceLinks = (rawValue = '') => {
         .filter((item) => !!item.url);
 };
 
+const extractYouTubeVideoId = (value = '') => {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+
+    if (/^[a-zA-Z0-9_-]{11}$/.test(raw)) return raw;
+
+    const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+    try {
+        const parsed = new URL(withProtocol);
+        const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+
+        if (host === 'youtu.be') {
+            return parsed.pathname.split('/').filter(Boolean)[0] || null;
+        }
+
+        if (host.includes('youtube.com')) {
+            if (parsed.pathname === '/watch') return parsed.searchParams.get('v') || null;
+            if (parsed.pathname.startsWith('/embed/')) return parsed.pathname.split('/embed/')[1]?.split('/')[0] || null;
+            if (parsed.pathname.startsWith('/shorts/')) return parsed.pathname.split('/shorts/')[1]?.split('/')[0] || null;
+        }
+    } catch {
+        // ignore parsing failure, fallback regex below
+    }
+
+    const fallback = raw.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+    return fallback?.[1] || null;
+};
+
+const getYouTubeEmbedUrl = (value = '') => {
+    const id = extractYouTubeVideoId(value);
+    return id ? `https://www.youtube.com/embed/${id}` : null;
+};
+
 const USER_ROLES = ['Author', 'Reviewer', 'Approver', 'Operator', 'Admin'];
 const CAPA_TRANSITIONS = {
     Open: ['Root Cause'],
@@ -3447,9 +3481,16 @@ function ManualCreation() {
             {selectedProject ? (
                 <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
                     {/* Left: Steps Editor / Preview */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '20px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: isOperatorMode ? '0' : '20px' }}>
                         {isOperatorMode ? (
-                            <div style={{ padding: '0 40px 60px 40px', maxWidth: '1000px', margin: '0 auto', width: '100%', animation: 'fadeIn 0.4s ease' }}>
+                            <div style={{
+                                padding: '20px',
+                                maxWidth: 'none',
+                                margin: 0,
+                                width: '100%',
+                                minHeight: '100%',
+                                animation: 'fadeIn 0.4s ease'
+                            }}>
                                 <div className="glass-panel" style={{ padding: '24px', marginBottom: '20px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                                         <div>
@@ -3536,10 +3577,10 @@ function ManualCreation() {
                                                                 style={{ width: '100%', height: '100%', display: 'block' }}
                                                             />
                                                         )}
-                                                        {operatorCurrentStep.media?.type === 'youtube' && operatorCurrentStep.media.youtubeUrl && (
+                                                        {operatorCurrentStep.media?.type === 'youtube' && (operatorCurrentStep.media.youtubeUrl || operatorCurrentStep.media.url) && (
                                                             <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000', height: '100%' }}>
                                                                 <iframe
-                                                                    src={operatorCurrentStep.media.youtubeUrl.replace('watch?v=', 'embed/').split('&')[0]}
+                                                                    src={getYouTubeEmbedUrl(operatorCurrentStep.media.youtubeUrl || operatorCurrentStep.media.url) || ''}
                                                                     style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
                                                                     allowFullScreen
                                                                 />
@@ -3945,6 +3986,13 @@ function ManualCreation() {
                                                         <div style={{ position: 'relative', width: '100%', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.1)', background: '#000', aspectRatio: '4/3' }}>
                                                             {step.media?.type === 'video' ? (
                                                                 <video src={step.media.url} style={{ width: '100%', height: '100%', objectFit: 'contain' }} controls />
+                                                            ) : step.media?.type === 'youtube' && (step.media?.youtubeUrl || step.media?.url) ? (
+                                                                <iframe
+                                                                    src={getYouTubeEmbedUrl(step.media?.youtubeUrl || step.media?.url) || ''}
+                                                                    title={`preview-youtube-${step.id || idx}`}
+                                                                    style={{ width: '100%', height: '100%', border: 'none' }}
+                                                                    allowFullScreen
+                                                                />
                                                             ) : (step.images?.length > 0 || step.media?.url) ? (
                                                                 <img
                                                                     src={step.images?.[previewImageIndices[step.id] || 0] || step.media?.url}

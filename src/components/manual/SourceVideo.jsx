@@ -18,7 +18,7 @@ const SourceVideo = ({
     return (
         <div className="glass-panel" style={{
             width: '320px',
-            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            background: 'linear-gradient(160deg, rgba(15, 23, 42, 0.82), rgba(30, 41, 59, 0.62))',
             borderRadius: '16px',
             border: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
@@ -37,7 +37,7 @@ const SourceVideo = ({
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.45), rgba(51, 65, 85, 0.32))',
                 fontSize: '0.85rem',
                 letterSpacing: '0.02em',
                 textTransform: 'uppercase'
@@ -56,7 +56,9 @@ const SourceVideo = ({
                         color: '#60a5fa',
                         padding: '4px 8px',
                         borderRadius: '6px',
-                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.3), rgba(59, 130, 246, 0.2))',
+                        border: '1px solid rgba(59,130,246,0.35)',
+                        boxShadow: '0 8px 16px rgba(2, 6, 23, 0.3)',
                         transition: 'all 0.2s'
                     }}
                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(37, 99, 235, 0.2)'}
@@ -79,7 +81,7 @@ const SourceVideo = ({
                             fontSize: '0.72rem',
                             padding: '4px 8px',
                             color: 'rgba(255,255,255,0.75)',
-                            backgroundColor: 'rgba(255,255,255,0.06)',
+                            background: 'linear-gradient(135deg, rgba(100, 116, 139, 0.24), rgba(51, 65, 85, 0.22))',
                             border: '1px solid rgba(255,255,255,0.1)',
                             borderRadius: '6px'
                         }}
@@ -93,7 +95,7 @@ const SourceVideo = ({
 
             <div style={{ padding: '0 20px 20px 20px' }}>
                 {videoSrc ? (
-                    <div className="glass-panel" style={{ overflow: 'hidden', backgroundColor: '#000', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px' }}>
+                    <div className="glass-panel" style={{ overflow: 'hidden', background: 'linear-gradient(145deg, rgba(2, 6, 23, 0.9), rgba(15, 23, 42, 0.75))', border: '1px solid rgba(148, 163, 184, 0.22)', borderRadius: '10px', boxShadow: '0 14px 30px rgba(2, 6, 23, 0.4)' }}>
                         <video
                             ref={videoRef}
                             src={videoSrc}
@@ -104,8 +106,8 @@ const SourceVideo = ({
                             padding: '8px',
                             display: 'flex',
                             gap: '8px',
-                            background: 'rgba(255,255,255,0.02)',
-                            borderTop: '1px solid rgba(255,255,255,0.08)'
+                            background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.42), rgba(51, 65, 85, 0.3))',
+                            borderTop: '1px solid rgba(148,163,184,0.22)'
                         }}>
                             <button
                                 onClick={onMarkIn}
@@ -115,7 +117,7 @@ const SourceVideo = ({
                                     flex: 1,
                                     fontSize: '0.7rem',
                                     padding: '6px',
-                                    backgroundColor: activeStep ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+                                    background: activeStep ? 'linear-gradient(135deg, rgba(30, 64, 175, 0.32), rgba(37, 99, 235, 0.2))' : 'rgba(255, 255, 255, 0.02)',
                                     color: activeStep ? 'white' : 'rgba(255, 255, 255, 0.2)',
                                     border: '1px solid rgba(255, 255, 255, 0.1)',
                                     borderRadius: '4px',
@@ -134,7 +136,7 @@ const SourceVideo = ({
                                     flex: 1,
                                     fontSize: '0.7rem',
                                     padding: '6px',
-                                    backgroundColor: activeStep ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+                                    background: activeStep ? 'linear-gradient(135deg, rgba(5, 150, 105, 0.3), rgba(16, 185, 129, 0.2))' : 'rgba(255, 255, 255, 0.02)',
                                     color: activeStep ? 'white' : 'rgba(255, 255, 255, 0.2)',
                                     border: '1px solid rgba(255, 255, 255, 0.1)',
                                     borderRadius: '4px',
@@ -153,7 +155,7 @@ const SourceVideo = ({
                                         width: '32px',
                                         padding: '6px',
                                         justifyContent: 'center',
-                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                        background: 'linear-gradient(135deg, rgba(71, 85, 105, 0.3), rgba(30, 41, 59, 0.3))',
                                         color: 'white',
                                         border: '1px solid rgba(255, 255, 255, 0.1)',
                                         borderRadius: '4px',
@@ -176,16 +178,16 @@ const SourceVideo = ({
                         flexDirection: 'column',
                         alignItems: 'center',
                         gap: '16px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        background: 'linear-gradient(145deg, rgba(30, 41, 59, 0.45), rgba(15, 23, 42, 0.35))',
                         borderStyle: 'dashed',
                         borderWidth: '1px',
-                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderColor: 'rgba(148, 163, 184, 0.22)',
                         borderRadius: '8px'
                     }}>
                         <div style={{
                             width: '48px', height: '48px',
                             borderRadius: '50%',
-                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            background: 'linear-gradient(135deg, rgba(71, 85, 105, 0.3), rgba(30, 41, 59, 0.24))',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             color: 'rgba(255, 255, 255, 0.2)'
                         }}>
@@ -196,11 +198,11 @@ const SourceVideo = ({
                         </div>
                         <label className="btn-pro" style={{
                             padding: '8px 16px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.28), rgba(59, 130, 246, 0.2))',
                             cursor: 'pointer',
                             fontSize: '0.8rem',
                             color: 'white',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            border: '1px solid rgba(59, 130, 246, 0.35)',
                             borderRadius: '6px',
                             display: 'flex',
                             alignItems: 'center',

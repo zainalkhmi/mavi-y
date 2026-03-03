@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Camera, Upload, X, Image as ImageIcon, Video } from 'lucide-react';
+import { Camera, X, Image as ImageIcon, Video } from 'lucide-react';
+import CameraCaptureModal from './CameraCaptureModal';
 
 const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -233,6 +234,23 @@ const StepMediaControls = ({
     const [imgurLinkInput, setImgurLinkInput] = useState('');
     const [imgurLinkError, setImgurLinkError] = useState('');
     const [isResolvingImgur, setIsResolvingImgur] = useState(false);
+    const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+    const [cameraMode, setCameraMode] = useState('photo'); // photo | video
+
+    const mediaBtnBase = {
+        padding: '9px 10px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '6px',
+        fontSize: '0.75rem',
+        borderRadius: '10px',
+        cursor: 'pointer',
+        fontWeight: 600,
+        boxShadow: '0 8px 20px rgba(2, 6, 23, 0.28)',
+        backdropFilter: 'blur(8px)',
+        transition: 'all 0.2s ease'
+    };
 
     const handleDeleteImage = (index) => {
         const newImages = images.filter((_, i) => i !== index);
@@ -286,10 +304,49 @@ const StepMediaControls = ({
         }
     };
 
+    const handleOpenCameraPhoto = () => {
+        setCameraMode('photo');
+        setIsCameraModalOpen(true);
+    };
+
+    const handleOpenCameraVideo = () => {
+        setCameraMode('video');
+        setIsCameraModalOpen(true);
+    };
+
+    const handleCapturePhotoFromCamera = (dataUrl) => {
+        if (!dataUrl) return;
+        const nextImages = [...images, dataUrl];
+        handleStepUpdate(step.id, {
+            ...step,
+            images: nextImages,
+            media: {
+                ...(step.media || {}),
+                type: 'image',
+                url: dataUrl,
+                sourceUrl: dataUrl
+            }
+        });
+        setActiveImageIndex(Math.max(nextImages.length - 1, 0));
+    };
+
+    const handleCaptureVideoFromCamera = (dataUrl) => {
+        if (!dataUrl) return;
+        handleStepUpdate(step.id, {
+            ...step,
+            media: {
+                ...(step.media || {}),
+                type: 'video',
+                url: dataUrl,
+                sourceUrl: dataUrl
+            }
+        });
+    };
+
     return (
         <div className="glass-panel" style={{
             marginTop: '12px',
-            backgroundColor: 'rgba(15, 23, 42, 0.4)',
+            background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.5))',
             borderRadius: '12px',
             border: '1px solid rgba(255, 255, 255, 0.06)',
             display: 'flex',
@@ -315,16 +372,12 @@ const StepMediaControls = ({
                     disabled={!globalVideoSrc}
                     style={{
                         flex: '1 1 45%',
-                        padding: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        fontSize: '0.75rem',
-                        backgroundColor: globalVideoSrc ? 'rgba(37, 99, 235, 0.15)' : 'rgba(255,255,255,0.05)',
+                        ...mediaBtnBase,
+                        background: globalVideoSrc
+                            ? 'linear-gradient(135deg, rgba(37, 99, 235, 0.34), rgba(59, 130, 246, 0.2))'
+                            : 'linear-gradient(135deg, rgba(100, 116, 139, 0.24), rgba(51, 65, 85, 0.2))',
                         color: globalVideoSrc ? '#93c5fd' : 'rgba(255,255,255,0.3)',
                         border: `1px solid ${globalVideoSrc ? 'rgba(59, 130, 246, 0.3)' : 'rgba(255,255,255,0.1)'}`,
-                        borderRadius: '8px',
                         cursor: globalVideoSrc ? 'pointer' : 'not-allowed',
                         opacity: globalVideoSrc ? 1 : 0.6
                     }}
@@ -333,19 +386,28 @@ const StepMediaControls = ({
                     <span>Capture</span>
                 </button>
 
+                <button
+                    onClick={handleOpenCameraPhoto}
+                    className="btn-pro"
+                    style={{
+                        flex: '1 1 45%',
+                        ...mediaBtnBase,
+                        background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.28), rgba(13, 148, 136, 0.2))',
+                        color: '#5eead4',
+                        border: '1px solid rgba(20, 184, 166, 0.32)',
+                    }}
+                    title={tt?.('manual.captureFromCamera', 'Capture from Camera') || 'Capture from Camera'}
+                >
+                    <Camera size={14} />
+                    <span>{tt?.('manual.cameraPhoto', 'Camera Photo') || 'Camera Photo'}</span>
+                </button>
+
                 <label className="btn-pro" style={{
                     flex: '1 1 45%',
-                    padding: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    fontSize: '0.75rem',
+                    ...mediaBtnBase,
                     color: 'rgba(255,255,255,0.8)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    backgroundColor: 'rgba(255,255,255,0.05)'
+                    border: '1px solid rgba(148, 163, 184, 0.3)',
+                    background: 'linear-gradient(135deg, rgba(71, 85, 105, 0.35), rgba(30, 41, 59, 0.28))'
                 }}>
                     <ImageIcon size={14} />
                     <span>Image</span>
@@ -362,19 +424,29 @@ const StepMediaControls = ({
                     }} />
                 </label>
 
+                <button
+                    onClick={handleOpenCameraVideo}
+                    className="btn-pro"
+                    style={{
+                        flex: '1 1 100%',
+                        ...mediaBtnBase,
+                        color: '#fca5a5',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.26), rgba(127, 29, 29, 0.24))',
+                        marginTop: '4px'
+                    }}
+                    title={tt?.('manual.recordFromCamera', 'Record Video from Camera') || 'Record Video from Camera'}
+                >
+                    <Video size={14} />
+                    <span>{tt?.('manual.cameraVideo', 'Camera Video') || 'Camera Video'}</span>
+                </button>
+
                 <label className="btn-pro" style={{
                     flex: '1 1 100%',
-                    padding: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    fontSize: '0.75rem',
+                    ...mediaBtnBase,
                     color: '#60a5fa',
                     border: '1px solid rgba(37, 99, 235, 0.25)',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    backgroundColor: 'rgba(37, 99, 235, 0.05)',
+                    background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.26), rgba(30, 64, 175, 0.22))',
                     marginTop: '4px'
                 }}>
                     <Video size={14} />
@@ -405,9 +477,9 @@ const StepMediaControls = ({
                     placeholder="Paste image/Imgur/YouTube link..."
                     style={{
                         width: '100%',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(255,255,255,0.14)',
-                        background: 'rgba(255,255,255,0.04)',
+                        borderRadius: '10px',
+                        border: '1px solid rgba(148,163,184,0.28)',
+                        background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.72), rgba(30, 41, 59, 0.55))',
                         color: '#fff',
                         padding: '8px 10px',
                         fontSize: '0.75rem'
@@ -420,7 +492,7 @@ const StepMediaControls = ({
                     style={{
                         padding: '8px 10px',
                         fontSize: '0.75rem',
-                        backgroundColor: 'rgba(16,185,129,0.16)',
+                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(5, 150, 105, 0.22))',
                         color: '#6ee7b7',
                         borderColor: 'rgba(16,185,129,0.35)',
                         opacity: (isResolvingImgur || !imgurLinkInput.trim()) ? 0.6 : 1,
@@ -452,7 +524,10 @@ const StepMediaControls = ({
                 gap: '8px',
                 overflowY: 'auto',
                 maxHeight: '140px',
-                padding: '2px'
+                padding: '8px',
+                borderRadius: '10px',
+                background: 'linear-gradient(145deg, rgba(2, 6, 23, 0.46), rgba(15, 23, 42, 0.3))',
+                border: '1px solid rgba(148,163,184,0.16)'
             }}>
                 {images.map((img, idx) => (
                     <div key={idx} style={{ position: 'relative', width: '100%', aspectRatio: '4/3' }}>
@@ -522,6 +597,15 @@ const StepMediaControls = ({
             }}>
                 Drag to rearrange
             </div>
+
+            <CameraCaptureModal
+                isOpen={isCameraModalOpen}
+                mode={cameraMode}
+                onClose={() => setIsCameraModalOpen(false)}
+                onCapturePhoto={handleCapturePhotoFromCamera}
+                onCaptureVideo={handleCaptureVideoFromCamera}
+                tt={tt}
+            />
         </div >
     );
 };

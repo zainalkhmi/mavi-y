@@ -59,6 +59,35 @@ const getYouTubeEmbedUrl = (value = '') => {
     return id ? `https://www.youtube.com/embed/${id}` : null;
 };
 
+const isPptFileUrl = (value = '') => {
+    const raw = String(value || '').trim();
+    if (!raw) return false;
+
+    try {
+        const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+        const parsed = new URL(withProtocol);
+        return /\.pptx?(?:$|[?#])/i.test(parsed.pathname + parsed.search + parsed.hash);
+    } catch {
+        return /\.pptx?(?:$|[?#])/i.test(raw);
+    }
+};
+
+const getOfficeEmbedUrl = (value = '') => {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+    const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(withProtocol)}`;
+};
+
+const isPptMedia = (step) => {
+    const media = step?.media;
+    if (!media || typeof media !== 'object') return false;
+
+    const type = String(media.type || '').trim().toLowerCase();
+    if (['ppt', 'pptx', 'powerpoint'].includes(type)) return true;
+    return isPptFileUrl(media.url);
+};
+
 const normalizeQuestionType = (value = 'text') => String(value || 'text').trim().toLowerCase();
 
 const normalizeQuestionOptions = (value) => {
@@ -700,6 +729,23 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                                             allowFullScreen
                                             title={`public-step-youtube-${currentStep?.id || currentStepIndex}`}
                                         />
+                                    ) : isPptMedia(currentStep) ? (
+                                        <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateRows: '1fr auto', background: '#f8fafc' }}>
+                                            <iframe
+                                                src={getOfficeEmbedUrl(currentStep.media?.url) || ''}
+                                                style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
+                                                title={`public-step-ppt-${currentStep?.id || currentStepIndex}`}
+                                            />
+                                            <div style={{ padding: '8px', borderTop: '1px solid #dbe3ef', background: '#eef2f7', textAlign: 'center' }}>
+                                                <button
+                                                    className="dozuki-btn"
+                                                    style={{ minWidth: 150 }}
+                                                    onClick={() => window.open(currentStep.media?.url, '_blank', 'noopener,noreferrer')}
+                                                >
+                                                    Open PPT
+                                                </button>
+                                            </div>
+                                        </div>
                                     ) : (
                                         <img
                                             src={currentStep.media?.url || currentStep.images[0]}
@@ -721,7 +767,13 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                                     onClick={() => setCurrentStepIndex(idx)}
                                 >
                                     {(step?.media?.url || (step?.images && step.images.length > 0)) ? (
-                                        <img src={step.media?.url || step.images[0]} alt={step.title || `Step ${idx + 1}`} />
+                                        isPptMedia(step) ? (
+                                            <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', background: '#eef2f7', color: '#334155', fontWeight: 800, fontSize: 12 }}>
+                                                PPT
+                                            </div>
+                                        ) : (
+                                            <img src={step.media?.url || step.images[0]} alt={step.title || `Step ${idx + 1}`} />
+                                        )
                                     ) : (
                                         <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: '#617489', fontWeight: 700, fontSize: 12 }}>
                                             Step {idx + 1}

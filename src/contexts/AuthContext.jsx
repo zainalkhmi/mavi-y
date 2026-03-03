@@ -5,9 +5,8 @@ const AuthContext = createContext({});
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-    // Default to an admin user to bypass all login blocks
-    const [user, setUser] = useState({ id: 'local-admin', email: 'admin@mavi.app' });
-    const [userRole, setUserRole] = useState('admin');
+    const [user, setUser] = useState(null);
+    const [userRole, setUserRole] = useState('guest');
     const [loading, setLoading] = useState(false);
 
     const signIn = async (email, password, role = 'admin') => {
@@ -19,11 +18,16 @@ export const AuthProvider = ({ children }) => {
     };
 
     const signOut = async () => {
-        // Sign out does nothing in "no-login" mode
-        console.log('Sign out disabled in this version');
+        setUser(null);
+        setUserRole('guest');
     };
 
-    const adminLogin = (password) => true;
+    const adminLogin = (password) => {
+        if (!password || !String(password).trim()) return false;
+        setUser({ id: 'local-admin', email: 'admin@mavi.app' });
+        setUserRole('admin');
+        return true;
+    };
 
     const value = {
         session: user ? { user } : null,

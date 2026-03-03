@@ -12,6 +12,7 @@ const SourceVideo = ({
     onMarkIn,
     onMarkOut,
     onSeekTo,
+    onHide,
     tt // Translation function from ManualCreation
 }) => {
     return (
@@ -45,30 +46,47 @@ const SourceVideo = ({
                     <Video size={16} style={{ color: '#60a5fa' }} />
                     {tt('manual.sourceVideo', 'Source Video')}
                 </div>
-                <label style={{
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '0.75rem',
-                    color: '#60a5fa',
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                    transition: 'all 0.2s'
-                }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(37, 99, 235, 0.2)'}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(37, 99, 235, 0.1)'}
-                >
-                    <Upload size={14} />
-                    {tt('manual.uploadVideo', 'Upload Video')}
-                    <input
-                        type="file"
-                        accept="video/*"
-                        style={{ display: 'none' }}
-                        onChange={onUpload}
-                    />
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <label style={{
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '0.75rem',
+                        color: '#60a5fa',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        transition: 'all 0.2s'
+                    }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(37, 99, 235, 0.2)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(37, 99, 235, 0.1)'}
+                    >
+                        <Upload size={14} />
+                        {tt('manual.uploadVideo', 'Upload Video')}
+                        <input
+                            type="file"
+                            accept="video/*"
+                            style={{ display: 'none' }}
+                            onChange={onUpload}
+                        />
+                    </label>
+                    <button
+                        type="button"
+                        onClick={onHide}
+                        className="btn-pro"
+                        style={{
+                            fontSize: '0.72rem',
+                            padding: '4px 8px',
+                            color: 'rgba(255,255,255,0.75)',
+                            backgroundColor: 'rgba(255,255,255,0.06)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '6px'
+                        }}
+                    >
+                        {tt('common.hide', 'Hide')}
+                    </button>
+                </div>
             </div>
 
             <div style={{ height: '12px' }} />

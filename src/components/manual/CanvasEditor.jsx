@@ -94,7 +94,7 @@ const CanvasEditor = ({ step, onChange }) => {
     const [showProps, setShowProps] = useState(true);
     const [editingTextId, setEditingTextId] = useState(null);
     const [shapeVariant, setShapeVariant] = useState('rect');
-    const [canvasBg, setCanvasBg] = useState('#1e293b');
+    const [canvasBg, setCanvasBg] = useState('#ffffff');
     const [zoom, setZoom] = useState(1);
     const [drawing, setDrawing] = useState(null); // temp path for freehand
     const [dragState, setDragState] = useState(null);

@@ -3582,13 +3582,10 @@ function ManualCreation() {
                                                     <div style={{
                                                         borderRadius: '12px',
                                                         border: '1px solid rgba(255,255,255,0.12)',
-                                                        background: 'rgba(15,23,42,0.4)',
+                                                        background: '#ffffff',
                                                         padding: '10px'
                                                     }}>
-                                                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#93c5fd', marginBottom: '8px', textTransform: 'uppercase' }}>
-                                                            PPT Preview
-                                                        </div>
-                                                        <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', borderRadius: '8px', overflow: 'hidden', background: '#0b1220' }}>
+                                                        <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', borderRadius: '8px', overflow: 'hidden', background: '#ffffff' }}>
                                                             <CanvasPreviewLayer
                                                                 elements={operatorCanvasElements}
                                                                 isInteractive={true}
@@ -4001,13 +3998,10 @@ function ManualCreation() {
                                                                 marginBottom: '24px',
                                                                 borderRadius: '12px',
                                                                 border: '1px solid rgba(148,163,184,0.2)',
-                                                                background: uiTheme === 'light' ? '#f8fafc' : 'rgba(15,23,42,0.4)',
+                                                                background: '#ffffff',
                                                                 padding: '10px'
                                                             }}>
-                                                                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3b82f6', marginBottom: '8px', textTransform: 'uppercase' }}>
-                                                                    PPT Preview
-                                                                </div>
-                                                                <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', borderRadius: '8px', overflow: 'hidden', background: uiTheme === 'light' ? '#e2e8f0' : '#0b1220' }}>
+                                                                <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', borderRadius: '8px', overflow: 'hidden', background: '#ffffff' }}>
                                                                     <CanvasPreviewLayer elements={stepCanvasElements} />
                                                                 </div>
                                                             </div>

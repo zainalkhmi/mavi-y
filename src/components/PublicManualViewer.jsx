@@ -2,6 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { getKnowledgeBaseItem, getItemByCloudId, updateKnowledgeBaseItem } from '../utils/knowledgeBaseDB';
 import { getManualByCloudId, appendManualAcknowledgement, appendManualDataCapture } from '../utils/supabaseManualDB';
 import { exportManualDataCapturesToExcel } from '../utils/excelExport';
+import {
+    buildManualDataCapturePayload,
+    syncManualDataCaptureDestinations
+} from '../utils/manualDataCaptureIntegrations';
 
 const normalizeReferenceUrl = (value = '') => {
     const raw = String(value || '').trim();
@@ -403,30 +407,39 @@ const PublicManualViewer = ({ manualId, onClose }) => {
             return;
         }
 
-        const payload = {
-            id: Math.random().toString(36).slice(2, 10),
+        const payload = buildManualDataCapturePayload({
+            manual,
             manualVersion,
-            stepId: currentStep.id || null,
+            step: currentStep,
             stepIndex: currentStepIndex,
-            stepTitle: currentStep.title || `Step ${currentStepIndex + 1}`,
+            answers: currentAnswer,
             operatorName: ackName.trim() || 'Anonymous',
             role: ackRole,
-            answers: currentAnswer,
-            capturedAt: new Date().toISOString(),
             source: 'qrcode-public-viewer'
-        };
+        });
 
         setIsSubmittingCapture(true);
         try {
+            const integrationResult = await syncManualDataCaptureDestinations(payload);
+            const capturePayload = {
+                ...payload,
+                integrationStatus: {
+                    googleSheets: integrationResult.googleSheets,
+                    externalApi: integrationResult.externalApi,
+                    sqlApi: integrationResult.sqlApi
+                },
+                integrationSummary: integrationResult.summary
+            };
+
             const currentContent = contentObj || {};
             const currentCaptures = Array.isArray(currentContent.dataCaptures) ? currentContent.dataCaptures : [];
-            const nextCaptures = [payload, ...currentCaptures];
+            const nextCaptures = [capturePayload, ...currentCaptures];
 
             const cloudId = manual?.cloudId || manualId;
             let savedToCloud = false;
             if (cloudId) {
                 try {
-                    await appendManualDataCapture(cloudId, payload);
+                    await appendManualDataCapture(cloudId, capturePayload);
                     savedToCloud = true;
                 } catch (cloudError) {
                     console.warn('Cloud data capture save failed, fallback to local:', cloudError);
@@ -450,7 +463,7 @@ const PublicManualViewer = ({ manualId, onClose }) => {
                 }
             }));
 
-            alert('Data capture submitted successfully.');
+            alert(`Data capture submitted successfully. Sync: ${integrationResult.summary}`);
         } catch (captureError) {
             console.error('Failed to submit data capture:', captureError);
             alert('Failed to submit data capture. Please try again.');

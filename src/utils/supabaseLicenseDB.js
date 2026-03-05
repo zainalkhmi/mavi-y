@@ -12,6 +12,27 @@ const isMissingColumnError = (error) => {
     return msg.includes('column') && (msg.includes('does not exist') || msg.includes('could not find'));
 };
 
+const resolveLicenseIdentifier = (licenseOrId) => {
+    if (licenseOrId && typeof licenseOrId === 'object') {
+        if (licenseOrId.id !== undefined && licenseOrId.id !== null && String(licenseOrId.id).trim() !== '') {
+            return { column: 'id', value: licenseOrId.id };
+        }
+        if (licenseOrId.key_id !== undefined && licenseOrId.key_id !== null && String(licenseOrId.key_id).trim() !== '') {
+            return { column: 'key_id', value: licenseOrId.key_id };
+        }
+        if (licenseOrId.key_string !== undefined && licenseOrId.key_string !== null && String(licenseOrId.key_string).trim() !== '') {
+            return { column: 'key_string', value: licenseOrId.key_string };
+        }
+        return null;
+    }
+
+    if (licenseOrId !== undefined && licenseOrId !== null && String(licenseOrId).trim() !== '') {
+        return { column: 'id', value: licenseOrId };
+    }
+
+    return null;
+};
+
 // ── Helpers ──────────────────────────────────────────
 
 /**
@@ -95,16 +116,19 @@ export async function createLicense(key, email, machineId = '') {
 export async function updateLicense(id, updates) {
     const supabase = getSupabaseClient();
     const now = new Date().toISOString();
+    const identifier = resolveLicenseIdentifier(id);
+    if (!identifier) throw new Error('License identifier is required for updateLicense');
 
-    const { data, error } = await supabase
+    let query = supabase
         .from('licenses')
         .update({
             ...updates,
             updated_at: now
-        })
-        .eq('id', id)
-        .select()
-        .single();
+        });
+
+    query = query.eq(identifier.column, identifier.value);
+
+    const { data, error } = await query.select().single();
 
     if (error) throw error;
     return data;
@@ -115,10 +139,13 @@ export async function updateLicense(id, updates) {
  */
 export async function deleteLicense(id) {
     const supabase = getSupabaseClient();
+    const identifier = resolveLicenseIdentifier(id);
+    if (!identifier) throw new Error('License identifier is required for deleteLicense');
+
     const { error } = await supabase
         .from('licenses')
         .delete()
-        .eq('id', id);
+        .eq(identifier.column, identifier.value);
 
     if (error) throw error;
     return true;
@@ -148,6 +175,9 @@ export async function validateAndBindLicense(key, context) {
 
     // Bind if not yet bound
     if (!license.bound_machine_id) {
+        const identifier = resolveLicenseIdentifier(license);
+        if (!identifier) return { ok: false, status: 'error', message: 'License identifier missing on bind update.' };
+
         const { error: bindError } = await supabase
             .from('licenses')
             .update({
@@ -157,15 +187,18 @@ export async function validateAndBindLicense(key, context) {
                 last_active_at: now,
                 updated_at: now
             })
-            .eq('id', license.id);
+            .eq(identifier.column, identifier.value);
 
         if (bindError) return { ok: false, status: 'error', message: bindError.message };
     } else {
         // Just update last active
+        const identifier = resolveLicenseIdentifier(license);
+        if (!identifier) return { ok: false, status: 'error', message: 'License identifier missing on heartbeat update.' };
+
         await supabase
             .from('licenses')
             .update({ last_active_at: now })
-            .eq('id', license.id);
+            .eq(identifier.column, identifier.value);
     }
 
     return { ok: true, status: 'active' };

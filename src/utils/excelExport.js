@@ -1,3 +1,4 @@
+
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
@@ -519,6 +520,17 @@ export const exportManualDataCapturesToExcel = ({
         const stepId = capture?.stepId;
         const matchedStep = stepMap.get(String(stepId ?? ''));
         const capturedDate = capture?.capturedAt ? new Date(capture.capturedAt) : null;
+        const integrationStatus = capture?.integrationStatus && typeof capture.integrationStatus === 'object'
+            ? capture.integrationStatus
+            : {};
+
+        const mapStatus = (value) => {
+            const status = String(value?.status || '').toLowerCase();
+            if (status === 'success') return 'success';
+            if (status === 'failed') return `failed${value?.reason ? ` (${value.reason})` : ''}`;
+            if (status === 'skipped') return 'skipped';
+            return '-';
+        };
 
         const row = {
             'No.': index + 1,
@@ -530,7 +542,11 @@ export const exportManualDataCapturesToExcel = ({
             'Operator': capture?.operatorName || '-',
             'Role': capture?.role || '-',
             'Captured At': capturedDate && !Number.isNaN(capturedDate.getTime()) ? capturedDate.toLocaleString() : (capture?.capturedAt || '-'),
-            'Source': capture?.source || '-'
+            'Source': capture?.source || '-',
+            'Google Sheets Sync': mapStatus(integrationStatus.googleSheets),
+            'External API Sync': mapStatus(integrationStatus.externalApi),
+            'SQL API Sync': mapStatus(integrationStatus.sqlApi),
+            'Integration Summary': capture?.integrationSummary || '-'
         };
 
         const answers = capture?.answers && typeof capture.answers === 'object' ? capture.answers : {};
@@ -556,7 +572,11 @@ export const exportManualDataCapturesToExcel = ({
         { wch: 22 },
         { wch: 14 },
         { wch: 22 },
-        { wch: 20 }
+        { wch: 20 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 24 }
     ];
     const questionCols = questionKeys.map(() => ({ wch: 24 }));
     worksheet['!cols'] = [...baseCols, ...questionCols];

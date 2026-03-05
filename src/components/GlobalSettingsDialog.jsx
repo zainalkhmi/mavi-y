@@ -24,6 +24,11 @@ import {
     getTursoStatus,
     getDefaultCredentials
 } from '../utils/tursoClient';
+import {
+    getManualDataCaptureIntegrationSettings,
+    saveManualDataCaptureIntegrationSettings,
+    testManualDataCaptureIntegrationDestination
+} from '../utils/manualDataCaptureIntegrations';
 
 const PROJECT_VIDEO_BUCKET_STORAGE_KEY = 'supabase_project_video_bucket';
 
@@ -53,6 +58,17 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
     const [projectVideoBucket, setProjectVideoBucket] = useState('');
     const [isSupabaseTesting, setIsSupabaseTesting] = useState(false);
     const [supabaseConnectionStatus, setSupabaseConnectionStatus] = useState(null);
+    const [manualIntegrationSettings, setManualIntegrationSettings] = useState(getManualDataCaptureIntegrationSettings());
+    const [manualIntegrationTestStatus, setManualIntegrationTestStatus] = useState({
+        googleSheets: null,
+        externalApi: null,
+        sqlApi: null
+    });
+    const [manualIntegrationTesting, setManualIntegrationTesting] = useState({
+        googleSheets: false,
+        externalApi: false,
+        sqlApi: false
+    });
 
     // Turso Settings State
     const [dbUrl, setDbUrl] = useState('');
@@ -92,6 +108,9 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                 setProjectVideoBucket('');
             }
             setSupabaseConnectionStatus(null);
+            setManualIntegrationSettings(getManualDataCaptureIntegrationSettings());
+            setManualIntegrationTestStatus({ googleSheets: null, externalApi: null, sqlApi: null });
+            setManualIntegrationTesting({ googleSheets: false, externalApi: false, sqlApi: false });
             setJitsiSettings(getJitsiSettings());
 
             const storedUrl = localStorage.getItem('turso_db_url');
@@ -136,6 +155,38 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
 
     const handleSupabaseSettingChange = (key, value) => {
         setSupabaseSettings(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleManualIntegrationChange = (destination, key, value) => {
+        setManualIntegrationSettings((prev) => ({
+            ...prev,
+            [destination]: {
+                ...(prev?.[destination] || {}),
+                [key]: value
+            }
+        }));
+    };
+
+    const handleTestManualIntegration = async (destination) => {
+        setManualIntegrationTesting((prev) => ({ ...prev, [destination]: true }));
+        setManualIntegrationTestStatus((prev) => ({ ...prev, [destination]: null }));
+
+        try {
+            const result = await testManualDataCaptureIntegrationDestination(destination, manualIntegrationSettings);
+            const status = result?.status === 'success' ? 'success' : 'error';
+            setManualIntegrationTestStatus((prev) => ({ ...prev, [destination]: status }));
+
+            if (status === 'success') {
+                await showAlert('Success', `${destination} integration is reachable.`);
+            } else {
+                await showAlert('Connection Failed', result?.detail || result?.reason || `Failed to connect ${destination}.`);
+            }
+        } catch (error) {
+            setManualIntegrationTestStatus((prev) => ({ ...prev, [destination]: 'error' }));
+            await showAlert('Connection Failed', error?.message || `Failed to connect ${destination}.`);
+        } finally {
+            setManualIntegrationTesting((prev) => ({ ...prev, [destination]: false }));
+        }
     };
 
     const toggleToolbarButton = (button) => {
@@ -365,6 +416,7 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
 
         saveGoogleDriveSettings(driveSettings);
         saveSupabaseSettings(supabaseSettings);
+        saveManualDataCaptureIntegrationSettings(manualIntegrationSettings);
         try {
             const normalizedBucket = String(projectVideoBucket || '').trim();
             if (normalizedBucket) {
@@ -980,6 +1032,138 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                                     {supabaseConnectionStatus === 'success' && <span style={{ color: '#16a34a', marginLeft: '8px' }}>✓ OK</span>}
                                     {supabaseConnectionStatus === 'error' && <span style={{ color: '#ef4444', marginLeft: '8px' }}>✗ Failed</span>}
                                 </div>
+                            </div>
+
+                            <div style={{ marginTop: '18px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '18px' }}>
+                                <div style={{
+                                    padding: '14px',
+                                    borderRadius: '10px',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    marginBottom: '14px'
+                                }}>
+                                    <div style={{ color: 'white', fontWeight: 600, marginBottom: '6px' }}>
+                                        Manual Data Capture Integrations
+                                    </div>
+                                    <div style={{ color: '#aaa', fontSize: '0.85rem' }}>
+                                        Configure outbound sync for Data Capture submission to Google Sheets, external API, and SQL backend API.
+                                    </div>
+                                </div>
+
+                                {[
+                                    { key: 'googleSheets', title: 'Google Sheets' },
+                                    { key: 'externalApi', title: 'External API' },
+                                    { key: 'sqlApi', title: 'SQL API (Backend)' }
+                                ].map((target) => {
+                                    const cfg = manualIntegrationSettings?.[target.key] || {};
+                                    const testing = !!manualIntegrationTesting?.[target.key];
+                                    const status = manualIntegrationTestStatus?.[target.key];
+                                    return (
+                                        <div key={target.key} style={{
+                                            padding: '12px',
+                                            borderRadius: '10px',
+                                            border: '1px solid rgba(255,255,255,0.08)',
+                                            background: 'rgba(255,255,255,0.01)',
+                                            marginBottom: '12px'
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                                <div style={{ color: 'white', fontWeight: 600 }}>{target.title}</div>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ddd', fontSize: '0.85rem' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!cfg.enabled}
+                                                        onChange={(e) => handleManualIntegrationChange(target.key, 'enabled', e.target.checked)}
+                                                    />
+                                                    Enabled
+                                                </label>
+                                            </div>
+
+                                            <div style={{ display: 'grid', gap: '8px' }}>
+                                                <input
+                                                    type="text"
+                                                    value={cfg.endpoint || ''}
+                                                    onChange={(e) => handleManualIntegrationChange(target.key, 'endpoint', e.target.value)}
+                                                    placeholder="Endpoint URL"
+                                                    style={{ width: '100%', padding: '10px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '10px' }}
+                                                />
+
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                                    <select
+                                                        value={cfg.method || 'POST'}
+                                                        onChange={(e) => handleManualIntegrationChange(target.key, 'method', e.target.value)}
+                                                        style={{ width: '100%', padding: '10px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '10px' }}
+                                                    >
+                                                        <option value="POST">POST</option>
+                                                        <option value="PUT">PUT</option>
+                                                        <option value="PATCH">PATCH</option>
+                                                    </select>
+                                                    <input
+                                                        type="number"
+                                                        min="1000"
+                                                        value={cfg.timeoutMs || 12000}
+                                                        onChange={(e) => handleManualIntegrationChange(target.key, 'timeoutMs', Number(e.target.value) || 12000)}
+                                                        placeholder="Timeout ms"
+                                                        style={{ width: '100%', padding: '10px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '10px' }}
+                                                    />
+                                                </div>
+
+                                                <input
+                                                    type="password"
+                                                    value={cfg.apiKey || ''}
+                                                    onChange={(e) => handleManualIntegrationChange(target.key, 'apiKey', e.target.value)}
+                                                    placeholder="Bearer/API key (optional)"
+                                                    style={{ width: '100%', padding: '10px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '10px' }}
+                                                />
+
+                                                {target.key === 'googleSheets' && (
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                                        <input
+                                                            type="text"
+                                                            value={cfg.sheetId || ''}
+                                                            onChange={(e) => handleManualIntegrationChange(target.key, 'sheetId', e.target.value)}
+                                                            placeholder="Google Sheet ID"
+                                                            style={{ width: '100%', padding: '10px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '10px' }}
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            value={cfg.sheetName || ''}
+                                                            onChange={(e) => handleManualIntegrationChange(target.key, 'sheetName', e.target.value)}
+                                                            placeholder="Sheet Name"
+                                                            style={{ width: '100%', padding: '10px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '10px' }}
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                <textarea
+                                                    rows={2}
+                                                    value={cfg.headersJson || ''}
+                                                    onChange={(e) => handleManualIntegrationChange(target.key, 'headersJson', e.target.value)}
+                                                    placeholder='Custom headers JSON, e.g. {"x-client":"mavi"}'
+                                                    style={{ width: '100%', padding: '10px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '10px', resize: 'vertical' }}
+                                                />
+
+                                                <div>
+                                                    <button
+                                                        onClick={() => handleTestManualIntegration(target.key)}
+                                                        disabled={testing || !cfg.endpoint}
+                                                        style={{
+                                                            padding: '8px 12px',
+                                                            backgroundColor: status === 'success' ? '#16a34a' : 'rgba(255,255,255,0.05)',
+                                                            border: '1px solid rgba(255,255,255,0.15)',
+                                                            color: 'white',
+                                                            borderRadius: '8px',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        {testing ? 'Testing...' : `Test ${target.title}`}
+                                                    </button>
+                                                    {status === 'success' && <span style={{ color: '#16a34a', marginLeft: '8px' }}>✓ OK</span>}
+                                                    {status === 'error' && <span style={{ color: '#ef4444', marginLeft: '8px' }}>✗ Failed</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     ) : (

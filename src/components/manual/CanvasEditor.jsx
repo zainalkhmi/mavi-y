@@ -1000,10 +1000,24 @@ const CanvasEditor = ({ step, onChange }) => {
                                         <label style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)' }}>
                                             Options (comma separated)
                                             <input type="text"
-                                                value={(selectedEl.options || []).join(', ')}
+                                                value={selectedEl.optionsText ?? (selectedEl.options || []).join(', ')}
                                                 onChange={e => {
-                                                    const newOpts = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                                                    updateElement(selectedId, { options: newOpts.length > 0 ? newOpts : ['Option 1'] });
+                                                    const rawOptions = e.target.value;
+                                                    const newOpts = rawOptions.split(',').map(s => s.trim()).filter(Boolean);
+                                                    updateElement(selectedId, {
+                                                        optionsText: rawOptions,
+                                                        options: newOpts
+                                                    });
+                                                }}
+                                                onBlur={(e) => {
+                                                    const normalized = e.target.value
+                                                        .split(',')
+                                                        .map(s => s.trim())
+                                                        .filter(Boolean);
+                                                    updateElement(selectedId, {
+                                                        options: normalized,
+                                                        optionsText: normalized.join(', ')
+                                                    });
                                                 }}
                                                 style={{ width: '100%', marginTop: 2, padding: '4px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.2)', color: '#fff' }}
                                             />

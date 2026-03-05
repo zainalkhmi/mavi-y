@@ -792,10 +792,21 @@ const StepEditor = ({
 
                                                 {supportsOptions && (
                                                     <input
-                                                        value={normalizedOptions.join(', ')}
+                                                        value={field?.optionsText ?? normalizedOptions.join(', ')}
                                                         onChange={(e) => {
+                                                            const rawOptions = e.target.value;
+                                                            const options = normalizeQuestionOptions(rawOptions);
+                                                            handleUpdateDataCaptureField(idx, {
+                                                                options,
+                                                                optionsText: rawOptions
+                                                            });
+                                                        }}
+                                                        onBlur={(e) => {
                                                             const options = normalizeQuestionOptions(e.target.value);
-                                                            handleUpdateDataCaptureField(idx, { options });
+                                                            handleUpdateDataCaptureField(idx, {
+                                                                options,
+                                                                optionsText: options.join(', ')
+                                                            });
                                                         }}
                                                         placeholder="Options (comma separated)"
                                                         style={{

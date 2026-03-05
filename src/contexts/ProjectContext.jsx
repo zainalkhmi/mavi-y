@@ -2,9 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
     getProjectByName,
     saveProject as saveProjectToDb,
-    updateProject,
-    uploadVideo
-} from '../utils/supabaseProjectDB';
+    updateProject
+} from '../utils/database';
 import { useNavigate } from 'react-router-dom';
 import { useDialog } from './DialogContext';
 
@@ -19,6 +18,7 @@ const normalizeProjectRecord = (project) => {
         projectName: project.projectName || project.project_name || '',
         videoName: project.videoName || project.video_name || '',
         videoUrl: project.videoUrl || project.video_url || null,
+        videoBlob: project.videoBlob || null,
         folderId: project.folderId ?? project.folder_id ?? null,
         measurements: Array.isArray(project.measurements) ? project.measurements : [],
         lastModified: project.lastModified || project.last_modified || null
@@ -83,11 +83,27 @@ export const ProjectProvider = ({ children }) => {
             }
 
             const normalizedProject = normalizeProjectRecord(project);
+            const resolvedVideoSrc = normalizedProject.videoBlob
+                ? URL.createObjectURL(normalizedProject.videoBlob)
+                : normalizedProject.videoUrl;
+
+            if (!resolvedVideoSrc) {
+                await showAlert(
+                    'LOAD PROJECT GAGAL',
+                    'Video tidak ditemukan. Project berhasil dibuka, tetapi data video tidak tersedia di penyimpanan lokal. Silakan upload ulang video untuk project ini.'
+                );
+            }
 
             setCurrentProject(normalizedProject);
-            setVideoSrc(normalizedProject.videoUrl); // Use remote URL
+            setVideoSrc(resolvedVideoSrc);
             setVideoName(normalizedProject.videoName);
-            setVideoFile(null); // We don't have the File object locally anymore
+            setVideoFile(
+                normalizedProject.videoBlob
+                    ? new File([normalizedProject.videoBlob], normalizedProject.videoName || 'video.mp4', {
+                        type: normalizedProject.videoBlob.type || 'video/mp4'
+                    })
+                    : null
+            );
             setMeasurements(normalizedProject.measurements || []);
 
             if (navigateTo) {
@@ -106,28 +122,25 @@ export const ProjectProvider = ({ children }) => {
     const newProject = async (name, videoFile, initialMeasurements = [], folderId = null) => {
         setIsLoading(true);
         try {
-            // 1. Upload video to Supabase Storage
-            let videoUrl = null;
-            try {
-                videoUrl = await uploadVideo(videoFile, videoFile.name);
-            } catch (uploadError) {
-                console.warn('Video upload failed, continuing without video URL:', uploadError);
-            }
+            await saveProjectToDb(
+                name,
+                videoFile,
+                videoFile.name,
+                initialMeasurements,
+                null,
+                null,
+                folderId,
+                null
+            );
 
-            // 2. Save project metadata to Supabase DB
-            const projectData = {
-                projectName: name,
-                videoName: videoFile.name,
-                videoUrl: videoUrl,
-                measurements: initialMeasurements,
-                folderId: folderId
-            };
-
-            const savedProject = await saveProjectToDb(projectData);
+            const savedProject = await getProjectByName(name);
             const normalizedProject = normalizeProjectRecord(savedProject);
+            const resolvedVideoSrc = normalizedProject?.videoBlob
+                ? URL.createObjectURL(normalizedProject.videoBlob)
+                : URL.createObjectURL(videoFile);
 
             setCurrentProject(normalizedProject);
-            setVideoSrc(normalizedProject.videoUrl);
+            setVideoSrc(resolvedVideoSrc);
             setVideoName(videoFile.name);
             setVideoFile(videoFile);
             setMeasurements(initialMeasurements);
@@ -198,23 +211,27 @@ export const ProjectProvider = ({ children }) => {
                 return false;
             }
 
-            // 1. Reuse video URL
-            const videoUrl = currentProject.videoUrl || currentProject.video_url;
+            const sourceBlob = videoFile || currentProject.videoBlob || null;
+            await saveProjectToDb(
+                newName.trim(),
+                sourceBlob,
+                videoName,
+                measurements,
+                currentProject.swcsData || null,
+                currentProject.standardWorkLayoutData || null,
+                currentProject.folderId,
+                currentProject.facilityLayoutData || null
+            );
 
-            // 2. Save as new project
-            const projectData = {
-                projectName: newName.trim(),
-                videoName: videoName,
-                videoUrl: videoUrl,
-                measurements: measurements,
-                folderId: currentProject.folderId
-            };
-
-            const savedProject = await saveProjectToDb(projectData);
+            const savedProject = await getProjectByName(newName.trim());
             const normalizedProject = normalizeProjectRecord(savedProject);
+            const resolvedVideoSrc = normalizedProject?.videoBlob
+                ? URL.createObjectURL(normalizedProject.videoBlob)
+                : null;
 
             // Switch to the new project
             setCurrentProject(normalizedProject);
+            setVideoSrc(resolvedVideoSrc);
             await showAlert('Success', 'Project saved as "' + newName + '" successfully!');
             return true;
         } catch (error) {

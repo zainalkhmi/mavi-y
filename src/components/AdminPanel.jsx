@@ -524,10 +524,11 @@ function AdminPanel() {
 
             if (newStatus === 'approved') {
                 const req = licenseRequests.find(r => r.id === requestId);
-                const key = generateLicenseKey(req.machineId);
+                const requestMachineId = req?.machine_id || req?.machineId || '';
+                const key = generateLicenseKey(requestMachineId);
 
                 // Create license in Supabase
-                await createLicense(key, req.email, req.machineId);
+                await createLicense(key, req.email, requestMachineId);
 
                 await showAlert('Success', `Request Approved for ${req.email}!\n\nGenerated Key: ${key}\n\nPlease send this key to the user.`);
                 loadAllLicenses();
@@ -1317,7 +1318,7 @@ function AdminPanel() {
                                                             User ID: {request.user_id?.substring(0, 8)}...
                                                         </div>
                                                         <div style={{ color: '#00d2ff', fontSize: '0.85rem', fontFamily: 'monospace', marginTop: '4px' }}>
-                                                            Device ID: {request.machineId || 'N/A'}
+                                                            Device ID: {request.machine_id || request.machineId || 'N/A'}
                                                         </div>
                                                     </div>
                                                 </div>

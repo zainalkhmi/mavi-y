@@ -2,16 +2,21 @@
  * database.js
  * =====================================================
  * Main database entry point for MAVi.
- * REFACTORED: Now redirects to Supabase utilities.
- * Legacy SQLite logic is maintained for transient-only fallbacks.
+ * Project/Video storage now uses local SQLite + IndexedDB (offline-first).
+ * Supabase utilities are still used for non-project modules.
  * =====================================================
  */
 import { isSupabaseReady } from './supabaseManualDB.js';
-import * as supabaseProjects from './supabaseProjectDB.js';
 import * as supabaseTranslations from './supabaseTranslationDB.js';
 import * as supabaseUtility from './supabaseUtilityDB.js';
 import * as supabaseSettings from './supabaseSettingsDB.js';
 import { getSqliteDb } from './sqlite.js';
+import {
+    saveProjectVideoBlob,
+    getProjectVideoBlob,
+    deleteProjectVideoBlob,
+    renameProjectVideoBlob
+} from './projectVideoStore.js';
 
 // Initialize transient local database (for temporary storage/cache if needed)
 let dbInstance = null;
@@ -27,11 +32,10 @@ export const initDB = async () => {
 };
 
 export const checkDBStatus = async () => {
-    const ready = isSupabaseReady();
     return {
-        isConfigured: ready,
-        isOnline: ready,
-        mode: ready ? 'Supabase' : 'Offline',
+        isConfigured: true,
+        isOnline: navigator.onLine,
+        mode: 'Local SQLite + IndexedDB',
         local: { isConfigured: true, isOnline: navigator.onLine, mode: 'Local' }
     };
 };
@@ -46,79 +50,139 @@ const getSafeUUID = () => {
 // ===== PROJECT MANAGEMENT FUNCTIONS =====
 
 export const saveProject = async (projectName, videoBlob, videoName, measurements = [], swcsData = null, standardWorkLayoutData = null, folderId = null, facilityLayoutData = null) => {
-    // 1. Upload video if provided (and we have a blob)
-    let videoUrl = null;
-    if (videoBlob) {
-        try {
-            videoUrl = await supabaseProjects.uploadVideo(videoBlob, videoName);
-        } catch (e) {
-            console.warn('Supabase Storage upload failed, project will save without video URL:', e);
-        }
+    const db = await initDB();
+    const now = new Date().toISOString();
+    const existing = await getProjectByName(projectName);
+
+    if (videoBlob instanceof Blob) {
+        await saveProjectVideoBlob(projectName, videoBlob);
     }
 
-    // 2. Save metadata to Supabase DB
-    const project = {
-        projectName,
-        videoName,
-        videoUrl,
-        measurements,
-        swcsData,
-        standardWorkLayoutData,
-        folderId,
-        facilityLayoutData
-    };
+    if (existing) {
+        await db.execute(
+            `UPDATE projects
+             SET videoName = ?, measurements = ?, lastModified = ?, folderId = ?, swcsData = ?, standardWorkLayoutData = ?, facilityLayoutData = ?
+             WHERE projectName = ?`,
+            [
+                videoName || existing.videoName || '',
+                JSON.stringify(measurements || []),
+                now,
+                folderId ?? existing.folderId ?? null,
+                swcsData != null ? JSON.stringify(swcsData) : existing.swcsData != null ? JSON.stringify(existing.swcsData) : null,
+                standardWorkLayoutData != null ? JSON.stringify(standardWorkLayoutData) : existing.standardWorkLayoutData != null ? JSON.stringify(existing.standardWorkLayoutData) : null,
+                facilityLayoutData != null ? JSON.stringify(facilityLayoutData) : existing.facilityLayoutData != null ? JSON.stringify(existing.facilityLayoutData) : null,
+                projectName
+            ]
+        );
+        return existing.id;
+    }
 
-    const saved = await supabaseProjects.saveProject(project);
-    return saved.id;
+    const result = await db.execute(
+        `INSERT INTO projects (projectName, videoBlob, videoName, measurements, createdAt, lastModified, folderId, swcsData, standardWorkLayoutData, facilityLayoutData)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+            projectName,
+            null,
+            videoName || '',
+            JSON.stringify(measurements || []),
+            now,
+            now,
+            folderId,
+            swcsData != null ? JSON.stringify(swcsData) : null,
+            standardWorkLayoutData != null ? JSON.stringify(standardWorkLayoutData) : null,
+            facilityLayoutData != null ? JSON.stringify(facilityLayoutData) : null
+        ]
+    );
+
+    return result?.lastInsertId || 0;
 };
 
 export const getAllProjects = async () => {
-    const data = await supabaseProjects.getAllProjects();
-    return data.map(row => ({
+    const db = await initDB();
+    const rows = await db.select('SELECT * FROM projects ORDER BY lastModified DESC');
+
+    return await Promise.all((rows || []).map(async (row) => ({
         ...row,
-        projectName: row.project_name,
-        videoName: row.video_name,
-        videoBlob: null, // Blobs are no longer stored in DB
-        videoUrl: row.video_url,
-        measurements: row.measurements || [],
-        swcsData: row.swcs_data,
-        standardWorkLayoutData: row.standard_work_layout_data,
-        facilityLayoutData: row.facility_layout_data,
-        folderId: row.folder_id,
-        lastModified: row.last_modified
-    }));
+        measurements: row.measurements ? JSON.parse(row.measurements) : [],
+        swcsData: row.swcsData ? JSON.parse(row.swcsData) : null,
+        standardWorkLayoutData: row.standardWorkLayoutData ? JSON.parse(row.standardWorkLayoutData) : null,
+        facilityLayoutData: row.facilityLayoutData ? JSON.parse(row.facilityLayoutData) : null,
+        videoBlob: await getProjectVideoBlob(row.projectName),
+        videoUrl: null
+    })));
 };
 
 export const getProjectByName = async (projectName) => {
-    const row = await supabaseProjects.getProjectByName(projectName);
+    const db = await initDB();
+    const rows = await db.select('SELECT * FROM projects WHERE projectName = ? LIMIT 1', [projectName]);
+    const row = rows?.[0];
     if (!row) return null;
+
     return {
         ...row,
-        projectName: row.project_name,
-        videoName: row.video_name,
-        videoUrl: row.video_url,
-        measurements: row.measurements || [],
-        swcsData: row.swcs_data,
-        standardWorkLayoutData: row.standard_work_layout_data,
-        facilityLayoutData: row.facility_layout_data,
-        folderId: row.folder_id,
-        lastModified: row.last_modified
+        measurements: row.measurements ? JSON.parse(row.measurements) : [],
+        swcsData: row.swcsData ? JSON.parse(row.swcsData) : null,
+        standardWorkLayoutData: row.standardWorkLayoutData ? JSON.parse(row.standardWorkLayoutData) : null,
+        facilityLayoutData: row.facilityLayoutData ? JSON.parse(row.facilityLayoutData) : null,
+        videoBlob: await getProjectVideoBlob(row.projectName),
+        videoUrl: null
     };
 };
 
 export const updateProject = async (identifier, updates) => {
-    // Map UI-friendly keys to DB keys if needed
-    const dbUpdates = { ...updates };
-    if (updates.projectName) dbUpdates.project_name = updates.projectName;
-    if (updates.videoName) dbUpdates.video_name = updates.videoName;
-    if (updates.folderId) dbUpdates.folder_id = updates.folderId;
-    if (updates.swcsData) dbUpdates.swcs_data = updates.swcsData;
-    if (updates.standardWorkLayoutData) dbUpdates.standard_work_layout_data = updates.standardWorkLayoutData;
-    if (updates.facilityLayoutData) dbUpdates.facility_layout_data = updates.facilityLayoutData;
-    if (updates.videoUrl) dbUpdates.video_url = updates.videoUrl;
+    const db = await initDB();
+    const isId = typeof identifier === 'number' || /^\d+$/.test(String(identifier));
+    const whereField = isId ? 'id' : 'projectName';
+    const whereValue = isId ? Number(identifier) : String(identifier);
 
-    const result = await supabaseProjects.updateProject(identifier, dbUpdates);
-    return result.id;
+    const rows = await db.select(`SELECT * FROM projects WHERE ${whereField} = ? LIMIT 1`, [whereValue]);
+    const existing = rows?.[0];
+    if (!existing) throw new Error('Project not found');
+
+    const nextProjectName = updates.projectName ?? existing.projectName;
+    const nextVideoName = updates.videoName ?? existing.videoName;
+    const nextMeasurements = updates.measurements !== undefined
+        ? JSON.stringify(updates.measurements || [])
+        : existing.measurements;
+    const nextFolderId = updates.folderId !== undefined ? updates.folderId : existing.folderId;
+    const nextSwcsData = updates.swcsData !== undefined
+        ? (updates.swcsData != null ? JSON.stringify(updates.swcsData) : null)
+        : existing.swcsData;
+    const nextStandardWorkLayoutData = updates.standardWorkLayoutData !== undefined
+        ? (updates.standardWorkLayoutData != null ? JSON.stringify(updates.standardWorkLayoutData) : null)
+        : existing.standardWorkLayoutData;
+    const nextFacilityLayoutData = updates.facilityLayoutData !== undefined
+        ? (updates.facilityLayoutData != null ? JSON.stringify(updates.facilityLayoutData) : null)
+        : existing.facilityLayoutData;
+    const nextLastModified = updates.lastModified || new Date().toISOString();
+
+    if (updates.videoBlob instanceof Blob) {
+        await saveProjectVideoBlob(nextProjectName, updates.videoBlob);
+    }
+
+    if (existing.projectName !== nextProjectName) {
+        await renameProjectVideoBlob(existing.projectName, nextProjectName);
+    }
+
+    await db.execute(
+        `UPDATE projects
+         SET projectName = ?, videoName = ?, measurements = ?, folderId = ?, swcsData = ?, standardWorkLayoutData = ?, facilityLayoutData = ?, lastModified = ?
+         WHERE ${whereField} = ?`,
+        [
+            nextProjectName,
+            nextVideoName,
+            nextMeasurements,
+            nextFolderId,
+            nextSwcsData,
+            nextStandardWorkLayoutData,
+            nextFacilityLayoutData,
+            nextLastModified,
+            whereValue
+        ]
+    );
+
+    const updated = await getProjectByName(nextProjectName);
+    return updated?.id;
 };
 
 export const getProjectById = async (id) => {
@@ -127,13 +191,21 @@ export const getProjectById = async (id) => {
 };
 
 export const deleteProject = async (identifier) => {
-    let id = identifier;
-    if (typeof identifier === 'string' && !identifier.includes('-')) {
-        const p = await getProjectByName(identifier);
-        if (!p) return;
-        id = p.id;
+    const db = await initDB();
+    const isId = typeof identifier === 'number' || /^\d+$/.test(String(identifier));
+    const whereField = isId ? 'id' : 'projectName';
+    const whereValue = isId ? Number(identifier) : String(identifier);
+
+    const rows = await db.select(`SELECT projectName FROM projects WHERE ${whereField} = ? LIMIT 1`, [whereValue]);
+    const projectName = rows?.[0]?.projectName;
+
+    await db.execute(`DELETE FROM projects WHERE ${whereField} = ?`, [whereValue]);
+
+    if (projectName) {
+        await deleteProjectVideoBlob(projectName);
     }
-    return await supabaseProjects.deleteProject(id);
+
+    return true;
 };
 
 export const deleteProjectById = deleteProject;
@@ -141,17 +213,33 @@ export const deleteProjectById = deleteProject;
 // ===== FOLDER MANAGEMENT FUNCTIONS =====
 
 export const createFolder = async (name, section = 'projects', parentId = null) => {
-    const data = await supabaseProjects.createFolder(name, section, parentId);
-    return data.id;
+    const db = await initDB();
+    const now = new Date().toISOString();
+    const result = await db.execute(
+        'INSERT INTO folders (name, section, parentId, createdAt) VALUES (?, ?, ?, ?)',
+        [name, section, parentId, now]
+    );
+    return result?.lastInsertId || 0;
 };
 
 export const getFolders = async (section = 'projects', parentId = null) => {
-    const data = await supabaseProjects.getFolders(section, parentId);
-    return data.map(f => ({ ...f, parentId: f.parent_id }));
+    const db = await initDB();
+    const rows = parentId == null
+        ? await db.select(
+            'SELECT * FROM folders WHERE section = ? AND parentId IS NULL ORDER BY name ASC',
+            [section]
+        )
+        : await db.select(
+            'SELECT * FROM folders WHERE section = ? AND parentId = ? ORDER BY name ASC',
+            [section, parentId]
+        );
+    return rows || [];
 };
 
 export const deleteFolder = async (id) => {
-    return await supabaseProjects.deleteFolder(id);
+    const db = await initDB();
+    await db.execute('DELETE FROM folders WHERE id = ?', [id]);
+    return true;
 };
 
 export const getFolderById = async (id) => {

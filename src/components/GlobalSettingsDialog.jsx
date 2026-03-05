@@ -25,6 +25,8 @@ import {
     getDefaultCredentials
 } from '../utils/tursoClient';
 
+const PROJECT_VIDEO_BUCKET_STORAGE_KEY = 'supabase_project_video_bucket';
+
 
 function GlobalSettingsDialog({ isOpen, onClose }) {
     const { showAlert, showConfirm } = useDialog();
@@ -48,6 +50,7 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
 
     // Supabase Storage Settings State
     const [supabaseSettings, setSupabaseSettings] = useState(getSupabaseSettings());
+    const [projectVideoBucket, setProjectVideoBucket] = useState('');
     const [isSupabaseTesting, setIsSupabaseTesting] = useState(false);
     const [supabaseConnectionStatus, setSupabaseConnectionStatus] = useState(null);
 
@@ -83,6 +86,11 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
             setDriveSettings(getGoogleDriveSettings());
             setDriveConnectionStatus(null);
             setSupabaseSettings(getSupabaseSettings());
+            try {
+                setProjectVideoBucket(localStorage.getItem(PROJECT_VIDEO_BUCKET_STORAGE_KEY) || '');
+            } catch {
+                setProjectVideoBucket('');
+            }
             setSupabaseConnectionStatus(null);
             setJitsiSettings(getJitsiSettings());
 
@@ -357,6 +365,16 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
 
         saveGoogleDriveSettings(driveSettings);
         saveSupabaseSettings(supabaseSettings);
+        try {
+            const normalizedBucket = String(projectVideoBucket || '').trim();
+            if (normalizedBucket) {
+                localStorage.setItem(PROJECT_VIDEO_BUCKET_STORAGE_KEY, normalizedBucket);
+            } else {
+                localStorage.removeItem(PROJECT_VIDEO_BUCKET_STORAGE_KEY);
+            }
+        } catch {
+            // ignore storage write error and continue saving other settings
+        }
         saveJitsiSettings(jitsiSettings);
 
         if (dbUrl && authToken) {
@@ -925,6 +943,22 @@ function GlobalSettingsDialog({ isOpen, onClose }) {
                                             placeholder="manuals"
                                             style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px' }}
                                         />
+                                    </div>
+                                </div>
+
+                                <div style={{ marginTop: '10px' }}>
+                                    <label style={{ display: 'block', color: '#aaa', marginBottom: '8px', fontSize: '0.9rem' }}>
+                                        Project Video Bucket (Open Project)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={projectVideoBucket}
+                                        onChange={(e) => setProjectVideoBucket(e.target.value)}
+                                        placeholder="mavi_assets"
+                                        style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px' }}
+                                    />
+                                    <div style={{ marginTop: '6px', color: '#888', fontSize: '0.8rem' }}>
+                                        Used for project video upload/open. If <code>VITE_SUPABASE_VIDEO_BUCKET</code> exists in <code>.env</code>, env value takes priority.
                                     </div>
                                 </div>
 

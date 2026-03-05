@@ -7,7 +7,11 @@
  */
 import { getSupabaseClient } from './supabaseManualDB.js';
 
-const SUPABASE_VIDEO_BUCKET = import.meta.env?.VITE_SUPABASE_VIDEO_BUCKET || 'mavi_assets';
+const DEFAULT_SUPABASE_VIDEO_BUCKET = 'mavi_assets';
+const PROJECT_VIDEO_BUCKET_STORAGE_KEY = 'supabase_project_video_bucket';
+const unsupportedProjectColumns = new Set();
+let unavailableVideoBucketName = null;
+let hasLoggedVideoBucketConfigurationWarning = false;
 
 const extractMissingColumnFromError = (error) => {
     const message = String(error?.message || '');
@@ -22,7 +26,56 @@ const extractMissingColumnFromError = (error) => {
 
 const isBucketNotFoundError = (error) => {
     const message = String(error?.message || '').toLowerCase();
-    return message.includes('bucket not found');
+    return message.includes('bucket not found') || (message.includes('bucket') && message.includes('not found'));
+};
+
+const getVideoBucketConfig = () => {
+    const envBucket = typeof import.meta.env?.VITE_SUPABASE_VIDEO_BUCKET === 'string'
+        ? import.meta.env.VITE_SUPABASE_VIDEO_BUCKET.trim()
+        : '';
+
+    let localBucket = '';
+    try {
+        localBucket = String(localStorage.getItem(PROJECT_VIDEO_BUCKET_STORAGE_KEY) || '').trim();
+    } catch {
+        localBucket = '';
+    }
+
+    const explicitBucket = envBucket || localBucket;
+    return {
+        bucket: explicitBucket || DEFAULT_SUPABASE_VIDEO_BUCKET,
+        hasExplicitBucket: Boolean(explicitBucket),
+        source: envBucket ? 'env' : (localBucket ? 'global_settings' : 'fallback')
+    };
+};
+
+const canAttemptVideoUpload = () => {
+    const { bucket, hasExplicitBucket } = getVideoBucketConfig();
+
+    if (unavailableVideoBucketName && unavailableVideoBucketName === bucket) {
+        return false;
+    }
+
+    // Reset unavailable marker if bucket changed.
+    if (unavailableVideoBucketName && unavailableVideoBucketName !== bucket) {
+        unavailableVideoBucketName = null;
+    }
+
+    // If bucket is still using default fallback name, treat storage as not configured
+    // and skip remote upload to avoid noisy 400 requests.
+    if (!hasExplicitBucket) {
+        if (!hasLoggedVideoBucketConfigurationWarning) {
+            hasLoggedVideoBucketConfigurationWarning = true;
+            console.warn(
+                `[supabaseProjectDB] VITE_SUPABASE_VIDEO_BUCKET is not set. ` +
+                `Skipping remote video upload (bucket fallback: "${bucket}"). ` +
+                'You can set it via .env or Global Settings.'
+            );
+        }
+        return false;
+    }
+
+    return true;
 };
 
 const normalizeUpdateKeys = (updates = {}) => {
@@ -96,7 +149,14 @@ const resolveProjectIdentifier = (identifier) => {
 };
 
 const executeProjectWriteWithSchemaFallback = async (writeFn, payload, label = 'projects.write') => {
-    let payloadToSend = { ...payload };
+    const payloadToSend = { ...payload };
+
+    // Skip columns already known to be unsupported in the current Supabase schema.
+    for (const column of unsupportedProjectColumns) {
+        if (column in payloadToSend) {
+            delete payloadToSend[column];
+        }
+    }
 
     // Retry when local schema cache / DB schema misses one of the optional columns.
     // This keeps project import/save backward compatible with older deployments.
@@ -110,6 +170,7 @@ const executeProjectWriteWithSchemaFallback = async (writeFn, payload, label = '
         }
 
         console.warn(`[supabaseProjectDB] ${label}: dropping unsupported column "${missingColumn}" and retrying.`);
+        unsupportedProjectColumns.add(missingColumn);
         delete payloadToSend[missingColumn];
     }
 
@@ -214,12 +275,15 @@ export async function saveProject(project) {
         folder_id: project.folderId,
         measurements: project.measurements || [],
         narration: project.narration || '',
-        swcs_data: project.swcsData || null,
-        standard_work_layout_data: project.standardWorkLayoutData || null,
-        facility_layout_data: project.facilityLayoutData || null,
         video_url: project.videoUrl || null,
         last_modified: now
     };
+
+    // Only include optional columns when value exists,
+    // so older DB schemas don't trigger avoidable 400 retries.
+    if (project.swcsData != null) payload.swcs_data = project.swcsData;
+    if (project.standardWorkLayoutData != null) payload.standard_work_layout_data = project.standardWorkLayoutData;
+    if (project.facilityLayoutData != null) payload.facility_layout_data = project.facilityLayoutData;
 
     const result = project.id
         ? await executeProjectWriteWithSchemaFallback(
@@ -302,17 +366,23 @@ export async function deleteProject(id) {
  * Upload a video blob to Supabase storage.
  */
 export async function uploadVideo(blob, fileName) {
+    if (!canAttemptVideoUpload()) {
+        return null;
+    }
+
+    const { bucket: videoBucket } = getVideoBucketConfig();
     const supabase = getSupabaseClient();
     const filePath = `videos/${Date.now()}_${fileName}`;
 
-    const { data, error } = await supabase.storage
-        .from(SUPABASE_VIDEO_BUCKET)
+    const { error } = await supabase.storage
+        .from(videoBucket)
         .upload(filePath, blob);
 
     if (error) {
         if (isBucketNotFoundError(error)) {
+            unavailableVideoBucketName = videoBucket;
             console.warn(
-                `[supabaseProjectDB] Storage bucket "${SUPABASE_VIDEO_BUCKET}" not found. ` +
+                `[supabaseProjectDB] Storage bucket "${videoBucket}" not found. ` +
                 'Skipping video upload and continuing without a remote video URL.'
             );
             return null;
@@ -324,7 +394,7 @@ export async function uploadVideo(blob, fileName) {
 
     // Get public URL
     const { data: urlData } = supabase.storage
-        .from(SUPABASE_VIDEO_BUCKET)
+        .from(videoBucket)
         .getPublicUrl(filePath);
 
     return urlData.publicUrl;

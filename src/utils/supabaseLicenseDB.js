@@ -7,6 +7,11 @@
  */
 import { getSupabaseClient } from './supabaseManualDB.js';
 
+const isMissingColumnError = (error) => {
+    const msg = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+    return msg.includes('column') && (msg.includes('does not exist') || msg.includes('could not find'));
+};
+
 // ── Helpers ──────────────────────────────────────────
 
 /**
@@ -48,7 +53,7 @@ export async function createLicense(key, email, machineId = '') {
     const supabase = getSupabaseClient();
     const now = new Date().toISOString();
 
-    const { data, error } = await supabase
+    const fullInsert = await supabase
         .from('licenses')
         .insert({
             key_string: key,
@@ -62,8 +67,26 @@ export async function createLicense(key, email, machineId = '') {
         .select()
         .single();
 
-    if (error) throw error;
-    return data;
+    if (!fullInsert.error) return fullInsert.data;
+
+    // Backward compatibility: older schema may not have email/machine_id/updated_at columns.
+    if (isMissingColumnError(fullInsert.error)) {
+        const legacyInsert = await supabase
+            .from('licenses')
+            .insert({
+                key_string: key,
+                status: 'active',
+                type: 'permanent',
+                created_at: now
+            })
+            .select()
+            .single();
+
+        if (legacyInsert.error) throw legacyInsert.error;
+        return legacyInsert.data;
+    }
+
+    throw fullInsert.error;
 }
 
 /**
@@ -170,12 +193,13 @@ export async function getAllLicenseRequests() {
 export async function createLicenseRequest(request) {
     const supabase = getSupabaseClient();
     const now = new Date().toISOString();
+    const normalizedMachineId = request.machine_id || request.machineId || '';
 
     const { data, error } = await supabase
         .from('license_requests')
         .insert({
             email: request.email,
-            machine_id: request.machine_id,
+            machine_id: normalizedMachineId,
             note: request.note || '',
             status: 'pending',
             created_at: now,

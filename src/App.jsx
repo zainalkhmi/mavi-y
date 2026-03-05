@@ -18,7 +18,7 @@ import BroadcastControls from './components/features/BroadcastControls';
 import BroadcastManager from './components/features/BroadcastManager';
 import TourGuide from './components/features/TourGuide';
 import LicenseGuard from './components/features/LicenseGuard';
-import { saveProject, getProjectByName, updateProject } from './utils/database';
+import { saveProject as saveProjectToDb } from './utils/database';
 import { importProject } from './utils/projectExport';
 import StreamHandler from './utils/streamHandler';
 
@@ -165,6 +165,7 @@ function AppContent() {
     openProject,
     newProject,
     closeProject,
+    saveProject,
     saveProjectAs,
     videoFile,
     setVideoFile
@@ -265,7 +266,7 @@ function AppContent() {
   };
 
   const handleNewProject = async (projectName, videoFile, folderId = null) => {
-    const success = await newProject(projectName, videoFile, folderId);
+    const success = await newProject(projectName, videoFile, [], folderId);
     if (success) {
       setShowNewProjectDialog(false);
     }
@@ -316,7 +317,7 @@ function AppContent() {
         if (!newName) return;
         projectData.projectName = newName;
       }
-      await saveProject(
+      await saveProjectToDb(
         projectData.projectName,
         projectData.videoBlob,
         projectData.videoName,

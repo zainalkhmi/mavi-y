@@ -907,7 +907,12 @@ function ManualCreation() {
         }
 
         if (manualIdFromUrl) {
-            console.log('Deep link detected, loading manual:', manualIdFromUrl);
+            if (
+                loadingManualIdRef.current !== manualIdFromUrl
+                && lastRequestedManualIdRef.current !== manualIdFromUrl
+            ) {
+                console.log('Deep link detected, loading manual:', manualIdFromUrl);
+            }
             loadManualById(manualIdFromUrl);
         }
     }, [location.search, location.hash]);

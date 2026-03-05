@@ -10,6 +10,26 @@ import { useDialog } from './DialogContext';
 
 const ProjectContext = createContext();
 
+const normalizeProjectRecord = (project) => {
+    if (!project) return null;
+
+    return {
+        ...project,
+        id: project.id,
+        projectName: project.projectName || project.project_name || '',
+        videoName: project.videoName || project.video_name || '',
+        videoUrl: project.videoUrl || project.video_url || null,
+        folderId: project.folderId ?? project.folder_id ?? null,
+        measurements: Array.isArray(project.measurements) ? project.measurements : [],
+        lastModified: project.lastModified || project.last_modified || null
+    };
+};
+
+const getProjectIdentifier = (project) => {
+    if (!project) return null;
+    return project.id || project.projectName || project.project_name || null;
+};
+
 export const useProject = () => {
     const context = useContext(ProjectContext);
     if (!context) {
@@ -34,7 +54,10 @@ export const ProjectProvider = ({ children }) => {
         if (!currentProject) return;
         const saveTimer = setTimeout(async () => {
             try {
-                await updateProject(currentProject.projectName, {
+                const identifier = getProjectIdentifier(currentProject);
+                if (!identifier) return;
+
+                await updateProject(identifier, {
                     measurements,
                     lastModified: new Date().toISOString()
                 });
@@ -59,11 +82,13 @@ export const ProjectProvider = ({ children }) => {
                 URL.revokeObjectURL(videoSrc);
             }
 
-            setCurrentProject(project);
-            setVideoSrc(project.video_url); // Use remote URL
-            setVideoName(project.video_name);
+            const normalizedProject = normalizeProjectRecord(project);
+
+            setCurrentProject(normalizedProject);
+            setVideoSrc(normalizedProject.videoUrl); // Use remote URL
+            setVideoName(normalizedProject.videoName);
             setVideoFile(null); // We don't have the File object locally anymore
-            setMeasurements(project.measurements || []);
+            setMeasurements(normalizedProject.measurements || []);
 
             if (navigateTo) {
                 navigate(navigateTo);
@@ -82,7 +107,12 @@ export const ProjectProvider = ({ children }) => {
         setIsLoading(true);
         try {
             // 1. Upload video to Supabase Storage
-            const videoUrl = await uploadVideo(videoFile, videoFile.name);
+            let videoUrl = null;
+            try {
+                videoUrl = await uploadVideo(videoFile, videoFile.name);
+            } catch (uploadError) {
+                console.warn('Video upload failed, continuing without video URL:', uploadError);
+            }
 
             // 2. Save project metadata to Supabase DB
             const projectData = {
@@ -94,9 +124,10 @@ export const ProjectProvider = ({ children }) => {
             };
 
             const savedProject = await saveProjectToDb(projectData);
+            const normalizedProject = normalizeProjectRecord(savedProject);
 
-            setCurrentProject(savedProject);
-            setVideoSrc(videoUrl);
+            setCurrentProject(normalizedProject);
+            setVideoSrc(normalizedProject.videoUrl);
             setVideoName(videoFile.name);
             setVideoFile(videoFile);
             setMeasurements(initialMeasurements);
@@ -130,7 +161,12 @@ export const ProjectProvider = ({ children }) => {
         }
 
         try {
-            await updateProject(currentProject.projectName, {
+            const identifier = getProjectIdentifier(currentProject);
+            if (!identifier) {
+                throw new Error('Current project is missing a valid identifier.');
+            }
+
+            await updateProject(identifier, {
                 measurements,
                 lastModified: new Date().toISOString()
             });
@@ -163,7 +199,7 @@ export const ProjectProvider = ({ children }) => {
             }
 
             // 1. Reuse video URL
-            const videoUrl = currentProject.video_url;
+            const videoUrl = currentProject.videoUrl || currentProject.video_url;
 
             // 2. Save as new project
             const projectData = {
@@ -175,9 +211,10 @@ export const ProjectProvider = ({ children }) => {
             };
 
             const savedProject = await saveProjectToDb(projectData);
+            const normalizedProject = normalizeProjectRecord(savedProject);
 
             // Switch to the new project
-            setCurrentProject(savedProject);
+            setCurrentProject(normalizedProject);
             await showAlert('Success', 'Project saved as "' + newName + '" successfully!');
             return true;
         } catch (error) {

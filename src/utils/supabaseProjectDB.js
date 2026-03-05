@@ -7,6 +7,115 @@
  */
 import { getSupabaseClient } from './supabaseManualDB.js';
 
+const SUPABASE_VIDEO_BUCKET = import.meta.env?.VITE_SUPABASE_VIDEO_BUCKET || 'mavi_assets';
+
+const extractMissingColumnFromError = (error) => {
+    const message = String(error?.message || '');
+    const quotedMatch = message.match(/Could not find the '([^']+)' column/i);
+    if (quotedMatch?.[1]) return quotedMatch[1];
+
+    const pgMatch = message.match(/column\s+"([^"]+)"\s+does not exist/i);
+    if (pgMatch?.[1]) return pgMatch[1];
+
+    return null;
+};
+
+const isBucketNotFoundError = (error) => {
+    const message = String(error?.message || '').toLowerCase();
+    return message.includes('bucket not found');
+};
+
+const normalizeUpdateKeys = (updates = {}) => {
+    const normalized = { ...updates };
+
+    if ('projectName' in normalized && !('project_name' in normalized)) {
+        normalized.project_name = normalized.projectName;
+    }
+    if ('videoName' in normalized && !('video_name' in normalized)) {
+        normalized.video_name = normalized.videoName;
+    }
+    if ('folderId' in normalized && !('folder_id' in normalized)) {
+        normalized.folder_id = normalized.folderId;
+    }
+    if ('videoUrl' in normalized && !('video_url' in normalized)) {
+        normalized.video_url = normalized.videoUrl;
+    }
+    if ('swcsData' in normalized && !('swcs_data' in normalized)) {
+        normalized.swcs_data = normalized.swcsData;
+    }
+    if ('standardWorkLayoutData' in normalized && !('standard_work_layout_data' in normalized)) {
+        normalized.standard_work_layout_data = normalized.standardWorkLayoutData;
+    }
+    if ('facilityLayoutData' in normalized && !('facility_layout_data' in normalized)) {
+        normalized.facility_layout_data = normalized.facilityLayoutData;
+    }
+    if ('lastModified' in normalized && !('last_modified' in normalized)) {
+        normalized.last_modified = normalized.lastModified;
+    }
+
+    delete normalized.projectName;
+    delete normalized.videoName;
+    delete normalized.folderId;
+    delete normalized.videoUrl;
+    delete normalized.swcsData;
+    delete normalized.standardWorkLayoutData;
+    delete normalized.facilityLayoutData;
+    delete normalized.lastModified;
+
+    return normalized;
+};
+
+const UUID_V4_OR_GENERIC_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const resolveProjectIdentifier = (identifier) => {
+    if (identifier == null) return null;
+
+    if (typeof identifier === 'object') {
+        const objectId = identifier.id ?? identifier.projectId ?? null;
+        if (typeof objectId === 'string' && objectId.trim()) {
+            return { type: 'id', value: objectId.trim() };
+        }
+
+        const objectName = identifier.projectName ?? identifier.project_name ?? null;
+        if (typeof objectName === 'string' && objectName.trim()) {
+            return { type: 'project_name', value: objectName.trim() };
+        }
+
+        return null;
+    }
+
+    if (typeof identifier !== 'string') return null;
+    const value = identifier.trim();
+    if (!value) return null;
+
+    if (UUID_V4_OR_GENERIC_REGEX.test(value)) {
+        return { type: 'id', value };
+    }
+
+    return { type: 'project_name', value };
+};
+
+const executeProjectWriteWithSchemaFallback = async (writeFn, payload, label = 'projects.write') => {
+    let payloadToSend = { ...payload };
+
+    // Retry when local schema cache / DB schema misses one of the optional columns.
+    // This keeps project import/save backward compatible with older deployments.
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+        const result = await writeFn(payloadToSend);
+        if (!result?.error) return result;
+
+        const missingColumn = extractMissingColumnFromError(result.error);
+        if (!missingColumn || !(missingColumn in payloadToSend)) {
+            return result;
+        }
+
+        console.warn(`[supabaseProjectDB] ${label}: dropping unsupported column "${missingColumn}" and retrying.`);
+        delete payloadToSend[missingColumn];
+    }
+
+    return { data: null, error: new Error('Project write failed after schema fallback retries.') };
+};
+
 // ── Folders ──────────────────────────────────────────
 
 /**
@@ -112,21 +221,26 @@ export async function saveProject(project) {
         last_modified: now
     };
 
-    let result;
-    if (project.id) {
-        result = await supabase
-            .from('projects')
-            .update(payload)
-            .eq('id', project.id)
-            .select()
-            .single();
-    } else {
-        result = await supabase
-            .from('projects')
-            .insert({ ...payload, created_at: now })
-            .select()
-            .single();
-    }
+    const result = project.id
+        ? await executeProjectWriteWithSchemaFallback(
+            (safePayload) => supabase
+                .from('projects')
+                .update(safePayload)
+                .eq('id', project.id)
+                .select()
+                .single(),
+            payload,
+            'saveProject.update'
+        )
+        : await executeProjectWriteWithSchemaFallback(
+            (safePayload) => supabase
+                .from('projects')
+                .insert({ ...safePayload, created_at: now })
+                .select()
+                .single(),
+            payload,
+            'saveProject.insert'
+        );
 
     if (result.error) throw result.error;
     return result.data;
@@ -138,19 +252,34 @@ export async function saveProject(project) {
 export async function updateProject(identifier, updates) {
     const supabase = getSupabaseClient();
     const now = new Date().toISOString();
+    const resolvedIdentifier = resolveProjectIdentifier(identifier);
 
-    // Support either ID or Name as identifier
-    let query = supabase.from('projects').update({ ...updates, last_modified: now });
-
-    if (identifier.includes('-')) { // Likely a UUID
-        query = query.eq('id', identifier);
-    } else {
-        query = query.eq('project_name', identifier);
+    if (!resolvedIdentifier) {
+        throw new Error('updateProject requires a valid project identifier (id or project name).');
     }
 
-    const { data, error } = await query.select().single();
-    if (error) throw error;
-    return data;
+    const normalizedUpdates = normalizeUpdateKeys(updates);
+
+    const result = await executeProjectWriteWithSchemaFallback(
+        (safeUpdates) => {
+            let safeQuery = supabase
+                .from('projects')
+                .update({ ...safeUpdates, last_modified: safeUpdates.last_modified || now });
+
+            if (resolvedIdentifier.type === 'id') {
+                safeQuery = safeQuery.eq('id', resolvedIdentifier.value);
+            } else {
+                safeQuery = safeQuery.eq('project_name', resolvedIdentifier.value);
+            }
+
+            return safeQuery.select().single();
+        },
+        normalizedUpdates,
+        'updateProject'
+    );
+
+    if (result.error) throw result.error;
+    return result.data;
 }
 
 /**
@@ -177,19 +306,25 @@ export async function uploadVideo(blob, fileName) {
     const filePath = `videos/${Date.now()}_${fileName}`;
 
     const { data, error } = await supabase.storage
-        .from('mavi_assets')
+        .from(SUPABASE_VIDEO_BUCKET)
         .upload(filePath, blob);
 
     if (error) {
-        // If bucket doesn't exist, this will fail. 
-        // We'll warn but maybe fallback to local or generic error
+        if (isBucketNotFoundError(error)) {
+            console.warn(
+                `[supabaseProjectDB] Storage bucket "${SUPABASE_VIDEO_BUCKET}" not found. ` +
+                'Skipping video upload and continuing without a remote video URL.'
+            );
+            return null;
+        }
+
         console.error('Storage Upload Error:', error);
         throw error;
     }
 
     // Get public URL
     const { data: urlData } = supabase.storage
-        .from('mavi_assets')
+        .from(SUPABASE_VIDEO_BUCKET)
         .getPublicUrl(filePath);
 
     return urlData.publicUrl;

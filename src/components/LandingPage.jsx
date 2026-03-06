@@ -36,14 +36,38 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
         return window.innerWidth <= 768;
     });
 
-    const mobileReaderUrl = typeof window !== 'undefined'
-        ? `${window.location.protocol}//${window.location.hostname}:1430`
-        : 'http://localhost:1430';
+    const mobileReaderUrl = (() => {
+        if (typeof window === 'undefined') return null;
+
+        const envUrl = (import.meta.env.VITE_MOBILE_READER_URL || '').trim();
+        if (envUrl) return envUrl;
+
+        const hostname = window.location.hostname;
+        const isLocalLikeHost =
+            hostname === 'localhost' ||
+            hostname === '127.0.0.1' ||
+            hostname.endsWith('.local') ||
+            /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(hostname);
+
+        // Fallback ke port dev mobile reader hanya untuk lingkungan local/LAN.
+        if (isLocalLikeHost) {
+            return `${window.location.protocol}//${hostname}:1430`;
+        }
+
+        // Di hosting publik (contoh: vercel.app), jangan paksa :1430 karena pasti timeout.
+        return null;
+    })();
 
     const handleOpenMobileReader = async () => {
+        if (!mobileReaderUrl) {
+            await showAlert(
+                'Mobile Reader Belum Dikonfigurasi',
+                'App ini berjalan di domain publik. URL Mobile SOP Reader belum diset.\n\nSet VITE_MOBILE_READER_URL ke URL deployment mobile-reader (misal: https://mavi-mobile-reader.vercel.app) lalu redeploy.'
+            );
+            return;
+        }
+
         try {
-            // Quick reachability check so users get helpful feedback instead of blank "site can't be reached".
-            await fetch(mobileReaderUrl, { mode: 'no-cors' });
             window.open(mobileReaderUrl, '_blank', 'noopener,noreferrer');
         } catch (error) {
             console.warn('Mobile reader is not reachable:', error);

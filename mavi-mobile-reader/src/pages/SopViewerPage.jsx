@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, House, ListChecks } from 'lucide-react';
 import { extractSteps, getPublishedManualById } from '../lib/manualApi';
 
 const extractYouTubeVideoId = (value = '') => {
@@ -78,14 +79,18 @@ const SopViewerPage = () => {
     const progress = steps.length ? Math.round(((currentStepIndex + 1) / steps.length) * 100) : 0;
 
     const renderMedia = () => {
-        if (!currentStep) return <div className="media-empty">No step selected</div>;
+        if (!currentStep) {
+            return <div className="grid h-full min-h-[240px] place-items-center text-sm font-semibold text-slate-300">No step selected</div>;
+        }
         const mediaUrl = currentStep?.media?.url || currentStep?.images?.[0];
         const mediaType = String(currentStep?.media?.type || '').toLowerCase();
 
-        if (!mediaUrl) return <div className="media-empty">No media</div>;
+        if (!mediaUrl) {
+            return <div className="grid h-full min-h-[240px] place-items-center text-sm font-semibold text-slate-300">No media</div>;
+        }
 
         if (mediaType === 'video') {
-            return <video src={mediaUrl} controls className="media-content" />;
+            return <video src={mediaUrl} controls className="h-full w-full bg-black object-cover" />;
         }
 
         if (mediaType === 'youtube') {
@@ -94,7 +99,7 @@ const SopViewerPage = () => {
                 return (
                     <iframe
                         src={embed}
-                        className="media-content"
+                        className="h-full min-h-[260px] w-full border-0 bg-black"
                         title={`youtube-${currentStep?.id || currentStepIndex}`}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         allowFullScreen
@@ -103,60 +108,81 @@ const SopViewerPage = () => {
             }
         }
 
-        return <img src={mediaUrl} alt={currentStep?.title || 'Step media'} className="media-content" />;
+        return <img src={mediaUrl} alt={currentStep?.title || 'Step media'} className="h-full w-full bg-black object-cover" />;
     };
 
     return (
-        <div className="page shell">
-            <header className="topbar">
-                <h1>{manual?.title || 'SOP Viewer'}</h1>
-                <p>{manual?.documentNumber || '-'} • v{manual?.version || '1.0'}</p>
+        <div className="space-y-4 pb-4">
+            <header className="rounded-3xl border border-white/15 bg-white/10 p-4 shadow-glass backdrop-blur">
+                <h1 className="m-0 line-clamp-2 text-xl font-bold tracking-tight">{manual?.title || 'SOP Viewer'}</h1>
+                <p className="mt-2 text-sm text-slate-300">{manual?.documentNumber || '-'} • v{manual?.version || '1.0'}</p>
             </header>
 
-            {isLoading ? <div className="panel">Memuat SOP...</div> : null}
-            {!isLoading && error ? <div className="panel error-text">{error}</div> : null}
+            <section className="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-glass">
+                <h2 className="m-0 text-base font-semibold text-yellow-100">Step-by-step SOP Viewer</h2>
+                <p className="mt-2 text-sm text-slate-300">
+                    Ikuti instruksi secara berurutan. Progress bar membantu tracking penyelesaian langkah.
+                </p>
+            </section>
+
+            {isLoading ? <div className="rounded-2xl border border-sky-400/35 bg-sky-950/35 p-3 text-sm text-sky-200">Memuat SOP...</div> : null}
+            {!isLoading && error ? <div className="rounded-2xl border border-rose-400/35 bg-rose-950/40 p-3 text-sm text-rose-200">{error}</div> : null}
 
             {!isLoading && !error ? (
                 <>
-                    <div className="progress-track">
-                        <div className="progress-fill" style={{ width: `${progress}%` }} />
+                    <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+                        <div className="h-full rounded-full bg-gradient-to-r from-yellow-300 to-orange-300" style={{ width: `${progress}%` }} />
                     </div>
 
-                    <section className="media-card">
+                    <section className="min-h-[260px] overflow-hidden rounded-3xl border border-white/15 bg-black shadow-glass">
                         {renderMedia()}
                     </section>
 
-                    <section className="panel step-panel">
-                        <div className="step-meta">Step {Math.min(currentStepIndex + 1, Math.max(steps.length, 1))} / {Math.max(steps.length, 1)} • {progress}%</div>
-                        <h3>{currentStep?.title || 'Untitled Step'}</h3>
+                    <section className="space-y-2 rounded-3xl border border-white/15 bg-white/10 p-4 shadow-glass">
+                        <div className="text-xs text-slate-300">Step {Math.min(currentStepIndex + 1, Math.max(steps.length, 1))} / {Math.max(steps.length, 1)} • {progress}%</div>
+                        <h3 className="m-0 text-base font-semibold text-slate-100">{currentStep?.title || 'Untitled Step'}</h3>
                         <div
-                            className="instruction"
+                            className="prose prose-invert prose-sm max-w-none text-slate-200"
                             dangerouslySetInnerHTML={{ __html: currentStep?.instructions || '<p>No instruction available.</p>' }}
                         />
                     </section>
 
-                    <div className="footer-actions">
+                    <div className="grid grid-cols-2 gap-2">
                         <button
-                            className="btn"
+                            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 disabled:opacity-50"
                             disabled={currentStepIndex <= 0}
                             onClick={() => setCurrentStepIndex((prev) => Math.max(prev - 1, 0))}
                         >
+                            <ChevronLeft size={16} />
                             Back
                         </button>
                         <button
-                            className="btn primary"
+                            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-300 to-orange-300 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50"
                             disabled={currentStepIndex >= steps.length - 1}
                             onClick={() => setCurrentStepIndex((prev) => Math.min(prev + 1, Math.max(steps.length - 1, 0)))}
                         >
                             Next
+                            <ChevronRight size={16} />
                         </button>
                     </div>
                 </>
             ) : null}
 
-            <div className="footer-actions">
-                <Link to="/" className="btn ghost">Home</Link>
-                <Link to="/sop" className="btn ghost">List SOP</Link>
+            <div className="grid grid-cols-2 gap-2">
+                <Link
+                    to="/"
+                    className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-medium text-slate-200"
+                >
+                    <House size={15} />
+                    Home
+                </Link>
+                <Link
+                    to="/sop"
+                    className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-medium text-slate-200"
+                >
+                    <ListChecks size={15} />
+                    List SOP
+                </Link>
             </div>
         </div>
     );

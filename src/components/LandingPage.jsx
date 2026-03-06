@@ -31,6 +31,28 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
     const [errorMsg, setErrorMsg] = useState('');
     const [machineId, setMachineId] = useState('');
     const [dbStatus, setDbStatus] = useState({ connected: false, configured: false });
+    const [isMobileViewport, setIsMobileViewport] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return window.innerWidth <= 768;
+    });
+
+    const mobileReaderUrl = typeof window !== 'undefined'
+        ? `${window.location.protocol}//${window.location.hostname}:1430`
+        : 'http://localhost:1430';
+
+    const handleOpenMobileReader = async () => {
+        try {
+            // Quick reachability check so users get helpful feedback instead of blank "site can't be reached".
+            await fetch(mobileReaderUrl, { mode: 'no-cors' });
+            window.open(mobileReaderUrl, '_blank', 'noopener,noreferrer');
+        } catch (error) {
+            console.warn('Mobile reader is not reachable:', error);
+            await showAlert(
+                'Mobile App Belum Aktif',
+                'Mobile SOP Reader belum jalan. Jalankan app mobile dulu dengan command:\n\ncd /d c:\\Users\\ACER\\mavi-y\\mavi-mobile-reader && npm run dev -- --host --port 1430\n\nSetelah itu klik tombol ini lagi.'
+            );
+        }
+    };
 
     const tr = (key, enFallback, idFallback = enFallback) => {
         const fallback = currentLanguage === 'id' ? idFallback : enFallback;
@@ -57,6 +79,13 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
         fetchStatus();
         const interval = setInterval(fetchStatus, 5000);
         return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobileViewport(window.innerWidth <= 768);
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
     }, []);
 
     const handleRequestLicense = (e) => {
@@ -176,10 +205,12 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
 
             {/* Navigation / Header */}
             <header style={{
-                padding: '20px 40px',
+                padding: isMobileViewport ? '16px' : '20px 40px',
                 display: 'flex',
+                flexDirection: isMobileViewport ? 'column' : 'row',
                 justifyContent: 'space-between',
                 alignItems: 'center',
+                gap: isMobileViewport ? '14px' : '0',
                 position: 'relative',
                 zIndex: 10
             }}>
@@ -200,14 +231,14 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
 
                     {/* Status Indicator */}
                     <div style={{
-                        display: 'flex',
                         alignItems: 'center',
                         gap: '6px',
                         padding: '4px 10px',
                         background: 'rgba(255,255,255,0.03)',
                         borderRadius: '20px',
                         border: '1px solid rgba(255,255,255,0.05)',
-                        marginLeft: '10px'
+                        marginLeft: '10px',
+                        display: isMobileViewport ? 'none' : 'flex'
                     }}>
                         <div style={{
                             width: '8px',
@@ -222,7 +253,7 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: isMobileViewport ? '10px' : '15px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
                     <div style={{
                         display: 'flex',
                         gap: '8px',
@@ -245,7 +276,8 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                                     fontSize: '0.75rem',
                                     fontWeight: '700',
                                     letterSpacing: '0.5px',
-                                    minWidth: '42px'
+                                    minWidth: '42px',
+                                    minHeight: '34px'
                                 }}
                                 title={lang.code}
                             >
@@ -262,7 +294,7 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                             padding: '8px 16px',
                             borderRadius: '8px',
                             cursor: 'pointer',
-                            fontSize: '0.9rem',
+                            fontSize: '0.85rem',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px'
@@ -276,10 +308,10 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                             background: '#fff',
                             color: '#000',
                             border: 'none',
-                            padding: '8px 20px',
+                            padding: isMobileViewport ? '10px 14px' : '8px 20px',
                             borderRadius: '8px',
                             cursor: 'pointer',
-                            fontSize: '0.9rem',
+                            fontSize: '0.85rem',
                             fontWeight: 'bold'
                         }}
                     >
@@ -292,7 +324,7 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
             <main style={{
                 maxWidth: '1200px',
                 margin: '0 auto',
-                padding: '100px 20px',
+                padding: isMobileViewport ? '36px 16px' : '100px 20px',
                 textAlign: 'center',
                 position: 'relative',
                 zIndex: 1
@@ -314,7 +346,7 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                 </div>
 
                 <h1 style={{
-                    fontSize: '4.5rem',
+                    fontSize: isMobileViewport ? '2rem' : '4.5rem',
                     fontWeight: '900',
                     lineHeight: '1.1',
                     marginBottom: '24px',
@@ -326,7 +358,7 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                 </h1>
 
                 <p style={{
-                    fontSize: '1.25rem',
+                    fontSize: isMobileViewport ? '0.98rem' : '1.25rem',
                     color: '#94a3b8',
                     maxWidth: '700px',
                     margin: '0 auto 48px',
@@ -335,12 +367,12 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                     {t('landing.hero.subtitle')}
                 </p>
 
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap', width: '100%' }}>
                     <a
                         href="#"
                         onClick={handleDownload}
                         style={{
-                            padding: '16px 32px',
+                            padding: isMobileViewport ? '14px 18px' : '16px 32px',
                             background: 'linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%)',
                             color: 'white',
                             textDecoration: 'none',
@@ -350,7 +382,9 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                             alignItems: 'center',
                             gap: '12px',
                             boxShadow: '0 10px 40px rgba(0, 210, 255, 0.4)',
-                            transition: 'transform 0.2s'
+                            transition: 'transform 0.2s',
+                            width: isMobileViewport ? '100%' : 'auto',
+                            justifyContent: 'center'
                         }}
                         onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
                         onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
@@ -361,7 +395,7 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                     <button
                         onClick={onShowLicenseInput}
                         style={{
-                            padding: '16px 32px',
+                            padding: isMobileViewport ? '14px 18px' : '16px 32px',
                             background: 'rgba(255, 255, 255, 0.05)',
                             color: 'white',
                             border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -371,7 +405,9 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                             alignItems: 'center',
                             gap: '12px',
                             cursor: 'pointer',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
+                            width: isMobileViewport ? '100%' : 'auto',
+                            justifyContent: 'center'
                         }}
                         onMouseEnter={(e) => {
                             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
@@ -388,7 +424,7 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                     <button
                         onClick={handleStartTrial}
                         style={{
-                            padding: '16px 32px',
+                            padding: isMobileViewport ? '14px 18px' : '16px 32px',
                             background: 'rgba(255, 255, 255, 0.05)',
                             color: 'white',
                             border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -398,7 +434,9 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                             alignItems: 'center',
                             gap: '12px',
                             cursor: 'pointer',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
+                            width: isMobileViewport ? '100%' : 'auto',
+                            justifyContent: 'center'
                         }}
                         onMouseEnter={(e) => {
                             e.currentTarget.style.background = 'rgba(0, 210, 255, 0.1)';
@@ -411,14 +449,45 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                     >
                         <Clock size={20} color="#00d2ff" /> {tr('landing.hero.ctaTrial', 'Start 30-Min Trial', 'Mulai Trial 30 Menit')}
                     </button>
+
+                    <button
+                        onClick={handleOpenMobileReader}
+                        type="button"
+                        style={{
+                            padding: isMobileViewport ? '14px 18px' : '16px 32px',
+                            background: 'rgba(16, 185, 129, 0.12)',
+                            color: '#bfffe8',
+                            border: '1px solid rgba(16, 185, 129, 0.45)',
+                            borderRadius: '12px',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            width: isMobileViewport ? '100%' : 'auto',
+                            justifyContent: 'center',
+                            textDecoration: 'none'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)';
+                            e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.7)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(16, 185, 129, 0.12)';
+                            e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.45)';
+                        }}
+                    >
+                        <Monitor size={20} color="#34d399" /> {tr('landing.hero.ctaMobileReader', 'Open Mobile SOP App', 'Buka App SOP Mobile')}
+                    </button>
                 </div>
             </main>
 
             {/* Form Section */}
             <section style={{
                 maxWidth: '900px',
-                margin: '0 auto 100px',
-                padding: '0 20px',
+                margin: '0 auto 50px',
+                padding: isMobileViewport ? '0 12px' : '0 20px',
                 zIndex: 1,
                 position: 'relative'
             }}>
@@ -426,11 +495,11 @@ function LandingPage({ onActivateTrial, onShowLicenseInput }) {
                     background: 'rgba(255, 255, 255, 0.02)',
                     backdropFilter: 'blur(10px)',
                     border: '1px solid rgba(255, 255, 255, 0.05)',
-                    borderRadius: '32px',
-                    padding: '60px',
+                    borderRadius: isMobileViewport ? '20px' : '32px',
+                    padding: isMobileViewport ? '18px' : '60px',
                     display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '60px'
+                    gridTemplateColumns: isMobileViewport ? '1fr' : '1fr 1fr',
+                    gap: isMobileViewport ? '24px' : '60px'
                 }}>
                     <div>
                         <h2 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '16px' }}>{tr('landing.request.title', 'Request License Key', 'Minta License Key')}</h2>

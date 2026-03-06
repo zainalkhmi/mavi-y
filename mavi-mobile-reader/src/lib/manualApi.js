@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { assertSupabaseConfigured, supabase } from './supabase';
 
 const normalizeWorkflowStatus = (status) => {
     const value = String(status || '').trim().toUpperCase();
@@ -44,6 +44,7 @@ export const extractSteps = (manual) => {
 };
 
 export const listPublishedManualSummaries = async (search = '') => {
+    assertSupabaseConfigured();
     const searchText = String(search || '').trim();
 
     let query = supabase
@@ -64,6 +65,7 @@ export const listPublishedManualSummaries = async (search = '') => {
 };
 
 export const getPublishedManualById = async (id) => {
+    assertSupabaseConfigured();
     const { data, error } = await supabase
         .from('manuals')
         .select('*')

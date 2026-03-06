@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate, useParams } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 
 import VideoWorkspace from './components/VideoWorkspace';
@@ -116,6 +116,19 @@ const FacilityLayoutOptimizer = React.lazy(() => import('./components/FacilityLa
 const StudioModel = React.lazy(() => import('./components/studio/StudioModel'));
 const PitchDeck = React.lazy(() => import('./components/PitchDeck'));
 const MainMenu = React.lazy(() => import('./components/MainMenu'));
+const MobileDozukiViewer = React.lazy(() => import('./components/mobile/MobileDozukiViewer'));
+
+const MobileManualRoute = () => {
+  const navigate = useNavigate();
+  const { manualId } = useParams();
+
+  return (
+    <MobileDozukiViewer
+      manualId={manualId}
+      onClose={() => navigate('/menu')}
+    />
+  );
+};
 // Loading component
 const LoadingSpinner = () => (
   <div style={{
@@ -672,6 +685,9 @@ function AppContent() {
 
                 {/* Main Menu */}
                 <Route path="/menu" element={<div style={{ overflow: 'hidden', height: '100%' }}><MainMenu /></div>} />
+
+                {/* Mobile Dozuki-like Manual Viewer */}
+                <Route path="/mobile/manual/:manualId" element={<MobileManualRoute />} />
 
                 {/* Fallback */}
                 <Route path="*" element={<Navigate to="/" replace />} />

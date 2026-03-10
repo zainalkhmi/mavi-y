@@ -73,21 +73,7 @@ const SourceVideo = ({
                             onChange={onUpload}
                         />
                     </label>
-                    <button
-                        type="button"
-                        onClick={onHide}
-                        className="btn-pro"
-                        style={{
-                            fontSize: '0.72rem',
-                            padding: '4px 8px',
-                            color: 'rgba(255,255,255,0.75)',
-                            background: 'linear-gradient(135deg, rgba(100, 116, 139, 0.24), rgba(51, 65, 85, 0.22))',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '6px'
-                        }}
-                    >
-                        {tt('common.hide', 'Hide')}
-                    </button>
+
                 </div>
             </div>
 

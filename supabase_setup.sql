@@ -432,3 +432,19 @@ CREATE POLICY "Public delete vsm_data" ON vsm_data FOR DELETE USING (true);
 -- Indexes for vsm_data
 CREATE INDEX IF NOT EXISTS idx_vsm_data_folder ON vsm_data(folder_id);
 CREATE INDEX IF NOT EXISTS idx_vsm_data_name ON vsm_data(name);
+
+-- ── Frontline Apps ────────────────────────────────────
+CREATE TABLE IF NOT EXISTS frontline_apps (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  config JSONB NOT NULL DEFAULT '{"components": []}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE frontline_apps ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+DROP POLICY IF EXISTS "Public full access frontline_apps" ON frontline_apps;
+CREATE POLICY "Public full access frontline_apps" ON frontline_apps FOR ALL USING (true);

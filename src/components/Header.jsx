@@ -32,7 +32,12 @@ import {
     Rocket,
     Shield,
     Sparkles,
-    Zap
+    Zap,
+    Activity,
+    Blocks,
+    Monitor,
+    ShieldCheck,
+    Calendar
 } from 'lucide-react';
 
 const MENU_CATEGORIES = {
@@ -40,6 +45,7 @@ const MENU_CATEGORIES = {
     AI: <Sparkles size={16} />,
     IE: <BarChart3 size={16} />,
     ADVANCED: <Zap size={16} />,
+    FRONTLINE: <Zap size={16} />,
     LEARNING: <BookOpen size={16} />
 };
 
@@ -47,6 +53,14 @@ const MENU_ITEMS = [
     // MAIN MENU
     { path: '/menu', icon: <Home size={20} />, labelKey: 'header.mainMenu', title: 'Main Menu', category: 'CORE' },
     { path: '/mavi-class', icon: <GraduationCap size={20} />, title: 'MAVi Class', labelKey: 'header.maviClass', category: 'CORE' },
+
+    // FRONTLINE OPERATIONS (New Category)
+    { path: '/live-terminal', icon: <Activity size={20} />, title: 'Live Terminal', labelKey: 'header.liveTerminal', category: 'FRONTLINE', beta: true },
+    { path: '/app-builder', icon: <Blocks size={20} />, title: 'App Builder', labelKey: 'header.appBuilder', category: 'FRONTLINE', beta: true },
+    { path: '/frontline-dashboard', icon: <LineChart size={20} />, title: 'Frontline Dashboard', labelKey: 'header.frontlineDashboard', category: 'FRONTLINE', beta: true },
+    { path: '/station-monitor', icon: <Monitor size={20} />, title: 'Station Monitor', labelKey: 'header.stationMonitor', category: 'FRONTLINE', beta: true },
+    { path: '/quality-dashboard', icon: <ShieldCheck size={20} />, title: 'Quality Governance', labelKey: 'header.qualityDashboard', category: 'FRONTLINE', beta: true },
+    { path: '/production-scheduler', icon: <Calendar size={20} />, title: 'Production Schedule', labelKey: 'header.productionScheduler', category: 'FRONTLINE', beta: true },
 
     // CORE
     { path: '/', icon: <Film size={20} />, labelKey: 'header.video', exact: true, category: 'CORE' },

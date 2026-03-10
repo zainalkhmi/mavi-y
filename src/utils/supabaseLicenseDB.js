@@ -17,9 +17,6 @@ const resolveLicenseIdentifier = (licenseOrId) => {
         if (licenseOrId.id !== undefined && licenseOrId.id !== null && String(licenseOrId.id).trim() !== '') {
             return { column: 'id', value: licenseOrId.id };
         }
-        if (licenseOrId.key_id !== undefined && licenseOrId.key_id !== null && String(licenseOrId.key_id).trim() !== '') {
-            return { column: 'key_id', value: licenseOrId.key_id };
-        }
         if (licenseOrId.key_string !== undefined && licenseOrId.key_string !== null && String(licenseOrId.key_string).trim() !== '') {
             return { column: 'key_string', value: licenseOrId.key_string };
         }

@@ -85,3 +85,26 @@ export async function deleteDataset(id) {
     if (error) throw error;
     return true;
 }
+
+// ── Live Terminal Measurements ───────────────────────
+
+export async function saveLiveMeasurement(data) {
+    const supabase = getSupabaseClient();
+    const payload = {
+        video_name: data.video_name || `LIVE_${new Date().getTime()}`,
+        timestamp: new Date().toISOString(),
+        measurements: data.measurements || {},
+        cycle_data: data.cycle_data || [],
+        narration: data.narration || 'Live Terminal Production Cycle',
+        created_at: new Date().toISOString()
+    };
+
+    const { data: result, error } = await supabase
+        .from('measurements')
+        .insert(payload)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return result;
+}

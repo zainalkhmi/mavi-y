@@ -1613,7 +1613,7 @@ function AdminPanel() {
                                             </tr>
                                         ) : (
                                             allLicenses.map(license => (
-                                                <tr key={license.id || license.key_id} style={{ borderBottom: '1px solid #2a2a2a' }}>
+                                                <tr key={license.id} style={{ borderBottom: '1px solid #2a2a2a' }}>
                                                     <td style={{ padding: '16px', color: 'white' }}>{license.email || 'N/A'}</td>
                                                     <td style={{ padding: '16px' }}>
                                                         <code style={{

@@ -32,7 +32,11 @@ import {
     Radio,
     Settings,
     Search,
-    ArrowRight
+    ArrowRight,
+    Activity,
+    Monitor,
+    ShieldCheck,
+    Calendar
 } from 'lucide-react';
 
 const normalizeWorkflowStatus = (status) => {
@@ -73,6 +77,13 @@ const MENU_CATEGORIES = {
         description: 'Multi-camera, VR, and advanced features',
         color: '#f59e0b'
     },
+    FRONTLINE: {
+        icon: <Zap size={24} />,
+        label: 'Frontline Operations',
+        labelId: 'Operasional Lapangan',
+        description: 'Real-time production tracking and workstation apps',
+        color: '#3b82f6'
+    },
     LEARNING: {
         icon: <GraduationCap size={24} />,
         label: 'Learning & Help',
@@ -101,6 +112,67 @@ const MENU_ITEMS = [
         description: 'Browse and manage your project files',
         descriptionId: 'Jelajahi dan kelola file proyek Anda',
         category: 'CORE'
+    },
+    // FRONTLINE OPERATIONS
+    {
+        path: '/live-terminal',
+        icon: <Activity />,
+        label: 'Live Terminal',
+        labelId: 'Terminal Langsung',
+        description: 'Digital workstation for real-time production logging',
+        descriptionId: 'Workstation digital untuk pencatatan produksi real-time',
+        category: 'FRONTLINE',
+        beta: true
+    },
+    {
+        path: '/app-builder',
+        icon: <Blocks />,
+        label: 'App Builder',
+        labelId: 'Pembuat Aplikasi',
+        description: 'Configure frontline checklists and workflows',
+        descriptionId: 'Konfigurasi daftar periksa dan alur kerja operasional',
+        category: 'FRONTLINE',
+        beta: true
+    },
+    {
+        path: '/frontline-dashboard',
+        icon: <LineChart />,
+        label: 'Frontline Dashboard',
+        labelId: 'Dashboard Operasional',
+        description: 'Real-time production metrics and governance logs',
+        descriptionId: 'Metrik produksi real-time dan log tata kelola',
+        category: 'FRONTLINE',
+        beta: true
+    },
+    {
+        path: '/station-monitor',
+        icon: <Monitor />,
+        label: 'Station Monitor',
+        labelId: 'Monitor Stasiun',
+        description: 'Multi-station monitoring for shop floor supervisors',
+        descriptionId: 'Pemantauan multi-stasiun untuk supervisor lantai produksi',
+        category: 'FRONTLINE',
+        beta: true
+    },
+    {
+        path: '/quality-dashboard',
+        icon: <ShieldCheck />,
+        label: 'Quality Governance',
+        labelId: 'Tata Kelola Kualitas',
+        description: 'Quality compliance tracking and First Pass Yield analytics',
+        descriptionId: 'Pelacakan kepatuhan kualitas dan analitik First Pass Yield',
+        category: 'FRONTLINE',
+        beta: true
+    },
+    {
+        path: '/production-scheduler',
+        icon: <Calendar />,
+        label: 'Production Schedule',
+        labelId: 'Jadwal Produksi',
+        description: 'Plan and sequence work orders for frontline workstations',
+        descriptionId: 'Rencanakan dan urutkan perintah kerja untuk workstation lini depan',
+        category: 'FRONTLINE',
+        beta: true
     },
     // AI STUDIO
     {

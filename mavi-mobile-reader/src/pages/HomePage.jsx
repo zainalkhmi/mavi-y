@@ -2,64 +2,77 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpenText, QrCode, Sparkles } from 'lucide-react';
 import { isSupabaseConfigured } from '../lib/supabase';
+import scanIllustration from '../assets/zumen_style_scan_illustration.png';
+import listIllustration from '../assets/zumen_style_list_illustration.png';
 
 const HomePage = () => {
     return (
         <div className="space-y-4 pb-4">
-            <header className="rounded-3xl border border-white/15 bg-white/10 p-4 shadow-glass backdrop-blur">
-                <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-yellow-300/20 px-3 py-1 text-xs font-semibold text-yellow-300">
-                    <Sparkles size={14} />
-                    MAVI MOBILE
+            <header className="py-2">
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3 py-1 text-[10px] font-bold tracking-wider text-blue-400 uppercase">
+                    <Sparkles size={12} />
+                    Fitur Unggulan
                 </div>
-                <h1 className="m-0 text-2xl font-bold tracking-tight">SOP Reader</h1>
-                <p className="mt-2 text-sm text-slate-300">
-                    Akses SOP paling cepat lewat scan QR atau pilih dari katalog.
+                <h1 className="m-0 text-3xl font-black tracking-tighter text-white">SOP Reader</h1>
+                <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                    Sistem manajemen panduan kerja terpusat untuk efisiensi lapangan.
                 </p>
             </header>
 
-            <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-800/90 via-slate-900 to-black p-4 shadow-glass">
-                <h2 className="m-0 text-base font-semibold">Mobile Workspace</h2>
-                <p className="mt-2 text-sm leading-relaxed text-slate-300">
-                    UI modern, fokus operator, dan navigasi satu tangan dengan tombol scan di tengah bawah.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-200">Realtime</span>
-                    <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-200">Mobile First</span>
-                    <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-200">Published SOP</span>
-                </div>
-            </section>
-
-            <main className="grid gap-3">
+            <main className="grid gap-6 pt-2">
                 {!isSupabaseConfigured ? (
                     <div className="rounded-2xl border border-rose-400/35 bg-rose-950/40 p-3 text-sm text-rose-200">
-                        Supabase belum dikonfigurasi. Isi file <code>mavi-mobile-reader/.env</code> dengan
-                        <code> VITE_SUPABASE_URL</code> dan <code>VITE_SUPABASE_ANON_KEY</code>, lalu restart server.
+                        Supabase belum dikonfigurasi. Hubungi administrator sistem.
                     </div>
                 ) : null}
 
+                {/* Scan QR Card - Zumen Style */}
                 <Link
-                    className="rounded-3xl border border-yellow-300/30 bg-gradient-to-br from-yellow-300/20 to-orange-300/15 p-4 shadow-glass"
                     to="/scan"
+                    className="group relative overflow-hidden rounded-[32px] bg-white pt-2 shadow-xl border border-slate-200/50 transition duration-300 hover:-translate-y-1 hover:shadow-2xl active:scale-[0.98]"
                 >
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                        <span className="inline-flex items-center gap-2 text-base font-semibold text-yellow-200">
-                            <QrCode size={18} />
-                            Scan QR SOP
-                        </span>
-                        <span className="text-xs text-slate-300">Quick Access</span>
+                    <div className="absolute left-6 top-6 z-10 flex h-7 items-center rounded-sm bg-[#E31E24] px-3 text-[11px] font-bold text-white shadow-md">
+                        NEW
                     </div>
-                    <p className="m-0 text-sm text-slate-200">Arahkan kamera untuk langsung membuka SOP dari QR.</p>
+                    <div className="aspect-[16/10] w-full overflow-hidden px-4 pt-4">
+                        <img
+                            src="/src/assets/zumen_style_scan_illustration.png"
+                            alt="Scan QR"
+                            className="h-full w-full object-contain transition duration-500 group-hover:scale-110"
+                            style={{ filter: 'drop-shadow(0 20px 30px rgba(36, 113, 179, 0.2))' }}
+                        />
+                    </div>
+                    <div className="p-6 pt-2">
+                        <h3 className="mb-2 text-xl font-black tracking-tight text-[#2471B3]">
+                            Scan QR SOP
+                        </h3>
+                        <p className="text-sm leading-relaxed text-slate-500">
+                            Pahami struktur dan instruksi kerja secara cepat melalui pemindaian QR Code di lapangan.
+                        </p>
+                    </div>
                 </Link>
 
-                <Link className="rounded-3xl border border-white/15 bg-white/5 p-4 shadow-glass" to="/sop">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                        <span className="inline-flex items-center gap-2 text-base font-semibold">
-                            <BookOpenText size={18} />
-                            List SOP
-                        </span>
-                        <span className="text-xs text-slate-300">Browse</span>
+                {/* List SOP Card - Zumen Style */}
+                <Link
+                    to="/sop"
+                    className="group relative overflow-hidden rounded-[32px] bg-white pt-2 shadow-xl border border-slate-200/50 transition duration-300 hover:-translate-y-1 hover:shadow-2xl active:scale-[0.98]"
+                >
+                    <div className="aspect-[16/10] w-full overflow-hidden px-4 pt-4">
+                        <img
+                            src="/src/assets/zumen_style_list_illustration.png"
+                            alt="Katalog SOP"
+                            className="h-full w-full object-contain transition duration-500 group-hover:scale-110"
+                            style={{ filter: 'drop-shadow(0 20px 30px rgba(36, 113, 179, 0.2))' }}
+                        />
                     </div>
-                    <p className="m-0 text-sm text-slate-300">Lihat seluruh dokumen PUBLISHED dan buka langkah kerja.</p>
+                    <div className="p-6 pt-2">
+                        <h3 className="mb-2 text-xl font-black tracking-tight text-[#2471B3]">
+                            Manajemen Katalog
+                        </h3>
+                        <p className="text-sm leading-relaxed text-slate-500">
+                            Akses seluruh basis data Standard Operating Procedure secara terstruktur dan intuitif.
+                        </p>
+                    </div>
                 </Link>
             </main>
         </div>

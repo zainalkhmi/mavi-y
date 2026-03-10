@@ -112,6 +112,12 @@ const AIProcessWorkspace = React.lazy(() => import('./components/AIProcessWorksp
 const StandardDataBuilder = React.lazy(() => import('./components/StandardDataBuilder'));
 const ErgoCopilot = React.lazy(() => import('./components/ErgoCopilot'));
 const FacilityLayoutOptimizer = React.lazy(() => import('./components/FacilityLayoutOptimizer'));
+const LiveTerminal = React.lazy(() => import('./components/LiveTerminal'));
+const AppBuilder = React.lazy(() => import('./components/AppBuilder'));
+const FrontlineDashboard = React.lazy(() => import('./components/FrontlineDashboard'));
+const StationMonitor = React.lazy(() => import('./components/StationMonitor'));
+const QualityDashboard = React.lazy(() => import('./components/QualityDashboard'));
+const ProductionScheduler = React.lazy(() => import('./components/ProductionScheduler'));
 
 const StudioModel = React.lazy(() => import('./components/studio/StudioModel'));
 const PitchDeck = React.lazy(() => import('./components/PitchDeck'));
@@ -667,6 +673,14 @@ function AppContent() {
 
                 {/* Facility Layout Optimizer */}
                 <Route path="/facility-layout" element={<div style={{ overflow: 'hidden', height: '100%' }}><FacilityLayoutOptimizer /></div>} />
+
+                {/* Frontline Operations */}
+                <Route path="/live-terminal" element={<div style={{ overflow: 'hidden', height: '100%' }}><LiveTerminal /></div>} />
+                <Route path="/app-builder" element={<div style={{ overflow: 'hidden', height: '100%' }}><AppBuilder /></div>} />
+                <Route path="/frontline-dashboard" element={<div style={{ overflow: 'hidden', height: '100%' }}><FrontlineDashboard /></div>} />
+                <Route path="/station-monitor" element={<div style={{ overflow: 'hidden', height: '100%' }}><StationMonitor /></div>} />
+                <Route path="/quality-dashboard" element={<div style={{ overflow: 'hidden', height: '100%' }}><QualityDashboard /></div>} />
+                <Route path="/production-scheduler" element={<div style={{ overflow: 'hidden', height: '100%' }}><ProductionScheduler /></div>} />
 
                 {/* Admin Panel */}
                 <Route path="/admin" element={<div style={{ overflow: 'hidden', height: '100%' }}><AdminPanel /></div>} />

@@ -226,6 +226,9 @@ export default defineConfig({
   // Tauri-specific configuration
   clearScreen: false,
   server: {
+    // Bind to all interfaces so localhost can resolve via IPv4 (127.0.0.1)
+    // or IPv6 (::1) depending on OS/browser behavior.
+    host: true,
     port: 1420,
     strictPort: true,
     headers: enableCrossOriginIsolation

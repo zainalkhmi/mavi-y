@@ -18,7 +18,8 @@ import {
     Gauge,
     PlayCircle,
     FileText,
-    Play
+    Play,
+    Hash
 } from 'lucide-react';
 import { saveFrontlineApp, getAllFrontlineApps } from '../utils/supabaseFrontlineDB';
 import AppDiagram from './AppDiagram';
@@ -34,7 +35,8 @@ const COMPONENT_TYPES = {
     QUALITY_TOLERANCE: { id: 'QUALITY_TOLERANCE', label: 'Tolerance Check', icon: Gauge, defaultProps: { label: 'Measurement', min: 0, max: 10, unit: 'mm' } },
     VIDEO: { id: 'VIDEO', label: 'Video Player', icon: PlayCircle, defaultProps: { url: '', title: 'Step Video' } },
     PDF: { id: 'PDF', label: 'PDF Viewer', icon: FileText, defaultProps: { url: '', title: 'Technical Drawing' } },
-    BUTTON: { id: 'BUTTON', label: 'Action Button', icon: Play, defaultProps: { label: 'Next Step', action: 'NEXT_STEP', targetStepId: '', color: '#3b82f6' } }
+    BUTTON: { id: 'BUTTON', label: 'Action Button', icon: Play, defaultProps: { label: 'Next Step', action: 'NEXT_STEP', targetStepId: '', color: '#3b82f6' } },
+    QUANTITY_LOGGER: { id: 'QUANTITY_LOGGER', label: 'Quantity Logger', icon: Hash, defaultProps: { label: 'Log Completed Quantity', targetQty: 10 } }
 };
 
 const AppBuilder = () => {
@@ -388,6 +390,34 @@ const AppBuilder = () => {
                                             {comp.type === 'VIDEO' && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '20px', backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: '12px' }}><PlayCircle size={32} color="#3b82f6" /> {comp.props.title}</div>}
                                             {comp.type === 'PDF' && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '20px', backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: '12px' }}><FileText size={32} color="#ef4444" /> {comp.props.title}</div>}
                                             {comp.type === 'BUTTON' && <button style={{ padding: '15px 30px', backgroundColor: comp.props.color, border: 'none', borderRadius: '12px', color: '#fff', fontWeight: 'bold' }}>{comp.props.label}</button>}
+                                            {comp.type === 'QUANTITY_LOGGER' && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '100%' }}>
+                                                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{comp.props.label}</div>
+                                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'center' }}>
+                                                        {['-10', '-1', '+ Add all', '+1', '+10'].map((lbl, i) => (
+                                                            <div key={i} style={{
+                                                                padding: '10px 16px',
+                                                                borderRadius: '10px',
+                                                                border: '1px solid',
+                                                                borderColor: lbl.includes('+') ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)',
+                                                                color: lbl.includes('+') ? '#22c55e' : '#ef4444',
+                                                                backgroundColor: lbl.includes('+') ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+                                                                fontSize: '0.85rem', fontWeight: 700, cursor: 'default'
+                                                            }}>{lbl}</div>
+                                                        ))}
+                                                    </div>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                                        <div style={{ padding: '20px', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: '12px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                                            <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '8px', textTransform: 'uppercase' }}>QTY Required</div>
+                                                            <div style={{ fontSize: '2rem', fontWeight: 900, fontStyle: 'italic' }}>{comp.props.targetQty}</div>
+                                                        </div>
+                                                        <div style={{ padding: '20px', backgroundColor: 'rgba(34,197,94,0.06)', borderRadius: '12px', textAlign: 'center', border: '1px solid rgba(34,197,94,0.2)' }}>
+                                                            <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '8px', textTransform: 'uppercase' }}>QTY Complete</div>
+                                                            <div style={{ fontSize: '2rem', fontWeight: 900, fontStyle: 'italic', color: '#22c55e' }}>0</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -494,6 +524,19 @@ const AppBuilder = () => {
                                                             </select>
                                                         </div>
                                                     )}
+                                                </>
+                                            )}
+
+                                            {selectedComp.type === 'QUANTITY_LOGGER' && (
+                                                <>
+                                                    <div className="prop-group">
+                                                        <label style={{ display: 'block', fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginBottom: '8px' }}>LABEL</label>
+                                                        <input value={selectedComp.props.label} onChange={(e) => updateComponentProps(selectedComp.id, { label: e.target.value })} style={{ width: '100%', padding: '10px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+                                                    </div>
+                                                    <div className="prop-group">
+                                                        <label style={{ display: 'block', fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginBottom: '8px' }}>TARGET QTY (QTY Required)</label>
+                                                        <input type="number" min="1" value={selectedComp.props.targetQty} onChange={(e) => updateComponentProps(selectedComp.id, { targetQty: parseInt(e.target.value) || 1 })} style={{ width: '100%', padding: '10px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+                                                    </div>
                                                 </>
                                             )}
 

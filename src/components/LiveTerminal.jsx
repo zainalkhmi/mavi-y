@@ -10,7 +10,10 @@ import {
   Clock,
   LayoutGrid,
   Loader2,
-  Pause
+  Pause,
+  Hash,
+  Package,
+  Zap
 } from 'lucide-react';
 import { listManualSummaries, getManualById } from '../utils/supabaseManualDB';
 import { saveLiveMeasurement } from '../utils/supabaseUtilityDB';
@@ -46,6 +49,8 @@ const LiveTerminal = () => {
   const [machineData, setMachineData] = useState({});
   const [currentWorkOrder, setCurrentWorkOrder] = useState('');
   const [qualityData, setQualityData] = useState({}); // Tracking inputs for quality components
+  const [quantityLog, setQuantityLog] = useState({}); // { [compId]: { completed: 0, target: N } }
+  const [sessionStartTime] = useState(new Date());
 
   const timerRef = useRef(null);
   const barcodeBuffer = useRef('');
@@ -121,6 +126,7 @@ const LiveTerminal = () => {
       setCurrentStepIndex(0);
       setCycleData([]);
       setQualityData({});
+      setQuantityLog({});
 
       logEvent({
         type: AUDIT_EVENTS.CYCLE_START,
@@ -144,6 +150,7 @@ const LiveTerminal = () => {
     setTimer(0);
     setCurrentStepIndex(0);
     setCycleData([]);
+    setQuantityLog({});
     startTimer();
 
     // IoT Integration
@@ -467,38 +474,53 @@ const LiveTerminal = () => {
       padding: '40px'
     }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '900' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
+        <div style={{ flex: 1 }}>
+          {/* App / SOP title */}
+          <h1 style={{ margin: '0 0 6px 0', fontSize: '1.8rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Zap size={18} color="#fff" />
+            </div>
             {selectedApp ? selectedApp.name : selectedManual.title}
           </h1>
-          <div style={{ display: 'flex', gap: '15px', marginTop: '5px' }}>
-            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.9rem' }}>WS-01</span>
-            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.9rem' }}>
-              • {selectedApp ? 'Custom App' : selectedManual.documentNumber}
-            </span>
+          {/* Meta row: Work Order · Material · Batch · Station */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginTop: '12px' }}>
+            {[
+              { label: 'Work Order', value: currentWorkOrder || '—' },
+              { label: 'Batch ID', value: selectedApp?.config?.batchId || `BATCH-${sessionStartTime.getTime().toString().slice(-6)}` },
+              { label: 'Material', value: selectedApp?.config?.materialId || selectedManual?.documentNumber || '—' },
+              { label: 'Start', value: sessionStartTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+              { label: 'Workstation', value: 'WS-01' }
+            ].map(({ label, value }) => (
+              <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>{label}</span>
+                <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>{value}</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '15px' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
+          {/* Station Status Badge */}
           <div style={{
-            padding: '12px 24px',
+            padding: '10px 20px',
             backgroundColor: currentStatus.bg,
             border: `1px solid ${currentStatus.border}`,
-            borderRadius: '16px',
+            borderRadius: '14px',
             color: currentStatus.color,
             fontWeight: '900',
             display: 'flex',
             alignItems: 'center',
-            gap: '10px',
+            gap: '8px',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
-            fontSize: '0.9rem'
+            fontSize: '0.8rem'
           }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: currentStatus.color, boxShadow: `0 0 10px ${currentStatus.color}` }} />
+            <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: currentStatus.color, boxShadow: `0 0 8px ${currentStatus.color}` }} />
             {currentStatus.label}
           </div>
 
+          {/* Status Dropdown */}
           <select
             value={status}
             onChange={(e) => {
@@ -513,7 +535,7 @@ const LiveTerminal = () => {
                 setStatus(newStatus);
               }
             }}
-            style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '12px', padding: '0 15px', outline: 'none' }}
+            style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '12px', padding: '0 12px', outline: 'none', height: '40px', fontSize: '0.8rem' }}
           >
             {Object.keys(STATUS_CONFIG).map(k => <option key={k} value={k}>{STATUS_CONFIG[k].label}</option>)}
           </select>
@@ -667,6 +689,80 @@ const LiveTerminal = () => {
                         </button>
                       </div>
                     )}
+
+                    {comp.type === 'QUANTITY_LOGGER' && (() => {
+                      const target = comp.props.targetQty || 10;
+                      const completed = quantityLog[comp.id]?.completed ?? 0;
+                      const isComplete = completed >= target;
+                      const adjustQty = (delta) => {
+                        setQuantityLog(prev => {
+                          const cur = prev[comp.id]?.completed ?? 0;
+                          const next = Math.max(0, Math.min(target, cur + delta));
+                          logEvent({ type: AUDIT_EVENTS.CYCLE_START, workstation: 'WS-01', workOrder: currentWorkOrder, details: { compId: comp.id, label: comp.props.label, action: 'QTY_ADJUST', delta, newValue: next } });
+                          return { ...prev, [comp.id]: { completed: next, target } };
+                        });
+                      };
+                      const addAll = () => {
+                        setQuantityLog(prev => ({ ...prev, [comp.id]: { completed: target, target } }));
+                        logEvent({ type: AUDIT_EVENTS.CYCLE_START, workstation: 'WS-01', workOrder: currentWorkOrder, details: { compId: comp.id, label: comp.props.label, action: 'QTY_ADD_ALL', newValue: target } });
+                      };
+                      return (
+                        <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '24px', padding: '30px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                          {/* Label */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Hash size={18} color="#3b82f6" />
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{comp.props.label}</span>
+                          </div>
+                          {/* Buttons Row */}
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            {[
+                              { label: '-10', delta: -10, danger: true },
+                              { label: '-1', delta: -1, danger: true },
+                            ].map(({ label, delta }) => (
+                              <button key={label} onClick={() => adjustQty(delta)} style={{
+                                padding: '14px 22px', borderRadius: '14px', border: '1px solid rgba(239,68,68,0.35)',
+                                backgroundColor: 'rgba(239,68,68,0.08)', color: '#ef4444',
+                                fontSize: '1rem', fontWeight: 800, cursor: 'pointer', transition: 'all 0.15s',
+                                minWidth: '60px'
+                              }} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.2)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.08)'}>{label}</button>
+                            ))}
+                            <button onClick={addAll} style={{
+                              padding: '14px 22px', borderRadius: '14px', border: '1px solid rgba(59,130,246,0.4)',
+                              backgroundColor: 'rgba(59,130,246,0.12)', color: '#60a5fa',
+                              fontSize: '0.95rem', fontWeight: 800, cursor: 'pointer', transition: 'all 0.15s'
+                            }} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(59,130,246,0.25)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(59,130,246,0.12)'}>
+                              + Add all
+                            </button>
+                            {[
+                              { label: '+1', delta: 1 },
+                              { label: '+10', delta: 10 },
+                            ].map(({ label, delta }) => (
+                              <button key={label} onClick={() => adjustQty(delta)} style={{
+                                padding: '14px 22px', borderRadius: '14px', border: '1px solid rgba(34,197,94,0.35)',
+                                backgroundColor: 'rgba(34,197,94,0.08)', color: '#22c55e',
+                                fontSize: '1rem', fontWeight: 800, cursor: 'pointer', transition: 'all 0.15s',
+                                minWidth: '60px'
+                              }} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(34,197,94,0.2)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(34,197,94,0.08)'}>{label}</button>
+                            ))}
+                          </div>
+                          {/* KPI Tiles */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                            <div style={{ padding: '24px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '18px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
+                              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>QTY Required</div>
+                              <div style={{ fontSize: '2.5rem', fontWeight: 900, fontStyle: 'italic', color: '#fff' }}>{target}</div>
+                            </div>
+                            <div style={{ padding: '24px', backgroundColor: isComplete ? 'rgba(34,197,94,0.1)' : 'rgba(59,130,246,0.08)', borderRadius: '18px', textAlign: 'center', border: `1px solid ${isComplete ? 'rgba(34,197,94,0.3)' : 'rgba(59,130,246,0.2)'}`, transition: 'all 0.3s' }}>
+                              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>QTY Complete</div>
+                              <div style={{ fontSize: '2.5rem', fontWeight: 900, fontStyle: 'italic', color: isComplete ? '#22c55e' : '#fff' }}>{completed}</div>
+                            </div>
+                          </div>
+                          {/* Progress bar */}
+                          <div style={{ width: '100%', height: '6px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${Math.min((completed / target) * 100, 100)}%`, background: isComplete ? '#22c55e' : 'linear-gradient(90deg, #3b82f6, #60a5fa)', borderRadius: '4px', transition: 'width 0.3s ease' }} />
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
 

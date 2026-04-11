@@ -11,12 +11,9 @@ import {
     BarChart3,
     Network,
     Home,
-    Cctv,
-    PencilRuler,
     GraduationCap,
     Film,
     FolderOpen,
-    Layout,
     LineChart,
     Trophy,
     IterationCcw,
@@ -30,14 +27,8 @@ import {
     Map,
     Settings,
     Rocket,
-    Shield,
     Sparkles,
-    Zap,
-    Activity,
-    Blocks,
-    Monitor,
-    ShieldCheck,
-    Calendar
+    Zap
 } from 'lucide-react';
 
 const MENU_CATEGORIES = {
@@ -54,31 +45,14 @@ const MENU_ITEMS = [
     { path: '/menu', icon: <Home size={20} />, labelKey: 'header.mainMenu', title: 'Main Menu', category: 'CORE' },
     { path: '/mavi-class', icon: <GraduationCap size={20} />, title: 'MAVi Class', labelKey: 'header.maviClass', category: 'CORE' },
 
-    // FRONTLINE OPERATIONS (New Category)
-    { path: '/live-terminal', icon: <Activity size={20} />, title: 'Live Terminal', labelKey: 'header.liveTerminal', category: 'FRONTLINE', beta: true },
-    { path: '/app-builder', icon: <Blocks size={20} />, title: 'App Builder', labelKey: 'header.appBuilder', category: 'FRONTLINE', beta: true },
-    { path: '/frontline-dashboard', icon: <LineChart size={20} />, title: 'Frontline Dashboard', labelKey: 'header.frontlineDashboard', category: 'FRONTLINE', beta: true },
-    { path: '/station-monitor', icon: <Monitor size={20} />, title: 'Station Monitor', labelKey: 'header.stationMonitor', category: 'FRONTLINE', beta: true },
-    { path: '/quality-dashboard', icon: <ShieldCheck size={20} />, title: 'Quality Governance', labelKey: 'header.qualityDashboard', category: 'FRONTLINE', beta: true },
-    { path: '/production-scheduler', icon: <Calendar size={20} />, title: 'Production Schedule', labelKey: 'header.productionScheduler', category: 'FRONTLINE', beta: true },
-
     // CORE
     { path: '/', icon: <Film size={20} />, labelKey: 'header.video', exact: true, category: 'CORE' },
     { path: '/files', icon: <FolderOpen size={20} />, labelKey: 'header.files', title: 'File Explorer', category: 'CORE' },
-
-    // AI STUDIO
-    { path: '/studio-model', icon: <PencilRuler size={20} />, title: 'Studio Model', labelKey: 'header.studioModel', category: 'AI', beta: true },
-    // { path: '/teachable-machine', icon: <Cpu size={20} />, title: 'Teachable Machine Studio', labelKey: 'header.teachableMachine', category: 'AI', beta: true },
-
-
-    { path: '/realtime-compliance', icon: <Cctv size={20} />, title: 'Real-time Compliance', labelKey: 'header.realtimeCompliance', category: 'AI', beta: true },
-    { path: '/ergo-copilot', icon: <Shield size={20} />, title: 'Ergo Copilot', labelKey: 'header.ergoCopilot', category: 'AI', beta: true },
 
     // INDUSTRIAL ENGINEERING
     { path: '/swcs', icon: <GanttChart size={20} />, labelKey: 'header.swcs', title: 'Standard Work Combination Sheet', category: 'IE' },
     { path: '/yamazumi', icon: <BarChart3 size={20} />, labelKey: 'header.yamazumi', title: 'Yamazumi Chart', category: 'IE' },
     { path: '/value-stream-map', icon: <Network size={20} />, labelKey: 'header.valueStreamMap', title: 'Value Stream Map', category: 'IE' },
-    { path: '/facility-layout', icon: <Layout size={20} />, title: 'Facility Layout Optimizer', category: 'IE', beta: true },
     { path: '/statistical-analysis', icon: <LineChart size={20} />, labelKey: 'header.statisticalAnalysis', title: 'Statistical Analysis', category: 'IE' },
     // PMTS Builder item removed as per user request
 
